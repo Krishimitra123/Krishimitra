@@ -1,0 +1,236 @@
+[
+  {
+    "kannada": "ಜೀವಾಮೃತ",
+    "transliteration": "Jeevamrutha",
+    "english": "fermented microbial liquid biofertiliser",
+    "search_keywords": ["jeevamrutha", "jivamrita", "jivamrutha", "liquid biofertiliser"],
+    "category": "biofertiliser",
+    "intent_signal": "biofertiliser",
+    "synonyms_kannada": ["ಜೀವ ಅಮೃತ", "ಜೀವಾಮೃತಂ"]
+  },
+  {
+    "kannada": "ಬೀಜಾಮೃತ",
+    "transliteration": "Beejamrutha",
+    "english": "organic seed treatment solution",
+    "search_keywords": ["beejamrutha", "bijamrit", "seed treatment organic"],
+    "category": "biofertiliser",
+    "intent_signal": "biofertiliser",
+    "synonyms_kannada": ["ಬೀಜ ಅಮೃತ"]
+  },
+  {
+    "kannada": "ಪಂಚಗವ್ಯ",
+    "transliteration": "Panchagavya",
+    "english": "five cow product organic growth promoter",
+    "search_keywords": ["panchagavya", "panchakavya", "five cow products"],
+    "category": "biofertiliser",
+    "intent_signal": "biofertiliser",
+    "synonyms_kannada": ["ಪಂಚ ಗವ್ಯ"]
+  },
+  {
+    "kannada": "ಹಸಿರು ಗೊಬ್ಬರ",
+    "transliteration": "Hasiru Gobbara",
+    "english": "green manure crop incorporation",
+    "search_keywords": ["green manure", "hasiru gobbara", "dhaincha", "sunhemp"],
+    "category": "soil_fertility",
+    "intent_signal": "soil_query",
+    "synonyms_kannada": ["ಹಸಿರೆಲೆ ಗೊಬ್ಬರ"]
+  },
+  {
+    "kannada": "ನೀಮ್ ಕಷಾಯ",
+    "transliteration": "Neemu Kashaaya",
+    "english": "neem leaf extract pesticide spray",
+    "search_keywords": ["neem kashaya", "neemu kashaaya", "neem extract", "neem spray"],
+    "category": "pest_management",
+    "intent_signal": "pest_disease",
+    "synonyms_kannada": ["ಬೇವಿನ ಕಷಾಯ"]
+  },
+  {
+    "kannada": "ಎರೆಹುಳು ಗೊಬ್ಬರ",
+    "transliteration": "Erehulu Gobbara",
+    "english": "vermicompost earthworm compost",
+    "search_keywords": ["vermicompost", "erehulu gobbara", "earthworm compost", "worm casting"],
+    "category": "biofertiliser",
+    "intent_signal": "biofertiliser",
+    "synonyms_kannada": ["ಎರೆಹುಳ ಗೊಬ್ಬರ"]
+  },
+  {
+    "kannada": "ಕೊಟ್ಟಿಗೆ ಗೊಬ್ಬರ",
+    "transliteration": "Kottige Gobbara",
+    "english": "farmyard manure FYM cow dung compost",
+    "search_keywords": ["farmyard manure", "FYM", "kottige gobbara", "cow dung manure"],
+    "category": "biofertiliser",
+    "intent_signal": "biofertiliser",
+    "synonyms_kannada": ["ಕೊಟ್ಟಿಗೆ ಗೊಬ್ಬರ"]
+  },
+  {
+    "kannada": "ಅಗ್ನಿಅಸ್ತ್ರ",
+    "transliteration": "Agniastra",
+    "english": "chilli garlic neem organic pest repellent",
+    "search_keywords": ["agniastra", "agni astra", "chilli garlic spray"],
+    "category": "pest_management",
+    "intent_signal": "pest_disease",
+    "synonyms_kannada": ["ಅಗ್ನಿ ಅಸ್ತ್ರ"]
+  },
+  {
+    "kannada": "ಬ್ರಹ್ಮಾಸ್ತ್ರ",
+    "transliteration": "Brahmastra",
+    "english": "fermented botanical pesticide neem cow urine",
+    "search_keywords": ["brahmastra", "brahma astra", "botanical pesticide"],
+    "category": "pest_management",
+    "intent_signal": "pest_disease",
+    "synonyms_kannada": ["ಬ್ರಹ್ಮ ಅಸ್ತ್ರ"]
+  },
+  {
+    "kannada": "ದಶಪರ್ಣಿ",
+    "transliteration": "Dashaparni",
+    "english": "ten leaf extract organic pesticide",
+    "search_keywords": ["dashaparni", "dashparni", "ten leaf extract", "dasha parni"],
+    "category": "pest_management",
+    "intent_signal": "pest_disease",
+    "synonyms_kannada": ["ದಶ ಪರ್ಣಿ"]
+  },
+  {
+    "kannada": "ಟ್ರೈಕೋಡರ್ಮ",
+    "transliteration": "Trichoderma",
+    "english": "trichoderma viride biological fungicide",
+    "search_keywords": ["trichoderma", "trichoderma viride", "biological fungicide"],
+    "category": "pest_management",
+    "intent_signal": "pest_disease",
+    "synonyms_kannada": []
+  },
+  {
+    "kannada": "ಸ್ಯೂಡೋಮೋನಾಸ್",
+    "transliteration": "Pseudomonas",
+    "english": "pseudomonas fluorescens biological control agent",
+    "search_keywords": ["pseudomonas", "pseudomonas fluorescens", "biocontrol"],
+    "category": "pest_management",
+    "intent_signal": "pest_disease",
+    "synonyms_kannada": []
+  },
+  {
+    "kannada": "ಮಣ್ಣು ಪರೀಕ್ಷೆ",
+    "transliteration": "Mannu Pareekshe",
+    "english": "soil testing soil analysis",
+    "search_keywords": ["soil test", "mannu pareekshe", "soil analysis", "soil sample"],
+    "category": "soil_fertility",
+    "intent_signal": "soil_query",
+    "synonyms_kannada": ["ಮಣ್ಣಿನ ಪರೀಕ್ಷೆ"]
+  },
+  {
+    "kannada": "ಸಾವಯವ ಕೃಷಿ",
+    "transliteration": "Saavayava Krushi",
+    "english": "organic farming natural agriculture",
+    "search_keywords": ["organic farming", "saavayava krushi", "natural farming", "jaivik krishi"],
+    "category": "organic_foundations",
+    "intent_signal": "crop_advice",
+    "synonyms_kannada": ["ಜೈವಿಕ ಕೃಷಿ", "ನೈಸರ್ಗಿಕ ಕೃಷಿ"]
+  },
+  {
+    "kannada": "ಬೆಳೆ ಪರಿವರ್ತನೆ",
+    "transliteration": "Bele Parivartane",
+    "english": "crop rotation sequential cropping",
+    "search_keywords": ["crop rotation", "bele parivartane", "sequential cropping"],
+    "category": "crop_management",
+    "intent_signal": "crop_advice",
+    "synonyms_kannada": ["ಬೆಳೆ ಬದಲಾವಣೆ"]
+  },
+  {
+    "kannada": "ಅಂತರ ಬೆಳೆ",
+    "transliteration": "Antara Bele",
+    "english": "intercropping mixed cropping companion planting",
+    "search_keywords": ["intercropping", "antara bele", "mixed cropping", "companion planting"],
+    "category": "crop_management",
+    "intent_signal": "crop_advice",
+    "synonyms_kannada": ["ಮಿಶ್ರ ಬೆಳೆ"]
+  },
+  {
+    "kannada": "ಹನಿ ನೀರಾವರಿ",
+    "transliteration": "Hani Neeravari",
+    "english": "drip irrigation water management",
+    "search_keywords": ["drip irrigation", "hani neeravari", "water management"],
+    "category": "crop_management",
+    "intent_signal": "crop_advice",
+    "synonyms_kannada": ["ಡ್ರಿಪ್ ಇರಿಗೇಶನ್"]
+  },
+  {
+    "kannada": "ಮಲ್ಚಿಂಗ್",
+    "transliteration": "Mulching",
+    "english": "mulching soil cover moisture conservation",
+    "search_keywords": ["mulching", "soil cover", "moisture conservation", "straw mulch"],
+    "category": "soil_fertility",
+    "intent_signal": "soil_query",
+    "synonyms_kannada": ["ಹೊದಿಕೆ"]
+  },
+  {
+    "kannada": "ಸಾವಯವ ಪ್ರಮಾಣೀಕರಣ",
+    "transliteration": "Saavayava Pramaaneekaran",
+    "english": "organic certification NPOP PGS India standards",
+    "search_keywords": ["organic certification", "NPOP", "PGS India", "organic standard", "pramaaneekaran"],
+    "category": "certification",
+    "intent_signal": "certification",
+    "synonyms_kannada": ["ಜೈವಿಕ ಪ್ರಮಾಣಪತ್ರ"]
+  },
+  {
+    "kannada": "ಕೆಂಪು ಮಣ್ಣು",
+    "transliteration": "Kempu Mannu",
+    "english": "red soil laterite soil Karnataka",
+    "search_keywords": ["red soil", "kempu mannu", "laterite soil"],
+    "category": "soil_fertility",
+    "intent_signal": "soil_query",
+    "synonyms_kannada": ["ಕೆಂಪು ಭೂಮಿ"]
+  },
+  {
+    "kannada": "ಕಪ್ಪು ಮಣ್ಣು",
+    "transliteration": "Kappu Mannu",
+    "english": "black soil vertisol cotton soil",
+    "search_keywords": ["black soil", "kappu mannu", "vertisol", "cotton soil"],
+    "category": "soil_fertility",
+    "intent_signal": "soil_query",
+    "synonyms_kannada": ["ಕಪ್ಪು ಭೂಮಿ"]
+  },
+  {
+    "kannada": "ಸತುವು ಕೊರತೆ",
+    "transliteration": "Satuvu Korate",
+    "english": "zinc deficiency micronutrient deficiency",
+    "search_keywords": ["zinc deficiency", "satuvu korate", "micronutrient deficiency"],
+    "category": "soil_fertility",
+    "intent_signal": "soil_query",
+    "synonyms_kannada": []
+  },
+  {
+    "kannada": "ಎಲೆ ಚುಕ್ಕಿ ರೋಗ",
+    "transliteration": "Ele Chukki Roga",
+    "english": "leaf spot disease fungal infection",
+    "search_keywords": ["leaf spot", "ele chukki roga", "fungal leaf spot"],
+    "category": "pest_management",
+    "intent_signal": "pest_disease",
+    "synonyms_kannada": ["ಎಲೆ ಕಲೆ ರೋಗ"]
+  },
+  {
+    "kannada": "ಕಾಂಡ ಕೊರಕ",
+    "transliteration": "Kaanda Koraka",
+    "english": "stem borer insect pest paddy rice",
+    "search_keywords": ["stem borer", "kaanda koraka", "rice borer", "paddy borer"],
+    "category": "pest_management",
+    "intent_signal": "pest_disease",
+    "synonyms_kannada": ["ಕಾಂಡ ಕೊರೆಯುವ ಹುಳು"]
+  },
+  {
+    "kannada": "ಬಿಳಿ ನೊಣ",
+    "transliteration": "Bili Nona",
+    "english": "whitefly sucking pest bemisia tabaci",
+    "search_keywords": ["whitefly", "bili nona", "white fly", "bemisia"],
+    "category": "pest_management",
+    "intent_signal": "pest_disease",
+    "synonyms_kannada": ["ಬಿಳಿ ಈಗ"]
+  },
+  {
+    "kannada": "ಹಳದಿ ರೋಗ",
+    "transliteration": "Haladi Roga",
+    "english": "yellowing disease nutrient deficiency viral infection",
+    "search_keywords": ["yellowing", "haladi roga", "yellow disease", "chlorosis"],
+    "category": "pest_management",
+    "intent_signal": "pest_disease",
+    "synonyms_kannada": ["ಹಳದಿ ಬಣ್ಣ ರೋಗ"]
+  }
+]

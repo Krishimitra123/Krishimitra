@@ -1,0 +1,245 @@
+/**
+ * History Screen — Past session list with preview and delete.
+ */
+
+import React, { useCallback } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  TouchableOpacity,
+  Alert,
+} from 'react-native';
+import { NivettiHeader } from '@/components/NivettiHeader';
+import { Colors, FontSize, Spacing, BorderRadius, Shadows } from '@/constants/theme';
+import { useSessionStore, Session } from '@/stores/useSessionStore';
+
+export default function HistoryScreen() {
+  const { pastSessions, clearHistory, deleteSession } = useSessionStore();
+
+  const handleClear = useCallback(() => {
+    Alert.alert(
+      'ಇತಿಹಾಸ ಅಳಿಸಿ',
+      'ಎಲ್ಲಾ ಹಿಂದಿನ ಸಂಭಾಷಣೆಗಳನ್ನು ಅಳಿಸಬೇಕೇ?',
+      [
+        { text: 'ರದ್ದುಮಾಡಿ', style: 'cancel' },
+        { text: 'ಅಳಿಸಿ', style: 'destructive', onPress: clearHistory },
+      ]
+    );
+  }, []);
+
+  const handleDelete = useCallback((id: string) => {
+    Alert.alert(
+      'ಅಳಿಸಿ',
+      'ಈ ಸಂಭಾಷಣೆಯನ್ನು ಅಳಿಸಬೇಕೇ?',
+      [
+        { text: 'ರದ್ದುಮಾಡಿ', style: 'cancel' },
+        { text: 'ಅಳಿಸಿ', style: 'destructive', onPress: () => deleteSession(id) },
+      ]
+    );
+  }, []);
+
+  const renderSession = ({ item }: { item: Session }) => {
+    const messageCount = item.messages.length;
+    const lastMsg = item.messages[item.messages.length - 1];
+    const date = new Date(item.started_at);
+
+    return (
+      <TouchableOpacity
+        style={[styles.sessionCard, Shadows.sm]}
+        activeOpacity={0.7}
+        onLongPress={() => handleDelete(item.id)}
+      >
+        <View style={styles.sessionHeader}>
+          <View style={styles.sessionIcon}>
+            <Text style={styles.iconEmoji}>💬</Text>
+          </View>
+          <View style={styles.sessionInfo}>
+            <Text style={styles.sessionTitle} numberOfLines={1}>
+              {item.title || 'ಸಂಭಾಷಣೆ'}
+            </Text>
+            <Text style={styles.sessionMeta}>
+              {messageCount} ಸಂದೇಶಗಳು • {date.toLocaleDateString('kn-IN')}
+            </Text>
+          </View>
+          <Text style={styles.sessionTime}>
+            {date.toLocaleTimeString('kn-IN', { hour: '2-digit', minute: '2-digit' })}
+          </Text>
+        </View>
+
+        {lastMsg && (
+          <View style={styles.previewRow}>
+            <Text style={styles.previewRole}>
+              {lastMsg.role === 'user' ? '🧑‍🌾' : '🌿'}
+            </Text>
+            <Text style={styles.previewText} numberOfLines={2}>
+              {lastMsg.text}
+            </Text>
+          </View>
+        )}
+
+        {/* Source count badge */}
+        {lastMsg?.sources?.length > 0 && (
+          <View style={styles.sourceBadge}>
+            <Text style={styles.sourceBadgeText}>
+              📄 {lastMsg.sources.length} ಮೂಲಗಳು
+            </Text>
+          </View>
+        )}
+      </TouchableOpacity>
+    );
+  };
+
+  return (
+    <View style={styles.container}>
+      <NivettiHeader
+        title="ಇತಿಹಾಸ"
+        rightAction={
+          pastSessions.length > 0 ? (
+            <TouchableOpacity onPress={handleClear} style={styles.clearAllBtn}>
+              <Text style={styles.clearAllText}>ಅಳಿಸಿ</Text>
+            </TouchableOpacity>
+          ) : null
+        }
+      />
+
+      <FlatList
+        data={pastSessions}
+        keyExtractor={(item) => item.id}
+        renderItem={renderSession}
+        contentContainerStyle={[
+          styles.list,
+          pastSessions.length === 0 && styles.emptyList,
+        ]}
+        ListEmptyComponent={
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyIcon}>📋</Text>
+            <Text style={styles.emptyTitle}>ಇತಿಹಾಸ ಖಾಲಿ</Text>
+            <Text style={styles.emptySubtitle}>
+              ನಿಮ್ಮ ಮೊದಲ ಪ್ರಶ್ನೆ ಕೇಳಿ — ಇಲ್ಲಿ ಕಾಣಿಸುತ್ತದೆ
+            </Text>
+          </View>
+        }
+        showsVerticalScrollIndicator={false}
+      />
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: Colors.background,
+  },
+  list: {
+    padding: Spacing.md,
+    paddingBottom: Spacing.xxl,
+  },
+  emptyList: {
+    flex: 1,
+  },
+  clearAllBtn: {
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.xs,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderRadius: BorderRadius.full,
+  },
+  clearAllText: {
+    fontSize: FontSize.sm,
+    color: Colors.textOnPrimary,
+    fontWeight: '600',
+  },
+  sessionCard: {
+    backgroundColor: Colors.surface,
+    borderRadius: BorderRadius.lg,
+    padding: Spacing.md,
+    marginBottom: Spacing.sm,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  sessionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: Spacing.sm,
+  },
+  sessionIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: Colors.primarySoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: Spacing.sm,
+  },
+  iconEmoji: {
+    fontSize: 18,
+  },
+  sessionInfo: {
+    flex: 1,
+  },
+  sessionTitle: {
+    fontSize: FontSize.md,
+    fontWeight: '700',
+    color: Colors.textPrimary,
+  },
+  sessionMeta: {
+    fontSize: FontSize.xs,
+    color: Colors.textMuted,
+    marginTop: 2,
+  },
+  sessionTime: {
+    fontSize: FontSize.xs,
+    color: Colors.textMuted,
+  },
+  previewRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: Colors.background,
+    padding: Spacing.sm,
+    borderRadius: BorderRadius.sm,
+  },
+  previewRole: {
+    fontSize: 14,
+    marginRight: Spacing.xs,
+  },
+  previewText: {
+    fontSize: FontSize.sm,
+    color: Colors.textSecondary,
+    flex: 1,
+    lineHeight: 20,
+  },
+  sourceBadge: {
+    marginTop: Spacing.xs,
+    alignSelf: 'flex-start',
+    backgroundColor: Colors.sourceBg,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 2,
+    borderRadius: BorderRadius.full,
+  },
+  sourceBadgeText: {
+    fontSize: 11,
+    color: Colors.earth,
+  },
+  emptyContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: Spacing.xl,
+  },
+  emptyIcon: {
+    fontSize: 56,
+    marginBottom: Spacing.md,
+  },
+  emptyTitle: {
+    fontSize: FontSize.xl,
+    fontWeight: '700',
+    color: Colors.textSecondary,
+    marginBottom: Spacing.xs,
+  },
+  emptySubtitle: {
+    fontSize: FontSize.md,
+    color: Colors.textMuted,
+    textAlign: 'center',
+  },
+});
