@@ -163,7 +163,8 @@ def classify_intent(text: str, signals: list[str], original_text: str = '') -> t
     elif any(w in combined for w in COW_KW):
         return Intent.SF_COW, 0.85
 
-    return Intent.COMING_SOON, 0.99
+    # Default: route to Mistral for intelligent answer (NOT COMING_SOON which blocks LLM)
+    return Intent.SF_PREP, 0.50
 
 def extract_entities(text: str, user_ctx: UserContext) -> dict:
     text_lower = text.lower()

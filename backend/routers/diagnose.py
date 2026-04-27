@@ -20,10 +20,11 @@ def _build_kannada_summary(finding: DiagnosisFinding) -> str:
 
     # Disease identification
     disease = finding.disease_name_kn or finding.disease_name
-    if finding.plant_health_status.lower() == 'healthy':
-        parts.append(f'ನಿಮ್ಮ ಬೆಳೆ ಆರೋಗ್ಯಕರವಾಗಿದೆ. ಯಾವುದೇ ರೋಗ ಕಂಡುಬಂದಿಲ್ಲ.')
+    health = finding.plant_health_status.lower()
+    if health in ('healthy', 'ಆರೋಗ್ಯಕರ'):
+        parts.append('ನಿಮ್ಮ ಬೆಳೆ ಆರೋಗ್ಯಕರವಾಗಿದೆ. ಯಾವುದೇ ರೋಗ ಕಂಡುಬಂದಿಲ್ಲ.')
     else:
-        parts.append(f'ನಿಮ್ಮ ಬೆಳೆಯಲ್ಲಿ {disease} ರೋಗ ಕಂಡುಬಂದಿದೆ.')
+        parts.append(f'ನಿಮ್ಮ ಬೆಳೆಯಲ್ಲಿ {disease} ಕಂಡುಬಂದಿದೆ.')
         conf = int(finding.confidence_pct)
         parts.append(f'ವಿಶ್ವಾಸ ಮಟ್ಟ ಶೇಕಡಾ {conf}.')
 

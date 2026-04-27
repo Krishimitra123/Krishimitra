@@ -53,13 +53,15 @@ export function DiagnosisCard({ finding, onPlayAudio }: DiagnosisCardProps) {
           <Text style={styles.diseaseName}>
             {finding.disease_name_kn || finding.disease_name}
           </Text>
-          <Text style={styles.diseaseNameEn}>({finding.disease_name})</Text>
+          {finding.disease_name && finding.disease_name_kn && (
+            <Text style={styles.diseaseNameEn}>({finding.disease_name})</Text>
+          )}
         </View>
       </View>
 
       {/* Confidence Bar */}
       <View style={styles.confidenceSection}>
-        <Text style={styles.confidenceLabel}>ವಿಶ್ವಾಸ (Confidence)</Text>
+        <Text style={styles.confidenceLabel}>ವಿಶ್ವಾಸ ಮಟ್ಟ</Text>
         <View style={styles.confidenceBar}>
           <View
             style={[

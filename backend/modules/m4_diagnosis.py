@@ -22,38 +22,42 @@ CHEMICAL_TERMS = [
     'cypermethrin', 'glyphosate', 'endosulfan', 'ammonium sulphate',
 ]
 
-DIAGNOSIS_PROMPT = """You are an expert Indian crop pathologist specializing in organic farming.
-Analyze this plant/crop image carefully and identify any disease, pest damage, or health issues.
+DIAGNOSIS_PROMPT = """You are an expert Indian crop pathologist for organic farming in Karnataka.
+Analyze this plant/crop image carefully for any disease, pest, or health issue.
 
-IMPORTANT: Analyze whatever plant is visible in the image — do not require a specific crop.
+CRITICAL: ALL text values in the JSON MUST be written in KANNADA (ಕನ್ನಡ) script. 
+The JSON field names stay in English, but ALL VALUES must be in Kannada.
 
 Reply ONLY with valid JSON (no markdown fences, no extra text):
 {
-  "plant_health_status": "Diseased",
-  "disease_name": "Leaf Blight",
-  "disease_name_kn": "ಎಲೆ ರೋಗ",
+  "plant_health_status": "ರೋಗಗ್ರಸ್ತ",
+  "disease_name": "Powdery Mildew",
+  "disease_name_kn": "ಕಣಕಾಲು ರೋಗ",
   "confidence_pct": 80,
-  "visual_symptoms": ["Yellow spots on leaves", "Brown edges"],
-  "probable_cause": "Fungal infection due to excess moisture",
+  "visual_symptoms": ["ಎಲೆಗಳ ಮೇಲೆ ಬಿಳಿ ಪುಡಿ ಕಂಡುಬರುತ್ತಿದೆ", "ಎಲೆಗಳು ಹಳದಿ ಬಣ್ಣಕ್ಕೆ ತಿರುಗುತ್ತಿವೆ"],
+  "probable_cause": "ಅಧಿಕ ತೇವಾಂಶ ಮತ್ತು ಕಳಪೆ ಗಾಳಿ ಸಂಚಾರದಿಂದ ಶಿಲೀಂಧ್ರ ಸೋಂಕು",
   "organic_treatments": [
-    "Spray Panchagavya 3% solution every 10 days",
-    "Apply Neem oil 5ml per litre water",
-    "Use Trichoderma viride as soil drench"
+    "ಪ್ರತಿ 10 ದಿನಕ್ಕೊಮ್ಮೆ ಪಂಚಗವ್ಯ 3% ದ್ರಾವಣ ಸಿಂಪಡಿಸಿ",
+    "ಬೇವಿನ ಎಣ್ಣೆ 5 ಮಿಲಿ ಪ್ರತಿ ಲೀಟರ್ ನೀರಿಗೆ ಬೆರೆಸಿ ಸಿಂಪಡಿಸಿ",
+    "ಟ್ರೈಕೋಡರ್ಮಾ ವಿರಿಡೆ ಮಣ್ಣಿಗೆ ಮತ್ತು ಎಲೆಗಳಿಗೆ ಸಿಂಪಡಿಸಿ"
   ],
   "prevention_measures": [
-    "Maintain proper spacing for air circulation",
-    "Apply Jeevamrutha every 15 days to strengthen plant immunity"
+    "ಸಸ್ಯಗಳ ನಡುವೆ ಸರಿಯಾದ ಅಂತರ ಕಾಯ್ದುಕೊಳ್ಳಿ",
+    "ಪ್ರತಿ 15 ದಿನಕ್ಕೊಮ್ಮೆ ಜೀವಾಮೃತ ಹಾಕಿ ಸಸ್ಯ ರೋಗ ನಿರೋಧಕ ಶಕ್ತಿ ಹೆಚ್ಚಿಸಿ"
   ],
   "needs_retake": false
 }
 
 RULES:
-- organic_treatments MUST NEVER include chemicals: urea, DAP, NPK, chlorpyrifos
-- Only use: Jeevamrutha, Neem, Panchagavya, Trichoderma, Beejamrutha, Gau Krupa Amrutha
-- disease_name_kn MUST be in Kannada script
-- If the image is too blurry to analyze: needs_retake=true, confidence_pct=0
-- If it is a healthy plant: disease_name="Healthy Plant", disease_name_kn="ಆರೋಗ್ಯಕರ ಸಸ್ಯ"
-- Be specific about what you see, do not say "unable to identify" without trying"""
+- ALL values (visual_symptoms, probable_cause, organic_treatments, prevention_measures) MUST be in KANNADA
+- plant_health_status must be one of: "ಆರೋಗ್ಯಕರ", "ರೋಗಗ್ರಸ್ತ", "ಅಸ್ಪಷ್ಟ"
+- disease_name can be in English (scientific name), disease_name_kn MUST be Kannada
+- organic_treatments ಕೇವಲ ಜೈವಿಕ: ಜೀವಾಮೃತ, ಬೇವಿನ ಎಣ್ಣೆ, ಪಂಚಗವ್ಯ, ಟ್ರೈಕೋಡರ್ಮಾ, ಬೀಜಾಮೃತ
+- NEVER suggest chemicals: urea, DAP, NPK, chlorpyrifos, glyphosate
+- If image is blurry: needs_retake=true, confidence_pct=0
+- If healthy: plant_health_status="ಆರೋಗ್ಯಕರ", disease_name_kn="ಆರೋಗ್ಯಕರ ಸಸ್ಯ"
+- Identify the specific disease if possible, do not say unable to identify without trying"""
+
 
 
 def _cache_key(b64: str, text: str = '') -> str:
