@@ -68,6 +68,10 @@ CREATE TABLE IF NOT EXISTS document_chunks (
 CREATE INDEX IF NOT EXISTS document_chunks_embedding_idx ON document_chunks USING hnsw (embedding vector_cosine_ops) WITH (m = 16, ef_construction = 64);
 
 -- Match chunks RPC for vector search
+-- Drop the existing function first since the return table signature has changed from v2.0
+DROP FUNCTION IF EXISTS match_chunks(vector, double precision, integer, text, text);
+DROP FUNCTION IF EXISTS match_chunks(vector, float, int);
+
 CREATE OR REPLACE FUNCTION match_chunks(
     query_embedding VECTOR(768),
     match_threshold FLOAT,
