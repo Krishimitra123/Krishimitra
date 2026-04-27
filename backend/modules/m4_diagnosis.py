@@ -1,28 +1,19 @@
 """
-Module M4 — Crop Diagnosis
-Primary: Mistral Pixtral-12b (fast, no quota issues)
-Fallback: Gemini REST (if Pixtral fails)
-Hard 35s overall timeout via asyncio prevents the 120s mobile hang.
-Image caching prevents duplicate API calls.
+Module M4 — Crop Diagnosis (Pixtral primary, Gemini fallback)
+Key fix: image_url must be {"url": "data:..."} not a bare string.
+Hard 35s overall asyncio timeout. Image result cached by MD5.
 """
 
+import asyncio
+import hashlib
 import httpx
 import json
 import os
 import re
-import asyncio
-import hashlib
 from models.schemas import DiagnosisRequest, DiagnosisFinding
 
-# ── In-memory result cache ────────────────────────────────────────
 _cache: dict[str, DiagnosisFinding] = {}
 
-
-def _cache_key(b64: str, text: str = '') -> str:
-    return hashlib.md5((b64[:300] + text).encode()).hexdigest()
-
-
-# ── API endpoints ─────────────────────────────────────────────────
 MISTRAL_URL = 'https://api.mistral.ai/v1/chat/completions'
 GEMINI_BASE = 'https://generativelanguage.googleapis.com/v1beta/models'
 
@@ -31,46 +22,62 @@ CHEMICAL_TERMS = [
     'cypermethrin', 'glyphosate', 'endosulfan', 'ammonium sulphate',
 ]
 
-DIAGNOSIS_PROMPT = """You are a crop pathologist for Indian organic farming.
-Analyse this crop image carefully.
+DIAGNOSIS_PROMPT = """You are an expert Indian crop pathologist specializing in organic farming.
+Analyze this plant/crop image carefully and identify any disease, pest damage, or health issues.
+
+IMPORTANT: Analyze whatever plant is visible in the image — do not require a specific crop.
 
 Reply ONLY with valid JSON (no markdown fences, no extra text):
 {
-  "plant_health_status": "Healthy",
-  "disease_name": "Healthy Plant",
-  "disease_name_kn": "ಆರೋಗ್ಯಕರ ಸಸ್ಯ",
-  "confidence_pct": 85,
-  "visual_symptoms": ["Green leaves, no spots visible"],
-  "probable_cause": "None",
-  "organic_treatments": ["Continue Jeevamrutha application every 15 days"],
-  "prevention_measures": ["Maintain soil organic matter"],
+  "plant_health_status": "Diseased",
+  "disease_name": "Leaf Blight",
+  "disease_name_kn": "ಎಲೆ ರೋಗ",
+  "confidence_pct": 80,
+  "visual_symptoms": ["Yellow spots on leaves", "Brown edges"],
+  "probable_cause": "Fungal infection due to excess moisture",
+  "organic_treatments": [
+    "Spray Panchagavya 3% solution every 10 days",
+    "Apply Neem oil 5ml per litre water",
+    "Use Trichoderma viride as soil drench"
+  ],
+  "prevention_measures": [
+    "Maintain proper spacing for air circulation",
+    "Apply Jeevamrutha every 15 days to strengthen plant immunity"
+  ],
   "needs_retake": false
 }
 
-STRICT RULES:
-- organic_treatments MUST NEVER include: urea, DAP, NPK, any chemical pesticides
-- Only organic: Jeevamrutha, Neem extract, Panchagavya, Trichoderma, Beejamrutha
-- If image is blurry or not a plant: set needs_retake=true, confidence_pct=0
-- disease_name_kn MUST be written in Kannada script"""
+RULES:
+- organic_treatments MUST NEVER include chemicals: urea, DAP, NPK, chlorpyrifos
+- Only use: Jeevamrutha, Neem, Panchagavya, Trichoderma, Beejamrutha, Gau Krupa Amrutha
+- disease_name_kn MUST be in Kannada script
+- If the image is too blurry to analyze: needs_retake=true, confidence_pct=0
+- If it is a healthy plant: disease_name="Healthy Plant", disease_name_kn="ಆರೋಗ್ಯಕರ ಸಸ್ಯ"
+- Be specific about what you see, do not say "unable to identify" without trying"""
 
 
-def _fallback(needs_retake: bool = True) -> DiagnosisFinding:
+def _cache_key(b64: str, text: str = '') -> str:
+    return hashlib.md5((b64[:300] + text).encode()).hexdigest()
+
+
+def _fallback() -> DiagnosisFinding:
     return DiagnosisFinding(
         plant_health_status='Unclear',
-        disease_name='Unable to identify',
-        disease_name_kn='ಗುರುತಿಸಲು ಸಾಧ್ಯವಿಲ್ಲ',
+        disease_name='Unable to analyze',
+        disease_name_kn='ವಿಶ್ಲೇಷಿಸಲು ಸಾಧ್ಯವಿಲ್ಲ',
         confidence_pct=0.0,
-        visual_symptoms=[],
-        probable_cause='Unknown',
-        organic_treatments=['ದಯವಿಟ್ಟು ಸ್ಥಳೀಯ KVK ಸಂಪರ್ಕಿಸಿ'],
-        prevention_measures=[],
-        needs_retake=needs_retake,
+        visual_symptoms=['ಚಿತ್ರ ಸ್ಪಷ್ಟವಾಗಿಲ್ಲ ಅಥವಾ ಸಸ್ಯ ಕಾಣಿಸುತ್ತಿಲ್ಲ'],
+        probable_cause='ಸ್ಪಷ್ಟ ಚಿತ್ರ ಇಲ್ಲ',
+        organic_treatments=['ಸ್ಥಳೀಯ ಕೃಷಿ ವಿಜ್ಞಾನ ಕೇಂದ್ರ (KVK) ಸಂಪರ್ಕಿಸಿ'],
+        prevention_measures=['ಸಸ್ಯವನ್ನು ಸ್ಪಷ್ಟವಾಗಿ ತೋರಿಸುವ ಚಿತ್ರ ತೆಗೆಯಿರಿ'],
+        needs_retake=True,
         sources=[],
         is_reliable=False,
     )
 
 
 def _parse(raw: str) -> dict | None:
+    """Extract JSON from model response, handling markdown fences."""
     cleaned = re.sub(r'```json\s*|```\s*', '', raw).strip()
     try:
         return json.loads(cleaned)
@@ -94,17 +101,17 @@ def _build(data: dict, source: str) -> DiagnosisFinding:
         disease_name_kn=data.get('disease_name_kn', ''),
         confidence_pct=float(conf),
         visual_symptoms=data.get('visual_symptoms', []),
-        probable_cause=data.get('probable_cause', 'Unknown'),
+        probable_cause=data.get('probable_cause', ''),
         organic_treatments=safe or ['ಸ್ಥಳೀಯ KVK ಸಲಹೆ ಪಡೆಯಿರಿ'],
         prevention_measures=data.get('prevention_measures', []),
         needs_retake=bool(data.get('needs_retake', False)),
-        sources=[source, 'ICAR Crop Protection Guidelines'],
-        is_reliable=conf >= 55 and bool(data.get('disease_name')),
+        sources=[source, 'ICAR Crop Protection Guidelines', 'Palekar ZBNF'],
+        is_reliable=conf >= 45 and bool(data.get('disease_name')),
     )
 
 
 async def _pixtral(b64: str, mime: str, prompt: str) -> DiagnosisFinding | None:
-    """Mistral Pixtral — primary model. 25s timeout."""
+    """Mistral Pixtral-12b — primary model. 25s timeout."""
     key = os.environ.get('MISTRAL_API_KEY', '').strip()
     if not key:
         return None
@@ -117,21 +124,25 @@ async def _pixtral(b64: str, mime: str, prompt: str) -> DiagnosisFinding | None:
                 json={
                     'model': 'pixtral-12b-2409',
                     'messages': [{'role': 'user', 'content': [
-                        {'type': 'image_url', 'image_url': f'data:{mime};base64,{b64}'},
+                        # FIXED: image_url must be {"url": "data:..."} not a bare string
+                        {'type': 'image_url', 'image_url': {'url': f'data:{mime};base64,{b64}'}},
                         {'type': 'text', 'text': prompt},
                     ]}],
                     'temperature': 0.1,
                     'max_tokens': 800,
                 })
+
         if r.status_code == 200:
             text = r.json()['choices'][0]['message']['content'].strip()
+            print(f'[M4] Pixtral raw: {text[:120]}')
             d = _parse(text)
             if d:
                 print(f'[M4] Pixtral OK: {d.get("disease_name")} ({d.get("confidence_pct")}%)')
                 return _build(d, 'Pixtral-12b Vision')
-            print(f'[M4] Pixtral bad JSON: {text[:100]}')
+            print(f'[M4] Pixtral JSON parse failed: {text[:200]}')
         else:
-            print(f'[M4] Pixtral HTTP {r.status_code}: {r.text[:150]}')
+            print(f'[M4] Pixtral HTTP {r.status_code}: {r.text[:200]}')
+
     except httpx.TimeoutException:
         print('[M4] Pixtral timed out after 25s')
     except Exception as e:
@@ -153,78 +164,68 @@ async def _gemini(b64: str, mime: str, prompt: str) -> DiagnosisFinding | None:
         'generationConfig': {'temperature': 0.1, 'maxOutputTokens': 800},
     }
 
-    async with httpx.AsyncClient(timeout=15.0) as c:
-        for model in ['gemini-2.0-flash', 'gemini-2.0-flash-lite']:
-            print(f'[M4] Trying Gemini {model}...')
-            try:
+    for model in ['gemini-2.0-flash', 'gemini-2.0-flash-lite']:
+        print(f'[M4] Trying Gemini {model}...')
+        try:
+            async with httpx.AsyncClient(timeout=15.0) as c:
                 r = await c.post(
                     f'{GEMINI_BASE}/{model}:generateContent?key={api_key}',
                     json=body)
-                if r.status_code == 200:
-                    parts = r.json()['candidates'][0]['content']['parts']
-                    text = parts[0].get('text', '').strip()
-                    d = _parse(text)
-                    if d:
-                        print(f'[M4] Gemini {model} OK: {d.get("disease_name")}')
-                        return _build(d, f'Gemini {model}')
-                elif r.status_code == 429:
-                    print(f'[M4] Gemini {model} rate limited — skipping')
-                else:
-                    print(f'[M4] Gemini {model} HTTP {r.status_code}')
-            except httpx.TimeoutException:
-                print(f'[M4] Gemini {model} timed out')
-            except Exception as e:
-                print(f'[M4] Gemini {model} error: {e}')
+
+            if r.status_code == 200:
+                parts = r.json()['candidates'][0]['content']['parts']
+                text = parts[0].get('text', '').strip()
+                print(f'[M4] Gemini {model} raw: {text[:120]}')
+                d = _parse(text)
+                if d:
+                    print(f'[M4] Gemini OK: {d.get("disease_name")} ({d.get("confidence_pct")}%)')
+                    return _build(d, f'Gemini {model}')
+            else:
+                print(f'[M4] Gemini {model} HTTP {r.status_code}: {r.text[:100]}')
+
+        except httpx.TimeoutException:
+            print(f'[M4] Gemini {model} timed out')
+        except Exception as e:
+            print(f'[M4] Gemini {model} error: {e}')
+
     return None
 
 
-async def diagnose_image(request: DiagnosisRequest) -> DiagnosisFinding:
+async def diagnose(request: DiagnosisRequest) -> DiagnosisFinding:
     """
-    Main M4 entry point.
-    Overall 50s hard limit via asyncio.wait_for — backend ALWAYS responds
-    before the mobile's 120s axios timeout.
-    Order: Pixtral (25s) → Gemini (15s each) → graceful fallback.
+    Run diagnosis: Pixtral → Gemini fallback → static fallback.
+    Hard 35s overall timeout.
     """
-    if not request.image_base64 or len(request.image_base64) < 200:
-        return _fallback(needs_retake=True)
+    b64 = request.image_base64
+    mime = request.image_mime or 'image/jpeg'
+    extra = request.optional_text or ''
 
-    # Cache check
-    ck = _cache_key(request.image_base64, request.optional_text or '')
+    # Check cache first
+    ck = _cache_key(b64, extra)
     if ck in _cache:
         print('[M4] Cache hit')
         return _cache[ck]
 
-    # Build prompt with context
     prompt = DIAGNOSIS_PROMPT
-    if request.optional_text:
-        prompt += f'\nFarmer note: {request.optional_text}'
-    if request.user_context:
-        if request.user_context.primary_crop:
-            prompt += f'\nCrop: {request.user_context.primary_crop}'
-        if request.user_context.district:
-            prompt += f'\nLocation: {request.user_context.district}, Karnataka'
-
-    print(f'[M4] Image {len(request.image_base64)} chars, mime: {request.image_mime}')
+    if extra:
+        prompt += f'\n\nAdditional context from farmer: "{extra}"'
 
     async def _run() -> DiagnosisFinding:
-        # Try Pixtral first (primary — no quota issues)
-        result = await _pixtral(request.image_base64, request.image_mime, prompt)
-        if result:
-            return result
-        # Fall back to Gemini
-        print('[M4] Pixtral failed — trying Gemini...')
-        result = await _gemini(request.image_base64, request.image_mime, prompt)
-        if result:
-            return result
-        print('[M4] All models failed — returning fallback')
-        return _fallback(needs_retake=True)
+        result = await _pixtral(b64, mime, prompt)
+        if result is None:
+            result = await _gemini(b64, mime, prompt)
+        if result is None:
+            print('[M4] Both models failed — returning fallback')
+            result = _fallback()
+        return result
 
     try:
-        # Hard 50s cap — mobile client has 120s timeout, this guarantees a response
-        finding = await asyncio.wait_for(_run(), timeout=50.0)
+        result = await asyncio.wait_for(_run(), timeout=35.0)
     except asyncio.TimeoutError:
-        print('[M4] Overall 50s timeout reached — returning fallback')
-        finding = _fallback(needs_retake=True)
+        print('[M4] 35s hard timeout hit')
+        result = _fallback()
 
-    _cache[ck] = finding
-    return finding
+    if result.is_reliable:
+        _cache[ck] = result
+
+    return result
