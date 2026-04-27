@@ -1,0 +1,122 @@
+[
+  {
+    "zone_id": 1,
+    "zone_name": "North-East Transition",
+    "districts": ["Bidar", "Kalaburagi", "Yadgir"],
+    "dominant_soil_type": "Medium Black Vertisol",
+    "soil_texture": "Clay",
+    "typical_pH_range": "7.5-8.5",
+    "key_deficiencies": ["Nitrogen", "Zinc", "Sulphur"],
+    "primary_crops": ["Tur", "Jowar", "Chickpea"],
+    "organic_matter_typical": "0.3-0.5%",
+    "notes": "Alkaline soils, prone to waterlogging in kharif"
+  },
+  {
+    "zone_id": 2,
+    "zone_name": "North Dry Zone",
+    "districts": ["Bagalkot", "Vijayapura", "Gadag", "Dharwad", "Haveri"],
+    "dominant_soil_type": "Deep Black Cotton Soil",
+    "soil_texture": "Clay Loam",
+    "typical_pH_range": "7.0-8.0",
+    "key_deficiencies": ["Zinc", "Iron", "Boron"],
+    "primary_crops": ["Cotton", "Jowar", "Sunflower", "Onion"],
+    "organic_matter_typical": "0.4-0.6%",
+    "notes": "High clay content, shrinks and cracks in summer"
+  },
+  {
+    "zone_id": 3,
+    "zone_name": "Hyderabad-Karnataka",
+    "districts": ["Raichur", "Koppal", "Ballari"],
+    "dominant_soil_type": "Red Loam",
+    "soil_texture": "Sandy Clay Loam",
+    "typical_pH_range": "6.5-7.5",
+    "key_deficiencies": ["Zinc", "Iron", "Nitrogen"],
+    "primary_crops": ["Jowar", "Cotton", "Paddy", "Chilli"],
+    "organic_matter_typical": "0.3-0.5%",
+    "notes": "Low rainfall zone, drought prone"
+  },
+  {
+    "zone_id": 4,
+    "zone_name": "Central Dry Zone",
+    "districts": ["Chitradurga", "Davanagere", "Chikkaballapur", "Kolar", "Tumakuru"],
+    "dominant_soil_type": "Red Sandy Loam",
+    "soil_texture": "Sandy Loam",
+    "typical_pH_range": "6.0-7.0",
+    "key_deficiencies": ["Zinc", "Iron", "Sulphur", "Boron"],
+    "primary_crops": ["Ragi", "Groundnut", "Sunflower", "Tomato", "Onion"],
+    "organic_matter_typical": "0.4-0.7%",
+    "notes": "Shallow soils, high erosion risk"
+  },
+  {
+    "zone_id": 5,
+    "zone_name": "Eastern Dry Zone",
+    "districts": ["Tumakuru"],
+    "dominant_soil_type": "Red Sandy Loam",
+    "soil_texture": "Sandy Loam",
+    "typical_pH_range": "5.5-6.5",
+    "key_deficiencies": ["Zinc", "Iron", "Sulphur"],
+    "primary_crops": ["Ragi", "Groundnut", "Mulberry"],
+    "organic_matter_typical": "0.3-0.5%",
+    "notes": "Sericulture belt, low organic matter"
+  },
+  {
+    "zone_id": 6,
+    "zone_name": "Southern Dry Zone",
+    "districts": ["Mysuru", "Mandya", "Chamarajanagar", "Ramanagara", "Bengaluru Rural", "Bengaluru Urban"],
+    "dominant_soil_type": "Red Laterite",
+    "soil_texture": "Loam",
+    "typical_pH_range": "5.5-6.5",
+    "key_deficiencies": ["Phosphorus", "Zinc", "Boron"],
+    "primary_crops": ["Ragi", "Sugarcane", "Tomato", "Banana"],
+    "organic_matter_typical": "0.5-0.8%",
+    "notes": "Mixed red and black soils near Cauvery basin"
+  },
+  {
+    "zone_id": 7,
+    "zone_name": "Hilly Zone",
+    "districts": ["Chikkamagaluru", "Hassan", "Kodagu"],
+    "dominant_soil_type": "Forest Laterite",
+    "soil_texture": "Clay Loam",
+    "typical_pH_range": "4.5-5.5",
+    "key_deficiencies": ["Phosphorus", "Calcium", "Magnesium"],
+    "primary_crops": ["Coffee", "Areca Nut", "Pepper", "Cardamom"],
+    "organic_matter_typical": "2.0-4.0%",
+    "notes": "High rainfall, acidic soils, rich in organic matter"
+  },
+  {
+    "zone_id": 8,
+    "zone_name": "Coastal Zone",
+    "districts": ["Dakshina Kannada", "Udupi", "Uttara Kannada"],
+    "dominant_soil_type": "Laterite",
+    "soil_texture": "Sandy Clay",
+    "typical_pH_range": "4.5-5.5",
+    "key_deficiencies": ["Phosphorus", "Zinc", "Magnesium"],
+    "primary_crops": ["Areca Nut", "Coffee", "Coconut", "Paddy"],
+    "organic_matter_typical": "1.5-3.0%",
+    "notes": "High humidity, heavy rainfall, acidic laterite soils"
+  },
+  {
+    "zone_id": 9,
+    "zone_name": "Central Moist Transitional Zone",
+    "districts": ["Shivamogga"],
+    "dominant_soil_type": "Red Loam",
+    "soil_texture": "Loam",
+    "typical_pH_range": "5.5-6.5",
+    "key_deficiencies": ["Zinc", "Boron", "Sulphur"],
+    "primary_crops": ["Paddy", "Banana", "Coconut", "Areca Nut"],
+    "organic_matter_typical": "0.8-1.5%",
+    "notes": "Transition between coastal and dry zones"
+  },
+  {
+    "zone_id": 10,
+    "zone_name": "Semi-Arid Zone",
+    "districts": ["Belagavi", "Vijayanagara"],
+    "dominant_soil_type": "Medium Black",
+    "soil_texture": "Clay Loam",
+    "typical_pH_range": "6.5-7.5",
+    "key_deficiencies": ["Zinc", "Nitrogen", "Sulphur"],
+    "primary_crops": ["Ragi", "Groundnut", "Jowar"],
+    "organic_matter_typical": "0.3-0.6%",
+    "notes": "Drought prone, mixed cropping systems"
+  }
+]

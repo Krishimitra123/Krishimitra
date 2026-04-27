@@ -6,16 +6,17 @@ CREATE EXTENSION IF NOT EXISTS vector;
 
 -- Main document chunks table
 CREATE TABLE IF NOT EXISTS document_chunks (
-    id            BIGSERIAL PRIMARY KEY,
+    id            UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+    source_doc    TEXT        NOT NULL,           -- e.g. 'ICAR Organic Farming eCourse'
+    source_page   INT,                            -- page number if available
+    chunk_index   INT,                            -- sequential index within document
     content       TEXT        NOT NULL,
     embedding     VECTOR(768) NOT NULL,
-    source_doc    TEXT        NOT NULL,   -- e.g. 'ICAR Organic Farming eCourse'
-    source_page   INT,                    -- page number if available
-    category      TEXT        NOT NULL,   -- biofertiliser|soil|pest|crop|certification|...
-    crop_tag      TEXT,                   -- if chunk is crop-specific
-    zone_tag      INT,                    -- Karnataka zone 1-10, null if general
-    language      TEXT DEFAULT 'en',      -- en | kn | mixed
-    created_at    TIMESTAMPTZ DEFAULT NOW()
+    category      TEXT        NOT NULL,           -- biofertiliser|soil|pest|crop|certification|...
+    crop_tag      TEXT,                           -- if chunk is crop-specific (nullable)
+    zone_tag      INT,                            -- Karnataka zone 1-10, null if general (nullable)
+    language      TEXT        NOT NULL,           -- en | kn | mixed
+    tier          INT                             -- relevance tier/ranking
 );
 
 -- Performance index (HNSW for fast approximate nearest neighbour)
@@ -41,7 +42,7 @@ CREATE OR REPLACE FUNCTION match_chunks(
     filter_crop     TEXT DEFAULT NULL
 )
 RETURNS TABLE (
-    id          BIGINT,
+    id          UUID,
     content     TEXT,
     source_doc  TEXT,
     source_page INT,

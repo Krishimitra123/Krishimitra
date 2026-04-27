@@ -1,122 +1,195 @@
 """
-Module M3 — RAG Engine
-Responsibility: Maintain verified organic farming knowledge base as pgvector DB.
-Given enriched query from M2, retrieve top-K relevant document chunks with source metadata.
-
-THIS IS THE ENTIRE INTELLIGENCE OF KRISHIMITRA.
-The LLM only synthesises and translates — all knowledge comes from here.
+M3 RAG Engine — Retrieval-Augmented Generation module.
+Embeds queries, retrieves relevant chunks from Supabase pgvector,
+and returns ranked RAGChunk objects for downstream response generation.
 """
 
-from sentence_transformers import SentenceTransformer
-from supabase import create_client
-from models.schemas import NLPResult, Intent
 import os
+from dataclasses import dataclass, field
+from typing import Optional
+from dotenv import load_dotenv
 
-SUPABASE_URL  = os.environ.get('SUPABASE_URL', '')
-SUPABASE_KEY  = os.environ.get('SUPABASE_SERVICE_KEY', '')
-MODEL_NAME    = os.environ.get('EMBEDDING_MODEL_NAME',
-                'sentence-transformers/paraphrase-multilingual-mpnet-base-v2')
-THRESHOLD     = float(os.environ.get('RAG_SIMILARITY_THRESHOLD', '0.60'))
-TOP_K         = int(os.environ.get('RAG_TOP_K', '5'))
+load_dotenv()
 
-# ── Load once at startup (not per request) ───────────────────────
-_model  = None
-_client = None
+from sentence_transformers import SentenceTransformer
+from supabase import create_client, Client
+
+# ── Model & Client (loaded once at module startup) ────────────────────────────
+
+_MODEL_NAME = os.environ.get(
+    "EMBEDDING_MODEL_NAME",
+    "sentence-transformers/paraphrase-multilingual-mpnet-base-v2",
+)
+_model: Optional[SentenceTransformer] = None
+_supabase: Optional[Client] = None
 
 
-def _ensure_loaded():
-    """Lazy-load model and Supabase client to avoid import-time crashes."""
-    global _model, _client
+def _get_model() -> SentenceTransformer:
+    global _model
     if _model is None:
-        _model = SentenceTransformer(MODEL_NAME)
-    if _client is None and SUPABASE_URL and SUPABASE_KEY:
-        _client = create_client(SUPABASE_URL, SUPABASE_KEY)
+        _model = SentenceTransformer(_MODEL_NAME)
+    return _model
 
 
-class RAGChunk:
-    """A single retrieved document chunk with similarity score and metadata."""
-
-    def __init__(self, content: str, source_doc: str, source_page: int,
-                 category: str, similarity: float):
-        self.content     = content
-        self.source_doc  = source_doc
-        self.source_page = source_page
-        self.category    = category
-        self.similarity  = similarity
-
-    def citation(self) -> str:
-        """Returns formatted citation string in Kannada-readable format."""
-        return f'{self.source_doc}, p.{self.source_page}'
-
-    def to_dict(self) -> dict:
-        return {
-            'content': self.content,
-            'source_doc': self.source_doc,
-            'source_page': self.source_page,
-            'category': self.category,
-            'similarity': self.similarity,
-        }
+def _get_supabase() -> Client:
+    global _supabase
+    if _supabase is None:
+        url = os.environ["SUPABASE_URL"]
+        key = os.environ["SUPABASE_SERVICE_KEY"]
+        _supabase = create_client(url, key)
+    return _supabase
 
 
-# ── Category Filter Map ─────────────────────────────────────────
+# ── Intent → Category mapping ─────────────────────────────────────────────────
 
-CATEGORY_FILTER = {
-    Intent.SOIL_QUERY:    'soil_fertility',
-    Intent.BIOFERTILISER: 'biofertiliser',
-    Intent.PEST_DISEASE:  'pest_disease',
-    Intent.CERTIFICATION: 'certification',
+INTENT_CATEGORY_MAP = {
+    "SF_SOIL":        "soil_fertility",
+    "SF_PREP":        "biofertiliser",
+    "SF_APPLY":       "biofertiliser",
+    "DIAG_SYMPTOM":   "pest_disease",
+    "DIAG_DISEASE":   "pest_disease",
+    "DIAG_PEST":      "pest_disease",
+    "CROP_INFO":      "crop_info",
+    "LOCATION_INFO":  "location_info",
+    "ORGANIC_INPUT":  "organic_farming",
+    "GENERAL":        None,  # no filter
 }
 
 
-async def retrieve(nlp_result: NLPResult) -> list:
+# ── Data Classes ──────────────────────────────────────────────────────────────
+
+@dataclass
+class NLPResult:
     """
-    Main M3 entry point.
-    
-    1. Embed the enriched query
-    2. Query pgvector with optional category/crop filters
-    3. Return list of RAGChunk (empty list if no match above threshold)
-    
+    Minimal contract between M2 NLP and M3 RAG.
+    The NLP module produces this; RAG consumes it.
+    """
+    enriched_query: str
+    intent: str = "GENERAL"
+    crop: Optional[str] = None
+    zone_id: Optional[int] = None
+    entities: dict = field(default_factory=dict)
+
+
+@dataclass
+class RAGChunk:
+    content: str
+    source_doc: str
+    source_page: int
+    category: str
+    similarity: float
+    tier: int = 1
+    crop_tag: Optional[str] = None
+    zone_tag: Optional[str] = None
+
+    def citation(self) -> str:
+        """Return a formatted citation string for this chunk."""
+        page_str = f", p.{self.source_page}" if self.source_page else ""
+        return f"[{self.source_doc}{page_str}]"
+
+
+# ── Core Retrieval Function ───────────────────────────────────────────────────
+
+def retrieve(nlp_result: NLPResult, top_k: int = None) -> list[RAGChunk]:
+    """
+    Embed the enriched query, call Supabase match_chunks RPC,
+    and return a ranked list of RAGChunk objects.
+
     Args:
-        nlp_result: NLPResult from M2 with enriched_query and intent
-    
+        nlp_result: NLPResult from the NLP/intent module.
+        top_k:      Override RAG_TOP_K env var if provided.
+
     Returns:
-        List of RAGChunk sorted by descending similarity.
-        Empty list → caller should show KVK redirect message.
+        List of RAGChunk sorted by similarity descending.
     """
-    _ensure_loaded()
+    if top_k is None:
+        top_k = int(os.environ.get("RAG_TOP_K", 5))
 
-    if _client is None:
-        # Supabase not configured — return empty (development mode)
-        return []
+    threshold = float(os.environ.get("RAG_SIMILARITY_THRESHOLD", 0.60))
 
-    query_text = nlp_result.enriched_query
+    model = _get_model()
+    sb = _get_supabase()
 
-    # Embed the query
-    embedding = _model.encode([query_text], normalize_embeddings=True)[0].tolist()
+    # 1. Embed the enriched query
+    embedding = model.encode(
+        nlp_result.enriched_query,
+        normalize_embeddings=True,
+    ).tolist()
 
-    # Determine filters
-    category_filter = CATEGORY_FILTER.get(nlp_result.intent)   # None = search all categories
-    crop_filter = nlp_result.entities.get('crop_name')          # None = search all crops
+    # 2. Determine category filter from intent
+    category_filter = INTENT_CATEGORY_MAP.get(nlp_result.intent, None)
 
-    # Call Supabase RPC function (match_chunks — defined in Section 4.1 SQL)
-    response = _client.rpc('match_chunks', {
-        'query_embedding': embedding,
-        'match_threshold': THRESHOLD,
-        'match_count':     TOP_K,
-        'filter_category': category_filter,
-        'filter_crop':     crop_filter,
-    }).execute()
+    # 3. Build RPC params
+    rpc_params = {
+        "query_embedding": embedding,
+        "match_threshold": threshold,
+        "match_count": top_k,
+    }
+    if category_filter:
+        rpc_params["filter_category"] = category_filter
+    if nlp_result.crop:
+        rpc_params["filter_crop"] = nlp_result.crop
 
-    if not response.data:
-        return []  # No relevant chunks found → caller shows KVK redirect
+    # 4. Call Supabase match_chunks RPC
+    try:
+        result = sb.rpc("match_chunks", rpc_params).execute()
+        rows = result.data or []
+    except Exception as e:
+        print(f"[RAG] match_chunks RPC error: {e}")
+        # Fallback: retry without filters
+        fallback_params = {
+            "query_embedding": embedding,
+            "match_threshold": threshold,
+            "match_count": top_k,
+        }
+        result = sb.rpc("match_chunks", fallback_params).execute()
+        rows = result.data or []
 
-    return [
+    # 5. Convert to RAGChunk objects, sort by similarity desc
+    chunks = [
         RAGChunk(
-            content     = row['content'],
-            source_doc  = row['source_doc'],
-            source_page = row.get('source_page', 0),
-            category    = row['category'],
-            similarity  = row['similarity'],
+            content=row.get("content", ""),
+            source_doc=row.get("source_doc", ""),
+            source_page=row.get("source_page", 0),
+            category=row.get("category", ""),
+            similarity=float(row.get("similarity", 0.0)),
+            crop_tag=row.get("crop_tag"),
+            zone_tag=row.get("zone_tag"),
         )
-        for row in response.data
+        for row in rows
     ]
+    chunks.sort(key=lambda c: c.similarity, reverse=True)
+    return chunks
+
+
+# ── Convenience: format chunks for LLM context ───────────────────────────────
+
+def format_chunks_for_context(chunks: list[RAGChunk], max_chars: int = 3000) -> str:
+    """
+    Format retrieved chunks into a context string for the LLM prompt.
+    Respects max_chars budget.
+    """
+    parts = []
+    total = 0
+    for i, chunk in enumerate(chunks, 1):
+        block = f"[{i}] {chunk.citation()}\n{chunk.content}\n"
+        if total + len(block) > max_chars:
+            break
+        parts.append(block)
+        total += len(block)
+    return "\n".join(parts)
+
+
+# ── Quick smoke test ──────────────────────────────────────────────────────────
+
+if __name__ == "__main__":
+    test = NLPResult(
+        enriched_query="jeevamrutha preparation cow dung ingredients Karnataka",
+        intent="SF_PREP",
+        crop=None,
+    )
+    results = retrieve(test)
+    print(f"Retrieved {len(results)} chunks:\n")
+    for c in results:
+        print(f"  {round(c.similarity, 3)}  {c.citation()}")
+        print(f"  {c.content[:120]}...\n")

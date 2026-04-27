@@ -1,0 +1,272 @@
+[
+  {
+    "crop_en": "Tomato",
+    "crop_kn": "ಟೊಮ್ಯಾಟೊ",
+    "disease_en": "Early Blight",
+    "disease_kn": "ಅರ್ಲಿ ಬ್ಲೈಟ್",
+    "symptoms": [
+      "Dark brown circular spots on older leaves",
+      "Spots have concentric rings like a target",
+      "Yellow halo around spots",
+      "Leaves turn yellow and drop"
+    ],
+    "probable_cause": "Fungal",
+    "organic_treatments": [
+      "Spray Trichoderma viride 5g per litre of water",
+      "Apply neem oil 3ml per litre every 7 days",
+      "Spray copper oxychloride 3g per litre",
+      "Remove and destroy infected leaves immediately"
+    ],
+    "prevention": [
+      "Use disease resistant varieties",
+      "Maintain proper plant spacing for air circulation",
+      "Avoid overhead irrigation",
+      "Rotate crops every season"
+    ],
+    "source_doc": "NIPHM_IPM_Tomato.pdf",
+    "confidence": 0.90
+  },
+  {
+    "crop_en": "Tomato",
+    "crop_kn": "ಟೊಮ್ಯಾಟೊ",
+    "disease_en": "Late Blight",
+    "disease_kn": "ಲೇಟ್ ಬ್ಲೈಟ್",
+    "symptoms": [
+      "Water soaked grey-green spots on leaves",
+      "White fungal growth on underside of leaves",
+      "Brown rotting of stems and fruits",
+      "Rapid collapse of entire plant in wet weather"
+    ],
+    "probable_cause": "Fungal",
+    "organic_treatments": [
+      "Spray Pseudomonas fluorescens 5g per litre",
+      "Apply Bordeaux mixture 1% on leaves",
+      "Remove infected plants and burn them",
+      "Spray neem seed kernel extract 5%"
+    ],
+    "prevention": [
+      "Avoid planting in low lying areas",
+      "Do not over irrigate",
+      "Use certified disease free seeds",
+      "Apply mulch to reduce soil splash"
+    ],
+    "source_doc": "NIPHM_IPM_Tomato.pdf",
+    "confidence": 0.88
+  },
+  {
+    "crop_en": "Ragi",
+    "crop_kn": "ರಾಗಿ",
+    "disease_en": "Blast",
+    "disease_kn": "ಬ್ಲಾಸ್ಟ್",
+    "symptoms": [
+      "Diamond shaped spots on leaves with grey centre",
+      "Brown to black spots on neck of plant",
+      "Finger millets turn black and shrivel",
+      "Neck breaks causing ear head to fall"
+    ],
+    "probable_cause": "Fungal",
+    "organic_treatments": [
+      "Seed treatment with Trichoderma viride 4g per kg seed",
+      "Spray Pseudomonas fluorescens 5g per litre at booting stage",
+      "Apply neem cake 250kg per acre to soil",
+      "Spray cow urine diluted 1:10 on leaves"
+    ],
+    "prevention": [
+      "Use blast resistant varieties like GPU-28",
+      "Avoid excess nitrogen application",
+      "Maintain field sanitation",
+      "Sow at recommended time to avoid humid conditions"
+    ],
+    "source_doc": "NIPHM_IPM_Rice.pdf",
+    "confidence": 0.85
+  },
+  {
+    "crop_en": "Paddy",
+    "crop_kn": "ಭತ್ತ",
+    "disease_en": "Stem Borer",
+    "disease_kn": "ಕಾಂಡ ಕೊರಕ",
+    "symptoms": [
+      "Dead heart symptom in vegetative stage",
+      "Central shoot dries up and turns brown",
+      "White ear symptom at flowering stage",
+      "Holes visible on stem near base"
+    ],
+    "probable_cause": "Pest",
+    "organic_treatments": [
+      "Release Trichogramma japonicum 1 lakh eggs per acre",
+      "Apply neem oil 3% spray on stems",
+      "Set up light traps to catch adult moths",
+      "Apply Beauveria bassiana 5g per litre of water"
+    ],
+    "prevention": [
+      "Remove and destroy stubble after harvest",
+      "Avoid excess nitrogen which attracts pests",
+      "Maintain proper water level in field",
+      "Use resistant varieties"
+    ],
+    "source_doc": "NIPHM_IPM_Rice.pdf",
+    "confidence": 0.87
+  },
+  {
+    "crop_en": "Paddy",
+    "crop_kn": "ಭತ್ತ",
+    "disease_en": "Brown Plant Hopper",
+    "disease_kn": "ಕಂದು ಜಿಗಿ ಹುಳು",
+    "symptoms": [
+      "Circular burnt patches in field called hopper burn",
+      "Plants turn yellow then brown in patches",
+      "Insects visible at base of plant near water level",
+      "Honeydew secretion causes sooty mould growth"
+    ],
+    "probable_cause": "Pest",
+    "organic_treatments": [
+      "Spray neem seed kernel extract 5% on plant base",
+      "Apply fish meal wash to repel hoppers",
+      "Drain field water for 3 days to expose insects",
+      "Release Cyrtorhinus lividipennis natural predator"
+    ],
+    "prevention": [
+      "Avoid excess nitrogen fertilizer",
+      "Maintain spacing to allow air movement",
+      "Use BPH resistant varieties",
+      "Avoid continuous flooding"
+    ],
+    "source_doc": "NIPHM_IPM_Rice.pdf",
+    "confidence": 0.86
+  },
+  {
+    "crop_en": "Cotton",
+    "crop_kn": "ಹತ್ತಿ",
+    "disease_en": "Bollworm",
+    "disease_kn": "ಬೊಲ್ ವರ್ಮ್",
+    "symptoms": [
+      "Holes in flower buds and bolls",
+      "Frass visible near entry holes",
+      "Shedding of flower buds and young bolls",
+      "Caterpillars visible inside damaged bolls"
+    ],
+    "probable_cause": "Pest",
+    "organic_treatments": [
+      "Spray Bacillus thuringiensis 2g per litre of water",
+      "Apply neem oil 5ml per litre every 10 days",
+      "Set up pheromone traps 5 per acre",
+      "Spray neem seed kernel extract 5%"
+    ],
+    "prevention": [
+      "Plant trap crops like marigold around field border",
+      "Install bird perches in field",
+      "Remove and destroy affected plant parts",
+      "Avoid late sowing"
+    ],
+    "source_doc": "NIPHM_IPM_Cotton.pdf",
+    "confidence": 0.88
+  },
+  {
+    "crop_en": "Groundnut",
+    "crop_kn": "ಶೇಂಗಾ",
+    "disease_en": "Tikka Disease",
+    "disease_kn": "ಟಿಕ್ಕಾ ರೋಗ",
+    "symptoms": [
+      "Small brown circular spots on leaves",
+      "Spots surrounded by yellow halo",
+      "Early and late leaf spot appear together",
+      "Severe defoliation in advanced stage"
+    ],
+    "probable_cause": "Fungal",
+    "organic_treatments": [
+      "Spray Trichoderma viride 5g per litre",
+      "Apply neem oil 3ml per litre every 10 days",
+      "Spray cow urine 10% solution on leaves",
+      "Remove severely infected leaves and destroy"
+    ],
+    "prevention": [
+      "Use certified disease free seeds",
+      "Treat seeds with Trichoderma before sowing",
+      "Maintain proper plant spacing",
+      "Avoid water stagnation in field"
+    ],
+    "source_doc": "NIPHM_IPM_Groundnut.pdf",
+    "confidence": 0.85
+  },
+  {
+    "crop_en": "Banana",
+    "crop_kn": "ಬಾಳೆ",
+    "disease_en": "Panama Wilt",
+    "disease_kn": "ಪನಾಮಾ ವಿಲ್ಟ್",
+    "symptoms": [
+      "Yellowing of lower leaves first",
+      "Leaves collapse and hang down like skirt",
+      "Brown discolouration inside pseudostem when cut",
+      "Plant wilts and dies without recovery"
+    ],
+    "probable_cause": "Fungal",
+    "organic_treatments": [
+      "Apply Trichoderma viride 50g per plant in soil",
+      "Drench soil with Pseudomonas fluorescens 10g per litre",
+      "Apply neem cake 2kg per plant",
+      "Remove and destroy infected plants including roots"
+    ],
+    "prevention": [
+      "Use disease free tissue culture plants",
+      "Avoid planting in previously infected soil",
+      "Maintain soil drainage",
+      "Do not injure roots during cultivation"
+    ],
+    "source_doc": "NIPHM_IPM_Banana.pdf",
+    "confidence": 0.87
+  },
+  {
+    "crop_en": "Onion",
+    "crop_kn": "ಈರುಳ್ಳಿ",
+    "disease_en": "Purple Blotch",
+    "disease_kn": "ಪರ್ಪಲ್ ಬ್ಲಾಚ್",
+    "symptoms": [
+      "Small white sunken spots on leaves",
+      "Spots enlarge with purple centre",
+      "Leaves dry from tip downward",
+      "Severe infection causes complete leaf death"
+    ],
+    "probable_cause": "Fungal",
+    "organic_treatments": [
+      "Spray Trichoderma viride 5g per litre",
+      "Apply neem oil 3ml per litre every 7 days",
+      "Spray garlic extract 5% on leaves",
+      "Remove infected leaves and burn"
+    ],
+    "prevention": [
+      "Use disease free seeds and sets",
+      "Avoid overhead irrigation",
+      "Maintain field sanitation",
+      "Apply balanced organic nutrition"
+    ],
+    "source_doc": "NIPHM_IPM_Onion.pdf",
+    "confidence": 0.84
+  },
+  {
+    "crop_en": "Chilli",
+    "crop_kn": "ಮೆಣಸಿನಕಾಯಿ",
+    "disease_en": "Die Back",
+    "disease_kn": "ಡೈ ಬ್ಯಾಕ್",
+    "symptoms": [
+      "Tips of branches dry from top downward",
+      "Dark brown lesions on stems and branches",
+      "Fruits shrivel and turn dark",
+      "Entire branch dies progressively"
+    ],
+    "probable_cause": "Fungal",
+    "organic_treatments": [
+      "Spray Bordeaux mixture 1% on affected branches",
+      "Apply Trichoderma viride 5g per litre",
+      "Prune and destroy infected branches immediately",
+      "Spray neem oil 5ml per litre every 10 days"
+    ],
+    "prevention": [
+      "Use healthy certified seeds",
+      "Treat seeds with Trichoderma before sowing",
+      "Avoid water stress and waterlogging",
+      "Maintain proper nutrition with organic manures"
+    ],
+    "source_doc": "NIPHM_IPM_Chilli.pdf",
+    "confidence": 0.86
+  }
+]
