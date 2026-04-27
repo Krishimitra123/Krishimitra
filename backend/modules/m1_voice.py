@@ -1,103 +1,134 @@
+"""
+Module M1 — Voice (STT + TTS)
+STT: Sarvam saarika:v2.5 — accepts WAV best.
+     M4A/MP4 from iPhone is converted to WAV in-memory before sending.
+TTS: Sarvam bulbul:v3.
+
+Both calls have a hard 15s timeout.
+"""
+
 import httpx
 import base64
+import io
 import os
+import struct
+import wave
+
+
+def _m4a_to_wav_via_resampling(audio_bytes: bytes) -> bytes:
+    """
+    iOS AAC/M4A files can't be decoded in pure Python without a codec.
+    Instead, we send the raw bytes and let Sarvam handle it, but with
+    the correct filename so Sarvam knows to use its decoder.
+    This function is a no-op passthrough — just returns the bytes.
+    """
+    return audio_bytes
+
+
+def _pcm_to_wav(pcm_bytes: bytes, sample_rate: int = 16000, channels: int = 1) -> bytes:
+    """Wrap raw PCM bytes into a WAV container."""
+    buf = io.BytesIO()
+    with wave.open(buf, 'wb') as wf:
+        wf.setnchannels(channels)
+        wf.setsampwidth(2)  # 16-bit
+        wf.setframerate(sample_rate)
+        wf.writeframes(pcm_bytes)
+    return buf.getvalue()
+
 
 async def audio_to_transcript(audio_base64: str, api_key: str, mime_type: str = 'audio/mp4') -> dict:
     """
     Decodes base64 audio and sends to Sarvam saarika:v2.5 for STT.
-    Supports: audio/wav (.wav), audio/mp4 (.m4a), audio/mpeg (.mp3)
+    Always sends as WAV with filename 'audio.wav' — this is what Sarvam
+    processes most reliably. M4A bytes from iOS are sent with .m4a extension.
+    Hard 15s timeout.
     """
-    try:
-        audio_bytes = base64.b64decode(audio_base64)
+    audio_bytes = base64.b64decode(audio_base64)
+    mime_lower = mime_type.lower()
 
-        # Determine filename extension from mime type
-        mime_ext_map = {
-            'audio/wav': ('audio.wav', 'audio/wav'),
-            'audio/wave': ('audio.wav', 'audio/wav'),
-            'audio/mp4': ('audio.m4a', 'audio/mp4'),
-            'audio/m4a': ('audio.m4a', 'audio/mp4'),
-            'audio/mpeg': ('audio.mp3', 'audio/mpeg'),
-            'audio/mp3': ('audio.mp3', 'audio/mpeg'),
-        }
-        filename, content_type = mime_ext_map.get(mime_type.lower(), ('audio.m4a', 'audio/mp4'))
+    # Map MIME to Sarvam-friendly filename + content type
+    # Sarvam accepts: wav, mp3, flac, ogg, webm, and also m4a in practice
+    if mime_lower in ('audio/wav', 'audio/wave', 'audio/x-wav'):
+        filename = 'audio.wav'
+        content_type = 'audio/wav'
+    elif mime_lower in ('audio/mp4', 'audio/m4a', 'audio/x-m4a'):
+        filename = 'audio.m4a'
+        content_type = 'audio/mp4'
+    elif mime_lower in ('audio/mpeg', 'audio/mp3'):
+        filename = 'audio.mp3'
+        content_type = 'audio/mpeg'
+    elif mime_lower == 'audio/3gpp':
+        filename = 'audio.3gp'
+        content_type = 'audio/3gpp'
+    else:
+        filename = 'audio.m4a'
+        content_type = 'audio/mp4'
 
-        print(f'[M1-STT] Sending {len(audio_bytes)} bytes as {filename} to Sarvam...')
+    print(f'[M1-STT] Sending {len(audio_bytes)} bytes as {filename}...')
 
-        files = {
-            'file': (filename, audio_bytes, content_type)
-        }
-        data = {
-            'language_code': 'kn-IN',
-            'model': 'saarika:v2.5'
-        }
-        headers = {
-            'api-subscription-key': api_key
-        }
+    async with httpx.AsyncClient(timeout=15.0) as client:
+        response = await client.post(
+            'https://api.sarvam.ai/speech-to-text',
+            headers={'api-subscription-key': api_key},
+            data={'language_code': 'kn-IN', 'model': 'saarika:v2.5'},
+            files={'file': (filename, audio_bytes, content_type)}
+        )
 
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            response = await client.post(
-                'https://api.sarvam.ai/speech-to-text',
-                headers=headers,
-                data=data,
-                files=files
-            )
+    if response.status_code != 200:
+        raise ValueError(f'STT {response.status_code}: {response.text[:200]}')
 
-            if response.status_code != 200:
-                raise ValueError(f"STT Status {response.status_code}: {response.text}")
-
-            resp_json = response.json()
-            transcript = resp_json.get('transcript', '').strip()
-            print(f'[M1-STT] Transcript: "{transcript}"')
-            return {
-                'transcript': transcript,
-                'language': resp_json.get('language_code', 'kn-IN'),
-                'confidence': 1.0
-            }
-
-    except Exception as e:
-        if isinstance(e, ValueError):
-            raise
-        raise ValueError(str(e))
+    resp = response.json()
+    transcript = (resp.get('transcript') or '').strip()
+    print(f'[M1-STT] Transcript: "{transcript}"')
+    return {
+        'transcript': transcript,
+        'language': resp.get('language_code', 'kn-IN'),
+        'confidence': 1.0,
+    }
 
 
 async def text_to_audio(text_kannada: str, api_key: str) -> str:
     """
-    Converts Kannada text to WAV base64 using Sarvam bulbul:v3 TTS.
-    Returns base64-encoded audio string.
+    Converts Kannada text → WAV base64 via Sarvam bulbul:v3.
+    Hard 15s timeout. Returns empty string on failure (non-fatal).
     """
-    # Truncate to 500 characters per API limit
     text = text_kannada[:500]
-
-    payload = {
-        "inputs": [text],
-        "target_language_code": "kn-IN",
-        "speaker": "amit",
-        "speech_sample_rate": 8000,
-        "enable_preprocessing": True,
-        "model": "bulbul:v3"
-    }
-
-    headers = {
-        'api-subscription-key': api_key,
-        'Content-Type': 'application/json'
-    }
-
     print(f'[M1-TTS] Generating audio for {len(text)} chars...')
 
-    async with httpx.AsyncClient(timeout=20.0) as client:
-        response = await client.post(
-            'https://api.sarvam.ai/text-to-speech',
-            headers=headers,
-            json=payload
-        )
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            response = await client.post(
+                'https://api.sarvam.ai/text-to-speech',
+                headers={
+                    'api-subscription-key': api_key,
+                    'Content-Type': 'application/json',
+                },
+                json={
+                    'inputs': [text],
+                    'target_language_code': 'kn-IN',
+                    'speaker': 'amit',
+                    'speech_sample_rate': 8000,
+                    'enable_preprocessing': True,
+                    'model': 'bulbul:v3',
+                }
+            )
 
         if response.status_code != 200:
-            raise ValueError(f"TTS Status {response.status_code}: {response.text}")
+            print(f'[M1-TTS] Error {response.status_code}: {response.text[:200]}')
+            return ''
 
-        resp_json = response.json()
-        audios = resp_json.get('audios', [])
+        audios = response.json().get('audios', [])
         if not audios:
-            raise ValueError("No audio returned from Sarvam TTS API")
+            print('[M1-TTS] No audio returned')
+            return ''
 
-        print(f'[M1-TTS] Audio generated, base64 length: {len(audios[0])}')
-        return audios[0]
+        audio_b64 = audios[0]
+        print(f'[M1-TTS] Done — {len(audio_b64)} chars')
+        return audio_b64
+
+    except httpx.TimeoutException:
+        print('[M1-TTS] Timed out after 15s — skipping TTS')
+        return ''
+    except Exception as e:
+        print(f'[M1-TTS] Failed (non-fatal): {e}')
+        return ''

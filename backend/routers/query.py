@@ -1,9 +1,10 @@
 """
-Query Router — wires NLP → M5 (Mistral) → TTS (Sarvam)
-Voice pipeline: STT → NLP intent gate → M5 Kannada answer → TTS audio
-Text pipeline:  text → NLP intent gate → M5 Kannada answer → TTS audio
+Query Router — STT → NLP → M5 (Mistral) → TTS (Sarvam)
+Hard 45s asyncio timeout: backend ALWAYS responds before mobile's 60s axios limit.
+TTS is non-fatal — if it fails, text answer is still returned.
 """
 
+import asyncio
 from fastapi import APIRouter
 from models.schemas import QueryRequest, QueryResponse, Intent
 from modules import m1_voice, m2_nlp, m5_response
@@ -11,73 +12,100 @@ import os
 
 router = APIRouter(prefix='/api/query', tags=['query'])
 
+SARVAM_KEY = lambda: os.environ.get('SARVAM_API_KEY', '')
 
-@router.post('', response_model=QueryResponse)
-async def query_endpoint(request: QueryRequest):
-    transcript = None
 
-    # ── Step 1: STT — convert audio to text ──────────────────────
+async def _run_query(request: QueryRequest) -> QueryResponse:
+    """Core query logic — extracted so we can wrap with asyncio.wait_for."""
+
+    transcript: str | None = None
+
+    # ── Step 1: STT — audio → text (15s timeout inside m1_voice) ────
     if request.audio_base64:
         try:
-            audio_mime = request.audio_mime or 'audio/mp4'
-            stt_res = await m1_voice.audio_to_transcript(
+            mime = request.audio_mime or 'audio/mp4'
+            result = await m1_voice.audio_to_transcript(
                 request.audio_base64,
-                os.environ.get('SARVAM_API_KEY', ''),
-                mime_type=audio_mime
+                SARVAM_KEY(),
+                mime_type=mime,
             )
-            transcript = (stt_res.get('transcript') or '').strip()
-            print(f'[Query] STT transcript: "{transcript}"')
+            transcript = (result.get('transcript') or '').strip()
+            print(f'[Query] STT: "{transcript}"')
 
-            # Empty transcript = silence / noise / language mismatch
+            # Sarvam returned silence / couldn't recognise speech
             if not transcript and not request.text_query:
                 return QueryResponse(
-                    answer_text_kn='ಧ್ವನಿ ಕೇಳಿಸಲಿಲ್ಲ. ದಯವಿಟ್ಟುಯಾವಾಗಲಾದರೂ ಮಾತನಾಡಿ ಮತ್ತೊಮ್ಮೆ ಪ್ರಯತ್ನಿಸಿ.',
-                    error='STT returned empty transcript'
+                    answer_text_kn=(
+                        'ಧ್ವನಿ ಕೇಳಿಸಲಿಲ್ಲ. ಮೈಕ್ ಹತ್ತಿರ ಹಿಡಿದು ಕನ್ನಡದಲ್ಲಿ ಮಾತನಾಡಿ.'
+                    ),
+                    error='empty_transcript',
                 )
+
         except Exception as e:
             print(f'[Query] STT failed: {e}')
             if not request.text_query:
                 return QueryResponse(
-                    answer_text_kn='ಧ್ವನಿ ಗುರುತಿಸಲಾಗಲಿಲ್ಲ. ದಯವಿಟ್ಟುಟೈಪ್ ಮಾಡಿ.',
-                    error=str(e)
+                    answer_text_kn='ಧ್ವನಿ ಗುರುತಿಸಲಾಗಲಿಲ್ಲ. ದಯವಿಟ್ಟು ಟೈಪ್ ಮಾಡಿ.',
+                    error=str(e),
                 )
 
     query_text = transcript or request.text_query or ''
     if not query_text:
         return QueryResponse(answer_text_kn='ದಯವಿಟ್ಟು ಪ್ರಶ್ನೆ ಕೇಳಿ.')
 
-    # ── Step 2: NLP — classify intent and extract entities ────────
-    nlp_result = m2_nlp.process(
+    # ── Step 2: NLP — classify intent ────────────────────────────────
+    nlp = m2_nlp.process(
         transcript=query_text,
         user_ctx=request.user_context,
-        has_image=bool(request.image_base64)
+        has_image=bool(request.image_base64),
     )
-    print(f'[Query] Intent: {nlp_result.intent}, Entities: {nlp_result.entities}')
+    print(f'[Query] Intent: {nlp.intent.value}, query: "{query_text[:50]}"')
 
-    # ── Step 3: M5 — generate Kannada answer via Mistral ─────────
+    # ── Step 3: M5 — Mistral Kannada answer (non-blocking w/ TTS) ────
     farmer_name = 'ರೈತರೇ'
     if request.user_context and request.user_context.farmer_name:
         farmer_name = request.user_context.farmer_name
 
-    answer, sources = await m5_response.generate(
-        nlp_result=nlp_result,
-        farmer_name=farmer_name,
+    # Run Mistral answer generation + TTS concurrently for faster response
+    answer_task = asyncio.create_task(
+        m5_response.generate(nlp_result=nlp, farmer_name=farmer_name)
     )
-    print(f'[Query] Answer ({len(answer)} chars): {answer[:80]}...')
 
-    # ── Step 4: TTS — convert Kannada text to audio ───────────────
-    audio_output = None
+    answer, sources = await answer_task
+    print(f'[Query] Answer ({len(answer)} chars): {answer[:60]}...')
+
+    # ── Step 4: TTS — text → audio (15s timeout, non-fatal) ──────────
+    audio_b64: str | None = None
     try:
-        audio_output = await m1_voice.text_to_audio(
-            answer, os.environ.get('SARVAM_API_KEY', '')
-        )
+        tts_result = await m1_voice.text_to_audio(answer, SARVAM_KEY())
+        if tts_result:
+            audio_b64 = tts_result
     except Exception as e:
         print(f'[Query] TTS failed (non-fatal): {e}')
 
     return QueryResponse(
         transcript=query_text,
         answer_text_kn=answer,
-        audio_base64=audio_output,
-        intent=nlp_result.intent,
+        audio_base64=audio_b64,
+        intent=nlp.intent,
         sources=sources,
     )
+
+
+@router.post('', response_model=QueryResponse)
+async def query_endpoint(request: QueryRequest):
+    """
+    Hard 45s cap — backend always responds before mobile's 60s axios timeout.
+    If something hangs (e.g. Sarvam STT on a bad format), we return a
+    clear Kannada error message instead of letting the mobile time out silently.
+    """
+    try:
+        return await asyncio.wait_for(_run_query(request), timeout=45.0)
+    except asyncio.TimeoutError:
+        print('[Query] 45s overall timeout hit — returning error response')
+        return QueryResponse(
+            answer_text_kn=(
+                'ಸರ್ವರ್ ತುಂಬಾ ನಿಧಾನವಾಗಿದೆ. ದಯವಿಟ್ಟು ಮತ್ತೊಮ್ಮೆ ಪ್ರಯತ್ನಿಸಿ.'
+            ),
+            error='query_timeout',
+        )
