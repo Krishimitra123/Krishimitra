@@ -44,7 +44,16 @@ export default function HomeScreen() {
         await startRecording();
       } else if (audioStore.state === 'RECORDING') {
         audioStore.setState('STT_PROCESSING');
-        const audioBase64 = await stopRecordingAndGetBase64();
+        
+        let audioResult: { base64: string; mimeType: string };
+        try {
+          audioResult = await stopRecordingAndGetBase64();
+        } catch (recErr: any) {
+          console.error('[Home] Recording stop failed:', recErr.message);
+          audioStore.setState('IDLE');
+          Alert.alert('ರೆಕಾರ್ಡಿಂಗ್ ದೋಷ', 'ಧ್ವನಿ ರೆಕಾರ್ಡ್ ಆಗಲಿಲ್ಲ. ಮತ್ತೊಮ್ಮೆ ಪ್ರಯತ್ನಿಸಿ.');
+          return;
+        }
 
         // Start new session and navigate to chat
         if (!currentSession) startNewSession();
@@ -62,7 +71,7 @@ export default function HomeScreen() {
 
         // Send to backend
         try {
-          const response = await sendVoiceQuery(audioBase64);
+          const response = await sendVoiceQuery(audioResult.base64, audioResult.mimeType);
           audioStore.setTranscript(response.transcript || '');
 
           addMessage({
@@ -74,11 +83,21 @@ export default function HomeScreen() {
             is_diagnosis: false,
             audio_base64: response.audio_base64 || undefined,
           });
+
+          // Auto-play TTS
+          if (response.audio_base64) {
+            try {
+              const { playBase64Audio } = await import('@/services/voiceService');
+              await playBase64Audio(response.audio_base64);
+            } catch {
+              // Non-fatal
+            }
+          }
         } catch (e: any) {
           addMessage({
             id: (Date.now() + 1).toString(),
             role: 'assistant',
-            text: 'ಸೇವೆ ಲಭ್ಯವಿಲ್ಲ. ದಯವಿಟ್ಟು ಮತ್ತೊಮ್ಮೆ ಪ್ರಯತ್ನಿಸಿ.',
+            text: e.response?.data?.detail || 'ಸೇವೆ ಲಭ್ಯವಿಲ್ಲ. ದಯವಿಟ್ಟು ಮತ್ತೊಮ್ಮೆ ಪ್ರಯತ್ನಿಸಿ.',
             sources: [],
             timestamp: Date.now(),
             is_diagnosis: false,

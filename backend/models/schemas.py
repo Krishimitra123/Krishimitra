@@ -11,6 +11,7 @@ class Intent(str, Enum):
     DIAGNOSE = "DIAGNOSE"
     COMING_SOON = "COMING_SOON"
     OUT_OF_DOMAIN = "OUT_OF_DOMAIN"
+    PEST_DISEASE = "PEST_DISEASE"
 
 class UserContext(BaseModel):
     farmer_name: Optional[str] = None
@@ -19,8 +20,28 @@ class UserContext(BaseModel):
     agro_zone: Optional[int] = None
     season: Optional[str] = None
 
+class DiagnosisRequest(BaseModel):
+    image_base64: str
+    image_mime: str = "image/jpeg"
+    user_context: Optional[UserContext] = None
+    optional_text: Optional[str] = None
+
+class DiagnosisFinding(BaseModel):
+    plant_health_status: str
+    disease_name: str
+    disease_name_kn: str
+    confidence_pct: float
+    visual_symptoms: List[str]
+    probable_cause: str
+    organic_treatments: List[str]
+    prevention_measures: List[str]
+    needs_retake: bool
+    sources: List[str] = Field(default_factory=list)
+    is_reliable: bool = False
+
 class QueryRequest(BaseModel):
     audio_base64: Optional[str] = None
+    audio_mime: str = "audio/mp4"   # iOS records M4A, Android AAC — both are audio/mp4
     text_query: Optional[str] = None
     image_base64: Optional[str] = None
     image_mime: str = "image/jpeg"

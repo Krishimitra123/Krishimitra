@@ -65,9 +65,9 @@ export default function ChatScreen() {
       } else if (audioStore.state === 'RECORDING') {
         audioStore.setState('STT_PROCESSING');
 
-        let audioBase64: string;
+        let audioResult: { base64: string; mimeType: string };
         try {
-          audioBase64 = await stopRecordingAndGetBase64();
+          audioResult = await stopRecordingAndGetBase64();
         } catch (recErr: any) {
           console.error('[Chat] Recording stop failed:', recErr.message);
           audioStore.setState('IDLE');
@@ -76,14 +76,14 @@ export default function ChatScreen() {
           return;
         }
 
-        if (!audioBase64 || audioBase64.length < 100) {
+        if (!audioResult.base64 || audioResult.base64.length < 100) {
           console.warn('[Chat] Audio too short, discarding');
           audioStore.setState('IDLE');
           Alert.alert('ಧ್ವನಿ ತುಂಬಾ ಚಿಕ್ಕದು', 'ದಯವಿಟ್ಟು ಹೆಚ್ಚು ಸಮಯ ಮಾತನಾಡಿ.');
           return;
         }
 
-        console.log(`[Chat] Audio recorded, base64 length: ${audioBase64.length}`);
+        console.log(`[Chat] Audio recorded, base64 length: ${audioResult.base64.length}, mime: ${audioResult.mimeType}`);
 
         addMessage({
           id: Date.now().toString(),
@@ -96,7 +96,7 @@ export default function ChatScreen() {
 
         setLoading(true);
         try {
-          const response = await sendVoiceQuery(audioBase64);
+          const response = await sendVoiceQuery(audioResult.base64, audioResult.mimeType);
           console.log('[Chat] Voice response received:', response.transcript?.slice(0, 50));
 
           addMessage({
@@ -112,14 +112,18 @@ export default function ChatScreen() {
           // Auto-play TTS response if available
           if (response.audio_base64) {
             try {
+              audioStore.setState('PLAYING');
               await playBase64Audio(response.audio_base64);
-            } catch {
-              // Non-fatal: text response still shown
+            } catch (ttsErr) {
+              console.warn('[Chat] TTS playback failed (non-fatal):', ttsErr);
+            } finally {
+              audioStore.setState('IDLE');
             }
           }
         } catch (e: any) {
           console.error('[Chat] Voice query error:', e.message, e.response?.data);
-          const errorMsg = e.response?.data?.answer_text_kn
+          const errorMsg = e.response?.data?.detail
+            || e.response?.data?.answer_text_kn
             || 'ಸೇವೆ ಲಭ್ಯವಿಲ್ಲ. ದಯವಿಟ್ಟು ಮತ್ತೊಮ್ಮೆ ಪ್ರಯತ್ನಿಸಿ.';
           addMessage({
             id: (Date.now() + 1).toString(),

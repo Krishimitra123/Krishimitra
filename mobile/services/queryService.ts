@@ -16,24 +16,32 @@ export interface QueryResponse {
 }
 
 export interface DiagnosisResponse {
-  finding:        any | null;
-  answer_text_kn: string;
-  audio_base64:   string | null;
-  error:          string | null;
+  plant_health_status: string;
+  disease_name:        string;
+  disease_name_kn:     string;
+  confidence_pct:      number;
+  visual_symptoms:     string[];
+  probable_cause:      string;
+  organic_treatments:  string[];
+  prevention_measures: string[];
+  needs_retake:        boolean;
+  sources:             string[];
+  is_reliable:         boolean;
 }
 
 /**
- * Send a voice query (base64 WAV audio).
+ * Send a voice query (base64 M4A/WAV audio).
  */
-export async function sendVoiceQuery(audioBase64: string): Promise<QueryResponse> {
+export async function sendVoiceQuery(audioBase64: string, mimeType: string = 'audio/mp4'): Promise<QueryResponse> {
   if (!audioBase64 || audioBase64.length < 100) {
     throw new Error('Audio recording too short or empty');
   }
 
-  console.log(`[QueryService] Sending voice query, audio size: ${audioBase64.length} chars`);
+  console.log(`[QueryService] Sending voice query, audio size: ${audioBase64.length} chars, mime: ${mimeType}`);
 
   const res = await apiClient.post('/api/query', {
     audio_base64: audioBase64,
+    audio_mime: mimeType,
   }, {
     timeout: 60000,
   });
@@ -48,7 +56,7 @@ export async function sendTextQuery(text: string): Promise<QueryResponse> {
     throw new Error('Empty text query');
   }
 
-  console.log(`[QueryService] Sending text query: "${text.slice(0, 50)}..."`);
+  console.log(`[QueryService] Sending text query: "${text.slice(0, 50)}"`);
 
   const res = await apiClient.post('/api/query', {
     text_query: text,
