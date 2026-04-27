@@ -82,39 +82,87 @@ def normalise_query(text: str) -> tuple[str, list[str]]:
             
     return " ".join(normalised_words), signals
 
-def classify_intent(text: str, signals: list[str]) -> tuple[Intent, float]:
+def classify_intent(text: str, signals: list[str], original_text: str = '') -> tuple[Intent, float]:
     """
     Phase 1 whitelist gate.
+    Matches on BOTH the original (Kannada) text AND the normalised (English) text.
     """
     text_lower = text.lower()
-    
-    if any(w in text_lower for w in ['photo', 'image', 'picture', 'ಫೋಟೋ', 'ಚಿತ್ರ', 'diagnose', 'what is this']):
+    orig_lower = original_text.lower() if original_text else text_lower
+
+    # Combine both for matching
+    combined = text_lower + ' ' + orig_lower
+
+    # Signal-based shortcuts from vocab glossary
+    if 'biofertiliser' in signals:
+        return Intent.SF_PREP, 0.90
+    if 'soil_query' in signals:
+        return Intent.SF_SOIL, 0.90
+
+    # Image / Diagnose triggers
+    DIAGNOSE_KW = ['photo', 'image', 'picture', 'diagnose', 'what is this',
+                   'ಫೋಟೋ', 'ಚಿತ್ರ', 'ರೋಗ ಪತ್ತೆ', 'ರೋಗ ಗುರುತಿಸು']
+    if any(w in combined for w in DIAGNOSE_KW):
         return Intent.DIAGNOSE, 0.95
 
-    # Out of domain check
-    OOD_KW = ['cricket', 'movie', 'stock price', 'weather', 'cinema', 'score']
-    if any(w in text_lower for w in OOD_KW):
+    # Out of domain
+    OOD_KW = ['cricket', 'movie', 'stock price', 'cinema', 'ipl', 'football',
+               'ಕ್ರಿಕೆಟ್', 'ಸಿನಿಮಾ', 'ಸ್ಟಾಕ್']
+    if any(w in combined for w in OOD_KW):
         return Intent.OUT_OF_DOMAIN, 0.99
 
-    # Phase 1 whitelists
-    PREP_KW = ['jeevamrutha', 'gau krupa amrutha', 'kunapa jala', 'vermicompost', 'how to make', 'prepare', 'recipe', 'ತಯಾರಿಸುವುದು', 'ಮಾಡುವುದು']
-    APPLY_KW = ['apply', 'when to', 'how much', 'spray', 'dosage', 'ಹಾಕುವುದು', 'ಸಿಂಪಡಿಸುವುದು']
-    MULCH_KW = ['mulch', 'nugge', 'agase', 'gliricidia', 'sunhemp', 'dhaincha', 'lop', 'ಮಲ್ಚಿಂಗ್', 'ನುಗ್ಗೆ', 'ಅಗಸೆ']
-    SOIL_KW = ['soil', 'fertility', 'ph', 'nitrogen', 'phosphorus', 'potassium', 'zinc', 'deficiency', 'yellowing', 'ಮಣ್ಣು', 'ಫಲವತ್ತತೆ']
-    COW_KW = ['cow', 'desi', 'urine', 'dung', 'ಹಸು', 'ಗೋಮೂತ್ರ', 'ಸಗಣಿ']
+    # ── Phase 1 Whitelist ─────────────────────────────────────────
+    # SF_PREP: Preparation of organic inputs
+    PREP_KW = [
+        # English
+        'jeevamrutha', 'jivamrita', 'gau krupa', 'kunapa jala', 'vermicompost',
+        'beejamrutha', 'panchagavya', 'how to make', 'prepare', 'recipe', 'ferment',
+        'biofertiliser', 'bio fertiliser', 'liquid manure',
+        # Kannada (what farmers actually say)
+        'ಜೀವಾಮೃತ', 'ಜೀವ ಅಮೃತ', 'ಬೀಜಾಮೃತ', 'ಗೌ ಕೃಪ', 'ಪಂಚಗವ್ಯ',
+        'ತಯಾರಿ', 'ತಯಾರಿಸು', 'ತಯಾರಿಸುವ', 'ತಯಾರಿಸುವುದು', 'ಹೇಗೆ ಮಾಡು',
+        'ಗೊಬ್ಬರ ತಯಾರಿ', 'ಎರೆಹುಳು ಗೊಬ್ಬರ', 'ಕೊಟ್ಟಿಗೆ ಗೊಬ್ಬರ',
+        'ವರ್ಮಿಕಂಪೋಸ್ಟ್', 'ಕಂಪೋಸ್ಟ್',
+    ]
 
-    if any(w in text_lower for w in PREP_KW):
+    # SF_APPLY: Application timing/dosage
+    APPLY_KW = [
+        'apply', 'when to', 'how much', 'spray', 'dosage', 'application', 'drench',
+        'ಹಾಕು', 'ಹಾಕುವ', 'ಹಾಕುವುದು', 'ಸಿಂಪಡಿಸು', 'ಎಷ್ಟು ಹಾಕ', 'ಯಾವಾಗ ಹಾಕ',
+        'ಪ್ರಮಾಣ', 'ಡೋಸ್', 'ಸಿಂಪರಣೆ',
+    ]
+
+    # SF_MULCH: Mulching plants
+    MULCH_KW = [
+        'mulch', 'mulching', 'nugge', 'agase', 'gliricidia', 'sunhemp', 'dhaincha', 'lop',
+        'ಮಲ್ಚಿಂಗ್', 'ನುಗ್ಗೆ', 'ಅಗಸೆ', 'ಹೊದಿಕೆ', 'ಹಸಿರು ಗೊಬ್ಬರ',
+    ]
+
+    # SF_SOIL: Soil fertility and health
+    SOIL_KW = [
+        'soil', 'fertility', 'ph', 'nitrogen', 'phosphorus', 'potassium', 'zinc',
+        'deficiency', 'yellowing', 'organic matter', 'soil health', 'microbe',
+        'ಮಣ್ಣು', 'ಫಲವತ್ತತೆ', 'ಮಣ್ಣಿನ ಆರೋಗ್ಯ', 'ಪೋಷಕಾಂಶ', 'ಸತುವು ಕೊರತೆ',
+        'ಹಳದಿ ರೋಗ', 'ಎಲೆ ಹಳದಿ', 'ಬಾಡು', 'ಒಣಗು',
+    ]
+
+    # SF_COW: Cow-related queries
+    COW_KW = [
+        'cow', 'desi cow', 'urine', 'dung', 'cattle',
+        'ಹಸು', 'ದೇಸಿ ಹಸು', 'ಗೋಮೂತ್ರ', 'ಸಗಣಿ', 'ಗಂಜಲ',
+    ]
+
+    if any(w in combined for w in PREP_KW):
         return Intent.SF_PREP, 0.85
-    elif any(w in text_lower for w in APPLY_KW):
-        return Intent.SF_APPLY, 0.85
-    elif any(w in text_lower for w in MULCH_KW):
+    elif any(w in combined for w in MULCH_KW):
         return Intent.SF_MULCH, 0.85
-    elif any(w in text_lower for w in SOIL_KW):
+    elif any(w in combined for w in SOIL_KW):
         return Intent.SF_SOIL, 0.85
-    elif any(w in text_lower for w in COW_KW):
+    elif any(w in combined for w in APPLY_KW):
+        return Intent.SF_APPLY, 0.85
+    elif any(w in combined for w in COW_KW):
         return Intent.SF_COW, 0.85
-        
-    # If it reached here, it didn't match the Phase 1 whitelist
+
     return Intent.COMING_SOON, 0.99
 
 def extract_entities(text: str, user_ctx: UserContext) -> dict:
@@ -172,7 +220,8 @@ def extract_entities(text: str, user_ctx: UserContext) -> dict:
 def process(transcript: str, user_ctx: UserContext = None, has_image: bool = False) -> NLPResult:
     lang = detect_language(transcript)
     normalised, signals = normalise_query(transcript)
-    intent, confidence = classify_intent(normalised, signals)
+    # Pass BOTH normalised text AND original transcript so Kannada terms are matched directly
+    intent, confidence = classify_intent(normalised, signals, original_text=transcript)
     
     if has_image and intent != Intent.OUT_OF_DOMAIN:
         intent = Intent.DIAGNOSE

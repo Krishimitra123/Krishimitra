@@ -77,25 +77,18 @@ export default function DiagnoseScreen() {
 
     try {
       console.log('[Diagnose] Sending diagnosis request...');
-      const response = await sendDiagnosis(
+      // sendDiagnosis returns DiagnosisFinding directly (flat object)
+      const finding = await sendDiagnosis(
         imageBase64,
         imageMimeType,
         description || undefined
       );
-      console.log('[Diagnose] Response received:', JSON.stringify(response).slice(0, 200));
-
-      if (response.error && !response.finding) {
-        Alert.alert('ವಿಶ್ಲೇಷಣೆ ದೋಷ', response.answer_text_kn || 'ದಯವಿಟ್ಟು ಮತ್ತೊಮ್ಮೆ ಪ್ರಯತ್ನಿಸಿ');
-      } else {
-        setResult(response);
-        if (response.audio_base64) {
-          setAnswerAudio(response.audio_base64);
-        }
-      }
+      console.log('[Diagnose] Finding received:', finding.disease_name, finding.confidence_pct + '%');
+      setResult(finding);
     } catch (err: any) {
       console.error('[Diagnose] Error:', err.message, err.response?.data);
-      const errorMsg = err.response?.data?.answer_text_kn 
-        || err.response?.data?.detail 
+      const errorMsg = err.response?.data?.detail
+        || err.response?.data?.message
         || 'ದಯವಿಟ್ಟು ಮತ್ತೊಮ್ಮೆ ಪ್ರಯತ್ನಿಸಿ';
       Alert.alert('ವಿಶ್ಲೇಷಣೆ ದೋಷ', errorMsg);
     }
@@ -215,15 +208,15 @@ export default function DiagnoseScreen() {
           <View style={styles.resultSection}>
             <Text style={styles.resultHeader}>ಫಲಿತಾಂಶ</Text>
 
-            {result.finding ? (
+            {result.disease_name ? (
               <DiagnosisCard
-                finding={result.finding}
+                finding={result}
                 onPlayAudio={answerAudio ? handlePlayAudio : undefined}
               />
             ) : (
               <View style={[styles.resultCard, Shadows.sm]}>
                 <Text style={styles.resultText}>
-                  {result.answer_text_kn || 'ವಿಶ್ಲೇಷಣೆ ವಿಫಲವಾಗಿದೆ'}
+                  {'ಫೋಟೋ ಮತ್ತೊಮ್ಮೆ ತೆಗೆಯಿರಿ — ಸ್ಪಷ್ಟ ಬೆಳಕಿನಲ್ಲಿ ತೆಗೆಯಿರಿ.'}
                 </Text>
               </View>
             )}
