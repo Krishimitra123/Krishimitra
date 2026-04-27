@@ -7,7 +7,7 @@ TTS is non-fatal — if it fails, text answer is still returned.
 import asyncio
 from fastapi import APIRouter
 from models.schemas import QueryRequest, QueryResponse, Intent
-from modules import m1_voice, m2_nlp, m5_response
+from modules import m1_voice, m2_nlp, m3_rag, m5_response
 import os
 
 router = APIRouter(prefix='/api/query', tags=['query'])
@@ -61,16 +61,27 @@ async def _run_query(request: QueryRequest) -> QueryResponse:
     )
     print(f'[Query] Intent: {nlp.intent.value}, query: "{query_text[:50]}"')
 
-    # ── Step 3: M5 — Mistral Kannada answer (non-blocking w/ TTS) ────
+    # ── Step 3: RAG — retrieve relevant chunks from Supabase ─────────
+    rag_chunks = []
+    try:
+        rag_chunks = await m3_rag.retrieve(nlp)
+        if rag_chunks:
+            print(f'[Query] RAG: {len(rag_chunks)} chunks, top sim={rag_chunks[0].similarity:.3f}')
+        else:
+            print('[Query] RAG: no relevant chunks found')
+    except Exception as e:
+        print(f'[Query] RAG failed (non-fatal): {e}')
+
+    # ── Step 4: M5 — Mistral Kannada answer with RAG context ─────────
     farmer_name = 'ರೈತರೇ'
     if request.user_context and request.user_context.farmer_name:
         farmer_name = request.user_context.farmer_name
 
-    # Run Mistral answer generation + TTS concurrently for faster response
     answer_task = asyncio.create_task(
         m5_response.generate(
             nlp_result=nlp,
             farmer_name=farmer_name,
+            rag_chunks=rag_chunks,
             conversation_history=request.conversation_history,
         )
     )

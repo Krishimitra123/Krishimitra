@@ -134,19 +134,33 @@ async def generate(
     if nlp_result.intent == Intent.COMING_SOON:
         return COMING_SOON_KN, []
 
-    # ── Build user message ─────────────────────────────────────────
+    # ── Build context from RAG chunks ──────────────────────────────
     district = (nlp_result.entities.get('district') or 'Karnataka')
     crop = nlp_result.entities.get('crop_name') or 'your crops'
 
     context_block = ''
     sources = []
+
+    # SKB record (structured knowledge base — Shinan's data)
     if skb_record:
-        context_block = f"\n\nVERIFIED RECIPE FROM {skb_record.get('primary_source', 'Palekar ZBNF')}:\n"
+        context_block += f"\n\nVERIFIED RECIPE FROM {skb_record.get('primary_source', 'Palekar ZBNF')}:\n"
         for ing in skb_record.get('ingredients', []):
             context_block += f"  • {ing['quantity']} {ing['unit']} {ing['name_en']}\n"
         for i, step in enumerate(skb_record.get('preparation_steps', []), 1):
             context_block += f"  Step {i}: {step}\n"
         sources.append(skb_record.get('primary_source', 'Palekar ZBNF Vol 1'))
+
+    # RAG chunks from Supabase (Rikash's embedded documents)
+    if rag_chunks:
+        context_block += "\n\nRELEVANT KNOWLEDGE FROM VERIFIED SOURCES:\n"
+        for i, chunk in enumerate(rag_chunks[:5], 1):
+            context_block += f"\n--- Source {i}: {chunk.source_doc} (p.{chunk.source_page}) ---\n"
+            context_block += f"{chunk.content}\n"
+            # Add unique sources
+            cite = chunk.citation()
+            if cite not in sources:
+                sources.append(cite)
+        context_block += "\n\nIMPORTANT: Use the above verified knowledge to answer. Cite sources when possible."
 
     user_message = (
         f"Farmer: {farmer_name}\n"
@@ -167,3 +181,4 @@ async def generate(
         sources = ['ಸುಭಾಷ್ ಪಾಲೇಕರ್ ZBNF', 'ICAR ಸಾವಯವ ಕೃಷಿ ಮಾರ್ಗದರ್ಶಿ']
 
     return answer, sources
+
