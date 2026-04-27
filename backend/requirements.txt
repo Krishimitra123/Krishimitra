@@ -11,3 +11,4 @@ supabase==2.5.3
 python-dotenv==1.0.1
 faster-whisper==1.0.1
 yt-dlp
+mistralai>=1.0.0
