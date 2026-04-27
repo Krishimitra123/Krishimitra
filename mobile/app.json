@@ -54,7 +54,9 @@
           "cameraPermission": "KrishiMitra needs camera for crop diagnosis",
           "photosPermission": "KrishiMitra needs gallery for crop images"
         }
-      ]
+      ],
+      "expo-audio",
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true

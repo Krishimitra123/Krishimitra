@@ -25,13 +25,20 @@ async def query_endpoint(request: QueryRequest):
                 os.environ.get('SARVAM_API_KEY', ''),
                 mime_type=audio_mime
             )
-            transcript = stt_res['transcript']
+            transcript = (stt_res.get('transcript') or '').strip()
             print(f'[Query] STT transcript: "{transcript}"')
+
+            # Empty transcript = silence / noise / language mismatch
+            if not transcript and not request.text_query:
+                return QueryResponse(
+                    answer_text_kn='ಧ್ವನಿ ಕೇಳಿಸಲಿಲ್ಲ. ದಯವಿಟ್ಟುಯಾವಾಗಲಾದರೂ ಮಾತನಾಡಿ ಮತ್ತೊಮ್ಮೆ ಪ್ರಯತ್ನಿಸಿ.',
+                    error='STT returned empty transcript'
+                )
         except Exception as e:
             print(f'[Query] STT failed: {e}')
             if not request.text_query:
                 return QueryResponse(
-                    answer_text_kn='ಧ್ವನಿ ಗುರುತಿಸಲಾಗಲಿಲ್ಲ. ದಯವಿಟ್ಟು ಟೈಪ್ ಮಾಡಿ.',
+                    answer_text_kn='ಧ್ವನಿ ಗುರುತಿಸಲಾಗಲಿಲ್ಲ. ದಯವಿಟ್ಟುಟೈಪ್ ಮಾಡಿ.',
                     error=str(e)
                 )
 
