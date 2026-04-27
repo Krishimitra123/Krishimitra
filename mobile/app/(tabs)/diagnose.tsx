@@ -77,7 +77,6 @@ export default function DiagnoseScreen() {
 
     try {
       console.log('[Diagnose] Sending diagnosis request...');
-      // sendDiagnosis returns DiagnosisFinding directly (flat object)
       const finding = await sendDiagnosis(
         imageBase64,
         imageMimeType,
@@ -85,6 +84,20 @@ export default function DiagnoseScreen() {
       );
       console.log('[Diagnose] Finding received:', finding.disease_name, finding.confidence_pct + '%');
       setResult(finding);
+
+      // Store and auto-play the Kannada TTS audio if available
+      if ((finding as any).audio_base64) {
+        const audioB64 = (finding as any).audio_base64;
+        setAnswerAudio(audioB64);
+        try {
+          audioStore.setState('PLAYING');
+          await playBase64Audio(audioB64);
+        } catch (ttsErr) {
+          console.warn('[Diagnose] TTS playback failed (non-fatal):', ttsErr);
+        } finally {
+          audioStore.setState('IDLE');
+        }
+      }
     } catch (err: any) {
       console.error('[Diagnose] Error:', err.message, err.response?.data);
       const errorMsg = err.response?.data?.detail
@@ -207,6 +220,18 @@ export default function DiagnoseScreen() {
         {result && (
           <View style={styles.resultSection}>
             <Text style={styles.resultHeader}>ಫಲಿತಾಂಶ</Text>
+
+            {/* Kannada Summary */}
+            {result.summary_kn && (
+              <View style={[styles.summaryCard, Shadows.sm]}>
+                <Text style={styles.summaryText}>{result.summary_kn}</Text>
+                {answerAudio && (
+                  <TouchableOpacity onPress={handlePlayAudio} style={styles.playAgainBtn}>
+                    <Text style={styles.playAgainText}>🔊 ಮತ್ತೊಮ್ಮೆ ಕೇಳಿ</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            )}
 
             {result.disease_name ? (
               <DiagnosisCard
@@ -388,5 +413,31 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     marginBottom: 4,
     lineHeight: 20,
+  },
+  summaryCard: {
+    backgroundColor: '#F0F8F0',
+    borderRadius: BorderRadius.lg,
+    padding: Spacing.md,
+    marginBottom: Spacing.sm,
+    borderWidth: 1,
+    borderColor: Colors.primary + '30',
+  },
+  summaryText: {
+    fontSize: FontSize.md,
+    color: Colors.textPrimary,
+    lineHeight: 26,
+  },
+  playAgainBtn: {
+    marginTop: Spacing.sm,
+    alignSelf: 'flex-start',
+    backgroundColor: Colors.primarySoft,
+    paddingVertical: 6,
+    paddingHorizontal: Spacing.md,
+    borderRadius: BorderRadius.full,
+  },
+  playAgainText: {
+    fontSize: FontSize.sm,
+    color: Colors.primary,
+    fontWeight: '600',
   },
 });

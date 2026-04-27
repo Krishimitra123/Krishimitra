@@ -42,6 +42,9 @@ class DiagnosisFinding(BaseModel):
     needs_retake: bool
     sources: List[str] = Field(default_factory=list)
     is_reliable: bool = False
+    summary_kn: Optional[str] = None     # Kannada prose summary of the diagnosis
+    audio_base64: Optional[str] = None   # TTS audio of the Kannada summary
+
 
 class QueryRequest(BaseModel):
     audio_base64: Optional[str] = None

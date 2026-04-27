@@ -15,6 +15,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
+  Animated,
 } from 'react-native';
 import { NivettiHeader } from '@/components/NivettiHeader';
 import { ChatBubble } from '@/components/ChatBubble';
@@ -28,6 +29,9 @@ import { sendVoiceQuery, sendTextQuery, ConversationTurn } from '@/services/quer
 export default function ChatScreen() {
   const [textInput, setTextInput] = useState('');
   const [conversationHistory, setConversationHistory] = useState<ConversationTurn[]>([]);
+  const [recordingSeconds, setRecordingSeconds] = useState(0);
+  const recordingTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pulseAnim = useRef(new Animated.Value(1)).current;
   const flatListRef = useRef<FlatList>(null);
 
   const {
@@ -57,6 +61,39 @@ export default function ChatScreen() {
       startNewSession();
     }
   }, []);
+
+  // Recording timer + pulse animation
+  useEffect(() => {
+    if (audioStore.state === 'RECORDING') {
+      setRecordingSeconds(0);
+      recordingTimer.current = setInterval(() => {
+        setRecordingSeconds(s => s + 1);
+      }, 1000);
+      // Pulse animation
+      const pulse = Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulseAnim, { toValue: 0.3, duration: 500, useNativeDriver: true }),
+          Animated.timing(pulseAnim, { toValue: 1, duration: 500, useNativeDriver: true }),
+        ])
+      );
+      pulse.start();
+      return () => {
+        pulse.stop();
+        pulseAnim.setValue(1);
+      };
+    } else {
+      if (recordingTimer.current) {
+        clearInterval(recordingTimer.current);
+        recordingTimer.current = null;
+      }
+    }
+  }, [audioStore.state]);
+
+  const formatTime = (secs: number) => {
+    const m = Math.floor(secs / 60);
+    const s = secs % 60;
+    return `${m}:${s.toString().padStart(2, '0')}`;
+  };
 
   // ── Voice Handler ────────────────────────────────────────────
   const handleMicPress = useCallback(async () => {
@@ -298,6 +335,24 @@ export default function ChatScreen() {
           </View>
         )}
 
+        {/* Recording Overlay */}
+        {(audioStore.state === 'RECORDING' || audioStore.state === 'STT_PROCESSING') && (
+          <View style={styles.recordingOverlay}>
+            {audioStore.state === 'RECORDING' ? (
+              <View style={styles.recordingRow}>
+                <Animated.View style={[styles.recordingDot, { opacity: pulseAnim }]} />
+                <Text style={styles.recordingTime}>{formatTime(recordingSeconds)}</Text>
+                <Text style={styles.recordingLabel}>ಕೇಳುತ್ತಿದೆ...</Text>
+              </View>
+            ) : (
+              <View style={styles.recordingRow}>
+                <ActivityIndicator size="small" color={Colors.primary} />
+                <Text style={styles.processingLabel}>ಅನುವಾದಿಸುತ್ತಿದೆ...</Text>
+              </View>
+            )}
+          </View>
+        )}
+
         {/* Input Bar */}
         <View style={[styles.inputBar, Shadows.md]}>
           <View style={styles.micSmall}>
@@ -439,5 +494,39 @@ const styles = StyleSheet.create({
     fontSize: FontSize.lg,
     color: Colors.textOnPrimary,
     fontWeight: '700',
+  },
+  recordingOverlay: {
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    backgroundColor: '#FFF3E0',
+    borderTopWidth: 1,
+    borderTopColor: '#FFB74D',
+  },
+  recordingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
+  recordingDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: '#F44336',
+  },
+  recordingTime: {
+    fontSize: FontSize.lg,
+    fontWeight: '700',
+    color: '#D84315',
+    fontVariant: ['tabular-nums'],
+  },
+  recordingLabel: {
+    fontSize: FontSize.md,
+    color: '#E65100',
+    fontWeight: '600',
+  },
+  processingLabel: {
+    fontSize: FontSize.md,
+    color: Colors.primary,
+    fontWeight: '600',
   },
 });

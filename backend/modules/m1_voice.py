@@ -132,42 +132,124 @@ async def audio_to_transcript(audio_base64: str, api_key: str, mime_type: str = 
 async def text_to_audio(text_kannada: str, api_key: str) -> str:
     """
     Kannada text → WAV base64 via Sarvam bulbul:v3.
-    Hard 15s timeout. Non-fatal: returns '' on any failure.
+    Splits long text into sentence-level chunks (max 450 chars each),
+    generates audio for each, and concatenates WAV data.
+    Non-fatal: returns '' on failure.
     """
-    text = text_kannada[:500]
-    print(f'[M1-TTS] Generating audio for {len(text)} chars...')
-
-    try:
-        async with httpx.AsyncClient(timeout=15.0) as client:
-            resp = await asyncio.wait_for(
-                client.post(
-                    'https://api.sarvam.ai/text-to-speech',
-                    headers={
-                        'api-subscription-key': api_key,
-                        'Content-Type': 'application/json',
-                    },
-                    json={
-                        'inputs': [text],
-                        'target_language_code': 'kn-IN',
-                        'speaker': 'amit',
-                        'speech_sample_rate': 22050,
-                        'enable_preprocessing': True,
-                        'model': 'bulbul:v3',
-                    },
-                ),
-                timeout=13.0,
-            )
-
-        if resp.status_code != 200:
-            print(f'[M1-TTS] Error {resp.status_code}: {resp.text[:100]}')
-            return ''
-
-        audios = resp.json().get('audios', [])
-        audio = audios[0] if audios else ''
-        if audio:
-            print(f'[M1-TTS] Done — {len(audio)} chars')
-        return audio
-
-    except Exception as e:
-        print(f'[M1-TTS] Failed (non-fatal): {e}')
+    if not text_kannada or len(text_kannada.strip()) < 5:
         return ''
+
+    # Split into sentence-sized chunks that fit Sarvam's 500 char limit
+    chunks = _split_text_for_tts(text_kannada.strip(), max_chars=450)
+    print(f'[M1-TTS] Generating audio for {len(text_kannada)} chars in {len(chunks)} chunk(s)...')
+
+    audio_parts: list[str] = []
+    for i, chunk in enumerate(chunks):
+        try:
+            async with httpx.AsyncClient(timeout=15.0) as client:
+                resp = await asyncio.wait_for(
+                    client.post(
+                        'https://api.sarvam.ai/text-to-speech',
+                        headers={
+                            'api-subscription-key': api_key,
+                            'Content-Type': 'application/json',
+                        },
+                        json={
+                            'inputs': [chunk],
+                            'target_language_code': 'kn-IN',
+                            'speaker': 'amit',
+                            'speech_sample_rate': 22050,
+                            'enable_preprocessing': True,
+                            'model': 'bulbul:v3',
+                        },
+                    ),
+                    timeout=13.0,
+                )
+
+            if resp.status_code != 200:
+                print(f'[M1-TTS] Chunk {i+1} error {resp.status_code}')
+                continue
+
+            audios = resp.json().get('audios', [])
+            if audios and audios[0]:
+                audio_parts.append(audios[0])
+                print(f'[M1-TTS] Chunk {i+1}/{len(chunks)}: {len(audios[0])} chars')
+
+        except Exception as e:
+            print(f'[M1-TTS] Chunk {i+1} failed: {e}')
+            continue
+
+    if not audio_parts:
+        print('[M1-TTS] No audio generated')
+        return ''
+
+    if len(audio_parts) == 1:
+        print(f'[M1-TTS] Done — {len(audio_parts[0])} chars')
+        return audio_parts[0]
+
+    # Concatenate multiple WAV base64 parts
+    combined = _concat_wav_base64(audio_parts)
+    print(f'[M1-TTS] Combined {len(audio_parts)} chunks → {len(combined)} chars')
+    return combined
+
+
+def _split_text_for_tts(text: str, max_chars: int = 450) -> list[str]:
+    """Split text on sentence boundaries (।, ., !, ?) into chunks under max_chars."""
+    if len(text) <= max_chars:
+        return [text]
+
+    import re
+    # Split on Kannada/English sentence enders
+    sentences = re.split(r'(?<=[।.!?])\s*', text)
+    chunks: list[str] = []
+    current = ''
+
+    for sent in sentences:
+        sent = sent.strip()
+        if not sent:
+            continue
+        if len(current) + len(sent) + 1 <= max_chars:
+            current = (current + ' ' + sent).strip() if current else sent
+        else:
+            if current:
+                chunks.append(current)
+            current = sent[:max_chars]  # Truncate single very long sentence
+
+    if current:
+        chunks.append(current)
+
+    return chunks or [text[:max_chars]]
+
+
+def _concat_wav_base64(parts: list[str]) -> str:
+    """Concatenate multiple WAV base64 strings into one by merging PCM data."""
+    import struct
+    import io
+
+    decoded = [base64.b64decode(p) for p in parts]
+
+    # First part has the header — use it as template
+    first = decoded[0]
+    if len(first) < 44:
+        return parts[0]
+
+    # WAV header is 44 bytes. Concatenate PCM data from all parts.
+    pcm_data = first[44:]
+    for wav in decoded[1:]:
+        if len(wav) > 44:
+            pcm_data += wav[44:]
+
+    # Rebuild header with correct sizes
+    data_size = len(pcm_data)
+    file_size = 36 + data_size
+
+    # Read format info from original header
+    header = bytearray(first[:44])
+    # Update RIFF chunk size (offset 4, 4 bytes LE)
+    struct.pack_into('<I', header, 4, file_size)
+    # Update data chunk size (offset 40, 4 bytes LE)
+    struct.pack_into('<I', header, 40, data_size)
+
+    combined_wav = bytes(header) + pcm_data
+    return base64.b64encode(combined_wav).decode()
+
