@@ -1,99 +1,51 @@
-"""
-Query Router — The main orchestrator: M1 → M2 → M3 → M5
-Handles: voice-only, text-only, voice+image, text+image.
-
-POST /api/query — Single unified endpoint for all farmer queries.
-"""
-
 from fastapi import APIRouter
-from models.schemas import QueryRequest, QueryResponse, DiagnosisRequest
-from modules import m1_voice, m2_nlp, m3_rag, m4_diagnosis, m5_response
+from models.schemas import QueryRequest, QueryResponse, Intent
+from modules import m1_voice, m2_nlp
 import os
 
 router = APIRouter(prefix='/api/query', tags=['query'])
 
-
 @router.post('', response_model=QueryResponse)
 async def query_endpoint(request: QueryRequest):
-    """
-    POST /api/query
-    
-    The single unified endpoint for all farmer queries.
-    Handles: voice-only, text-only, voice+image, text+image.
-    
-    Flow: STT (if audio) → NLP → Route → RAG/Diagnosis → Response → TTS
-    """
     transcript = None
-
-    # ── Step 1: STT if audio provided ────────────────────────
+    
+    # 1. STT if audio
     if request.audio_base64:
         try:
-            stt_result = await m1_voice.audio_to_transcript(
-                request.audio_base64, os.environ['SARVAM_API_KEY']
-            )
-            transcript = stt_result['transcript']
+            stt_res = await m1_voice.audio_to_transcript(request.audio_base64, os.environ.get('SARVAM_API_KEY'))
+            transcript = stt_res['transcript']
         except Exception as e:
-            # STT failed — use text fallback if available
             if not request.text_query:
                 return QueryResponse(
-                    answer_text_kn='ಧ್ವನಿ ಸೇವೆ ಲಭ್ಯವಿಲ್ಲ. ದಯವಿಟ್ಟು ಟೈಪ್ ಮಾಡಿ.',
-                    error=str(e),
+                    answer_text_kn="ಧ್ವನಿ ಸೇವೆ ಲಭ್ಯವಿಲ್ಲ. ದಯವಿಟ್ಟು ಟೈಪ್ ಮಾಡಿ.",
+                    error=str(e)
                 )
-
-    query_text = transcript or request.text_query or ''
-
+                
+    query_text = transcript or request.text_query or ""
     if not query_text and not request.image_base64:
-        return QueryResponse(answer_text_kn='ದಯವಿಟ್ಟು ಪ್ರಶ್ನೆ ಕೇಳಿ.')
-
-    # ── Step 2: NLP Processing ───────────────────────────────
-    nlp_result = await m2_nlp.process(
+        return QueryResponse(answer_text_kn="ದಯವಿಟ್ಟು ಪ್ರಶ್ನೆ ಕೇಳಿ.")
+        
+    # 2. NLP Phase 1 Gate
+    nlp_result = m2_nlp.process(
         transcript=query_text,
         user_ctx=request.user_context,
-        has_image=bool(request.image_base64),
+        has_image=bool(request.image_base64)
     )
-
-    # ── Step 3: Route ────────────────────────────────────────
-    rag_chunks = []
-    diagnosis_finding = None
-
-    if 'rag' in nlp_result.routing:
-        rag_chunks = await m3_rag.retrieve(nlp_result)
-
-    if 'diagnosis' in nlp_result.routing and request.image_base64:
-        diag_req = DiagnosisRequest(
-            image_base64=request.image_base64,
-            image_mime=request.image_mime,
-            optional_text=query_text,
-            user_context=request.user_context,
-        )
-        diagnosis_finding = await m4_diagnosis.diagnose_image(diag_req)
-
-    # ── Step 4: Generate Response ────────────────────────────
-    if diagnosis_finding:
-        answer_kn = await m5_response.finding_to_kannada_text(
-            diagnosis_finding, request.user_context
-        )
-        sources = diagnosis_finding.sources
+    
+    print(f"[Query] Intent: {nlp_result.intent}, Entities: {nlp_result.entities}")
+    
+    # 3. Pipeline Stub Return
+    if nlp_result.intent == Intent.COMING_SOON:
+        answer = "ಈ ವಿಷಯ ಶೀಘ್ರದಲ್ಲೇ KrishiMitra ಗೆ ಸೇರಿಸಲಾಗುವುದು. ಪ್ರಸ್ತುತ ಮಣ್ಣಿನ ಫಲವತ್ತತೆ ಮತ್ತು ಜೈವಿಕ ಗೊಬ್ಬರ ತಯಾರಿಕೆಯ ಮಾಹಿತಿ ನೀಡಲು ಸಿದ್ಧರಾಗಿದ್ದೇವೆ."
+    elif nlp_result.intent == Intent.OUT_OF_DOMAIN:
+        answer = "ಕ್ಷಮಿಸಿ, ಇದು ಕೃಷಿಗೆ ಸಂಬಂಧಿಸಿದ ಪ್ರಶ್ನೆಯಲ್ಲ. ದಯವಿಟ್ಟು ಕೃಷಿ ಬಗ್ಗೆ ಕೇಳಿ."
     else:
-        answer_kn, sources = await m5_response.generate(
-            nlp_result, rag_chunks, request.user_context.farmer_name
-        )
-
-    # ── Step 5: TTS ──────────────────────────────────────────
-    audio_b64 = None
-    try:
-        audio_b64 = await m1_voice.text_to_audio(
-            answer_kn, os.environ['SARVAM_API_KEY']
-        )
-    except Exception:
-        pass  # Non-fatal: text response still returned
-
+        # Stub for Week 3
+        answer = "ಪ್ರಕ್ರಿಯೆಯಲ್ಲಿದೆ — Coming soon (M3 and M4 will handle this in Week 3)"
+        
     return QueryResponse(
-        transcript=transcript,
-        answer_text_kn=answer_kn,
-        audio_base64=audio_b64,
-        sources=sources,
-        intent=nlp_result.intent.value,
-        diagnosis=diagnosis_finding.model_dump() if diagnosis_finding else None,
-        is_kvk_redirect=not rag_chunks and not diagnosis_finding,
+        transcript=query_text,
+        answer_text_kn=answer,
+        intent=nlp_result.intent,
+        sources=[]
     )
