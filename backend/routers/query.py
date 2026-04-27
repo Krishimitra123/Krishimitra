@@ -68,7 +68,11 @@ async def _run_query(request: QueryRequest) -> QueryResponse:
 
     # Run Mistral answer generation + TTS concurrently for faster response
     answer_task = asyncio.create_task(
-        m5_response.generate(nlp_result=nlp, farmer_name=farmer_name)
+        m5_response.generate(
+            nlp_result=nlp,
+            farmer_name=farmer_name,
+            conversation_history=request.conversation_history,
+        )
     )
 
     answer, sources = await answer_task

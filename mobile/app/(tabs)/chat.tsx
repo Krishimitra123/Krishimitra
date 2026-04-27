@@ -23,10 +23,11 @@ import { Colors, FontSize, Spacing, BorderRadius, Shadows } from '@/constants/th
 import { useSessionStore, Message } from '@/stores/useSessionStore';
 import { useAudioStore } from '@/stores/useAudioStore';
 import { startRecording, stopRecordingAndGetBase64, playBase64Audio } from '@/services/voiceService';
-import { sendVoiceQuery, sendTextQuery } from '@/services/queryService';
+import { sendVoiceQuery, sendTextQuery, ConversationTurn } from '@/services/queryService';
 
 export default function ChatScreen() {
   const [textInput, setTextInput] = useState('');
+  const [conversationHistory, setConversationHistory] = useState<ConversationTurn[]>([]);
   const flatListRef = useRef<FlatList>(null);
 
   const {
@@ -96,8 +97,13 @@ export default function ChatScreen() {
 
         setLoading(true);
         try {
-          const response = await sendVoiceQuery(audioResult.base64, audioResult.mimeType);
+          const response = await sendVoiceQuery(audioResult.base64, audioResult.mimeType, conversationHistory);
           console.log('[Chat] Voice response received:', response.transcript?.slice(0, 50));
+
+          // Update user message with real transcript
+          if (response.transcript) {
+            // The placeholder '🎙️ ಧ್ವನಿ ಸಂದೇಶ...' stays — transcript shown in assistant reply
+          }
 
           addMessage({
             id: (Date.now() + 1).toString(),
@@ -108,6 +114,13 @@ export default function ChatScreen() {
             is_diagnosis: !!response.diagnosis,
             audio_base64: response.audio_base64 || undefined,
           });
+
+          // Update conversation history for follow-up questions
+          setConversationHistory(prev => [
+            ...prev,
+            { role: 'user', content: response.transcript || '🎙️' },
+            { role: 'assistant', content: response.answer_text_kn },
+          ].slice(-12)); // Keep last 6 exchanges
 
           // Auto-play TTS response if available
           if (response.audio_base64) {
@@ -162,7 +175,7 @@ export default function ChatScreen() {
 
     setLoading(true);
     try {
-      const response = await sendTextQuery(query);
+      const response = await sendTextQuery(query, conversationHistory);
       console.log('[Chat] Text response received');
 
       addMessage({
@@ -175,12 +188,19 @@ export default function ChatScreen() {
         audio_base64: response.audio_base64 || undefined,
       });
 
+      // Update history for follow-ups
+      setConversationHistory(prev => [
+        ...prev,
+        { role: 'user', content: query },
+        { role: 'assistant', content: response.answer_text_kn },
+      ].slice(-12));
+
       // Auto-play TTS response
       if (response.audio_base64) {
         try {
           await playBase64Audio(response.audio_base64);
         } catch {
-          // Non-fatal: text response still shown
+          // Non-fatal
         }
       }
     } catch (e: any) {

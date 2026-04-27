@@ -1,6 +1,10 @@
 from pydantic import BaseModel, Field
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 from enum import Enum
+
+class ConversationMessage(BaseModel):
+    role: str   # 'user' or 'assistant'
+    content: str
 
 class Intent(str, Enum):
     SF_PREP = "SF_PREP"
@@ -41,11 +45,12 @@ class DiagnosisFinding(BaseModel):
 
 class QueryRequest(BaseModel):
     audio_base64: Optional[str] = None
-    audio_mime: str = "audio/mp4"   # iOS records M4A, Android AAC — both are audio/mp4
+    audio_mime: str = "audio/mp4"
     text_query: Optional[str] = None
     image_base64: Optional[str] = None
     image_mime: str = "image/jpeg"
-    user_context: UserContext
+    user_context: Optional[UserContext] = None
+    conversation_history: Optional[List[ConversationMessage]] = None  # Last N exchanges for context
 
 class QueryResponse(BaseModel):
     transcript: Optional[str] = None

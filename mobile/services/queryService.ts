@@ -1,8 +1,14 @@
 /**
  * Query Service — API calls for text/voice queries and diagnosis.
+ * Sends conversation_history for follow-up question support.
  */
 
 import { apiClient } from './api';
+
+export interface ConversationTurn {
+  role: 'user' | 'assistant';
+  content: string;
+}
 
 export interface QueryResponse {
   transcript:      string | null;
@@ -31,8 +37,13 @@ export interface DiagnosisResponse {
 
 /**
  * Send a voice query (base64 M4A/WAV audio).
+ * Pass last N conversation turns for follow-up support.
  */
-export async function sendVoiceQuery(audioBase64: string, mimeType: string = 'audio/mp4'): Promise<QueryResponse> {
+export async function sendVoiceQuery(
+  audioBase64: string,
+  mimeType: string = 'audio/mp4',
+  conversationHistory?: ConversationTurn[],
+): Promise<QueryResponse> {
   if (!audioBase64 || audioBase64.length < 100) {
     throw new Error('Audio recording too short or empty');
   }
@@ -42,6 +53,7 @@ export async function sendVoiceQuery(audioBase64: string, mimeType: string = 'au
   const res = await apiClient.post('/api/query', {
     audio_base64: audioBase64,
     audio_mime: mimeType,
+    conversation_history: conversationHistory?.slice(-6) ?? [],
   }, {
     timeout: 60000,
   });
@@ -50,8 +62,12 @@ export async function sendVoiceQuery(audioBase64: string, mimeType: string = 'au
 
 /**
  * Send a text query.
+ * Pass last N conversation turns for follow-up support.
  */
-export async function sendTextQuery(text: string): Promise<QueryResponse> {
+export async function sendTextQuery(
+  text: string,
+  conversationHistory?: ConversationTurn[],
+): Promise<QueryResponse> {
   if (!text || !text.trim()) {
     throw new Error('Empty text query');
   }
@@ -60,6 +76,7 @@ export async function sendTextQuery(text: string): Promise<QueryResponse> {
 
   const res = await apiClient.post('/api/query', {
     text_query: text,
+    conversation_history: conversationHistory?.slice(-6) ?? [],
   }, {
     timeout: 60000,
   });

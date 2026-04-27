@@ -1,66 +1,57 @@
 /**
- * Voice Service — Audio recording and TTS playback for KrishiMitra.
- *
- * IMPORTANT: Uses Audio.RecordingOptionsPresets.HIGH_QUALITY which is the
- * ONLY preset guaranteed to work in Expo Go on iOS without a native build.
- * Custom formats (MPEG4AAC, etc.) require a development build.
- *
- * The iOS HIGH_QUALITY preset records WAV at 44.1kHz — Sarvam STT accepts this.
+ * Voice Service — Recording and TTS playback.
+ * Uses Audio.RecordingOptionsPresets.HIGH_QUALITY (works in Expo Go).
+ * TTS: stops any currently playing audio before starting new playback.
  */
 
 import { Audio } from 'expo-av';
 import * as FileSystem from 'expo-file-system/legacy';
 
-// ── State flags — prevent concurrent recording sessions ───────────
+// ── Recording state ───────────────────────────────────────────────
 let _recording: Audio.Recording | null = null;
-let _isStarting = false;      // guard against concurrent startRecording calls
-let _isStopping = false;      // guard against concurrent stop calls
+let _isStarting = false;
+let _isStopping = false;
 
-/**
- * Start recording. Uses HIGH_QUALITY preset (WAV — works in Expo Go).
- * Silently stops any previous session before starting a new one.
- */
+// ── Playback state — only ONE sound plays at a time ───────────────
+let _activeSound: Audio.Sound | null = null;
+
 export async function startRecording(): Promise<void> {
-  // Prevent multiple concurrent start calls
   if (_isStarting) {
-    console.warn('[Voice] Already starting — ignoring duplicate call');
+    console.warn('[Voice] Already starting — ignoring');
     return;
   }
   _isStarting = true;
 
   try {
-    // Clean up any stale recording
-    if (_recording) {
-      console.log('[Voice] Cleaning up stale recording...');
+    // Stop any playing TTS first so recording audio session can take over
+    if (_activeSound) {
       try {
-        await _recording.stopAndUnloadAsync();
+        await _activeSound.stopAsync();
+        await _activeSound.unloadAsync();
       } catch {}
+      _activeSound = null;
+    }
+
+    if (_recording) {
+      try { await _recording.stopAndUnloadAsync(); } catch {}
       _recording = null;
     }
 
-    // Request permission
     const { granted } = await Audio.requestPermissionsAsync();
-    if (!granted) {
-      throw new Error('Microphone permission denied — go to Settings and allow KrishiMitra mic access');
-    }
+    if (!granted) throw new Error('Microphone permission denied');
 
-    // Configure audio session for recording
     await Audio.setAudioModeAsync({
       allowsRecordingIOS: true,
       playsInSilentModeIOS: true,
-      interruptionModeIOS: 1,         // DO_NOT_MIX
+      interruptionModeIOS: 1,
       shouldDuckAndroid: true,
-      interruptionModeAndroid: 1,     // DO_NOT_MIX
+      interruptionModeAndroid: 1,
     });
 
     console.log('[Voice] Starting recording...');
-
-    // HIGH_QUALITY: the ONLY preset that reliably works in Expo Go.
-    // iOS → WAV/CAF at 44.1kHz, Android → AMR-NB/AAC
     const { recording } = await Audio.Recording.createAsync(
       Audio.RecordingOptionsPresets.HIGH_QUALITY
     );
-
     _recording = recording;
     console.log('[Voice] Recording started ✓');
   } finally {
@@ -68,61 +59,43 @@ export async function startRecording(): Promise<void> {
   }
 }
 
-/**
- * Stop recording and return { base64, mimeType } for the backend.
- */
 export async function stopRecordingAndGetBase64(): Promise<{ base64: string; mimeType: string }> {
-  if (_isStopping) {
-    throw new Error('Already stopping — wait a moment');
-  }
-  if (!_recording) {
-    throw new Error('No active recording');
-  }
+  if (_isStopping) throw new Error('Already stopping');
+  if (!_recording) throw new Error('No active recording');
 
   _isStopping = true;
   try {
-    // Check we recorded for at least 1 second
     const status = await _recording.getStatusAsync();
     const durationMs = (status as any).durationMillis ?? 0;
     console.log(`[Voice] Duration: ${durationMs}ms`);
+
     if (durationMs < 800) {
-      throw new Error('Recording too short — please hold the mic button and speak');
+      throw new Error('Too short — hold mic and speak for at least 1 second');
     }
 
     await _recording.stopAndUnloadAsync();
     const uri = _recording.getURI();
     _recording = null;
 
-    if (!uri) {
-      throw new Error('Recording URI is null');
-    }
-
+    if (!uri) throw new Error('Recording URI is null');
     console.log('[Voice] Saved to:', uri);
 
-    // Reset audio session for playback
+    // Switch audio session back to playback mode
     await Audio.setAudioModeAsync({
       allowsRecordingIOS: false,
       playsInSilentModeIOS: true,
     });
 
-    // Detect format from file extension
     const ext = uri.split('.').pop()?.toLowerCase() ?? 'wav';
-    // iOS Expo Go records .wav (WAV/PCM), Android records .3gp or .m4a
-    const mimeType = ext === 'm4a' ? 'audio/mp4'
-      : ext === '3gp' ? 'audio/3gpp'
-      : 'audio/wav';
+    const mimeType = ext === 'm4a' ? 'audio/mp4' : ext === '3gp' ? 'audio/3gpp' : 'audio/wav';
 
     const base64 = await FileSystem.readAsStringAsync(uri, {
       encoding: FileSystem.EncodingType.Base64,
     });
 
-    console.log(`[Voice] Audio: ${base64.length} chars, .${ext}, mime: ${mimeType}`);
+    console.log(`[Voice] Audio: ${base64.length} chars, .${ext}, ${mimeType}`);
+    if (!base64 || base64.length < 500) throw new Error('Audio data empty');
 
-    if (!base64 || base64.length < 500) {
-      throw new Error('Audio data is empty or corrupt');
-    }
-
-    // Clean up temp file
     try { await FileSystem.deleteAsync(uri, { idempotent: true }); } catch {}
 
     return { base64, mimeType };
@@ -132,16 +105,25 @@ export async function stopRecordingAndGetBase64(): Promise<{ base64: string; mim
 }
 
 /**
- * Play a base64-encoded WAV audio (Sarvam bulbul:v3 TTS output).
+ * Play TTS audio. Stops any currently playing audio first.
+ * Sarvam bulbul:v3 returns 22050Hz WAV — crisp and clear.
  */
 export async function playBase64Audio(base64Audio: string): Promise<void> {
   if (!base64Audio || base64Audio.length < 100) {
-    console.warn('[Voice] TTS audio is empty — skipping');
+    console.warn('[Voice] TTS audio empty — skipping');
     return;
   }
 
-  const fileUri = `${FileSystem.cacheDirectory}tts_${Date.now()}.wav`;
+  // Stop any currently playing audio
+  if (_activeSound) {
+    try {
+      await _activeSound.stopAsync();
+      await _activeSound.unloadAsync();
+    } catch {}
+    _activeSound = null;
+  }
 
+  const fileUri = `${FileSystem.cacheDirectory}tts_${Date.now()}.wav`;
   await FileSystem.writeAsStringAsync(fileUri, base64Audio, {
     encoding: FileSystem.EncodingType.Base64,
   });
@@ -159,17 +141,25 @@ export async function playBase64Audio(base64Audio: string): Promise<void> {
     { shouldPlay: true, volume: 1.0 }
   );
 
-  await new Promise<void>((resolve) => {
-    const TIMEOUT = setTimeout(() => {
-      sound.unloadAsync().catch(() => {});
-      resolve();
-    }, 30000);
+  _activeSound = sound;
 
-    sound.setOnPlaybackStatusUpdate((s) => {
-      if (s.isLoaded && s.didJustFinish) {
+  await new Promise<void>((resolve) => {
+    const cleanup = async () => {
+      if (_activeSound === sound) _activeSound = null;
+      try { await sound.unloadAsync(); } catch {}
+      try { await FileSystem.deleteAsync(fileUri, { idempotent: true }); } catch {}
+    };
+
+    const TIMEOUT = setTimeout(async () => {
+      await cleanup();
+      resolve();
+    }, 60000); // 60s max for long answers
+
+    sound.setOnPlaybackStatusUpdate(async (s) => {
+      if (!s.isLoaded) return;
+      if (s.didJustFinish) {
         clearTimeout(TIMEOUT);
-        sound.unloadAsync();
-        FileSystem.deleteAsync(fileUri, { idempotent: true }).catch(() => {});
+        await cleanup();
         resolve();
       }
     });

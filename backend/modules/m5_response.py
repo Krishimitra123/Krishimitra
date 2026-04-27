@@ -63,14 +63,22 @@ def _strip_chemicals(text: str) -> str:
     return text.strip()
 
 
-async def _call_mistral(system: str, user_message: str) -> str:
-    """Call Mistral REST API directly via httpx. Hard 20s timeout."""
+async def _call_mistral(system: str, user_message: str, history: list | None = None) -> str:
+    """Call Mistral REST API. Injects conversation history for follow-up support. Hard 20s timeout."""
     api_key = os.environ.get('MISTRAL_API_KEY', '').strip()
     model = os.environ.get('MISTRAL_MODEL', 'mistral-small-latest')
 
     if not api_key:
         print('[M5] ERROR: MISTRAL_API_KEY not set!')
         return KVK_REDIRECT_KN
+
+    # Build messages array: system + history (last 6 turns) + current question
+    messages = [{'role': 'system', 'content': system}]
+    if history:
+        # Keep last 6 messages (3 exchanges) to stay within token budget
+        for h in history[-6:]:
+            messages.append({'role': h['role'], 'content': h['content']})
+    messages.append({'role': 'user', 'content': user_message})
 
     async with httpx.AsyncClient(timeout=20.0) as client:
         resp = await client.post(
@@ -81,10 +89,7 @@ async def _call_mistral(system: str, user_message: str) -> str:
             },
             json={
                 'model': model,
-                'messages': [
-                    {'role': 'system', 'content': system},
-                    {'role': 'user', 'content': user_message},
-                ],
+                'messages': messages,
                 'temperature': 0.15,
                 'max_tokens': 400,
             }
@@ -104,13 +109,12 @@ async def generate(
     farmer_name: str = 'ರೈತರೇ',
     skb_record: dict | None = None,
     rag_chunks: list | None = None,
+    conversation_history: list | None = None,
 ) -> tuple[str, list[str]]:
     """
     Main M5 entry point.
     Returns (answer_text_kn, sources_list)
-
-    Phase 1: Direct Mistral call with embedded Palekar knowledge.
-    Phase 2 (Week 3+): SKB + RAG context injected into prompt.
+    conversation_history: list of {role, content} dicts for follow-up support.
     """
     from models.schemas import Intent
 
@@ -123,12 +127,9 @@ async def generate(
         return COMING_SOON_KN, []
 
     # ── Build user message ─────────────────────────────────────────
-    district = (nlp_result.entities.get('district') or
-                getattr(nlp_result, 'user_ctx', None) and
-                'Karnataka') or 'Karnataka'
+    district = (nlp_result.entities.get('district') or 'Karnataka')
     crop = nlp_result.entities.get('crop_name') or 'your crops'
 
-    # If SKB record available (Phase 2+), inject exact recipe data
     context_block = ''
     sources = []
     if skb_record:
@@ -147,7 +148,12 @@ async def generate(
         f"{context_block}"
     )
 
-    answer = await _call_mistral(SYSTEM_PROMPT, user_message)
+    # Convert ConversationMessage objects to plain dicts for Mistral
+    history_dicts = None
+    if conversation_history:
+        history_dicts = [{'role': m.role, 'content': m.content} for m in conversation_history]
+
+    answer = await _call_mistral(SYSTEM_PROMPT, user_message, history=history_dicts)
 
     if not sources:
         sources = ['ಸುಭಾಷ್ ಪಾಲೇಕರ್ ZBNF', 'ICAR ಸಾವಯವ ಕೃಷಿ ಮಾರ್ಗದರ್ಶಿ']

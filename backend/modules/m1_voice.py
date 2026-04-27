@@ -149,8 +149,8 @@ async def text_to_audio(text_kannada: str, api_key: str) -> str:
                     json={
                         'inputs': [text],
                         'target_language_code': 'kn-IN',
-                        'speaker': 'amit',
-                        'speech_sample_rate': 8000,
+                        'speaker': 'meera',
+                        'speech_sample_rate': 22050,
                         'enable_preprocessing': True,
                         'model': 'bulbul:v3',
                     },
