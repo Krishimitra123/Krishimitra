@@ -33,6 +33,7 @@ export default function ChatScreen() {
   const {
     currentSession,
     addMessage,
+    updateMessage,
     startNewSession,
     isLoading,
     setLoading,
@@ -86,10 +87,12 @@ export default function ChatScreen() {
 
         console.log(`[Chat] Audio recorded, base64 length: ${audioResult.base64.length}, mime: ${audioResult.mimeType}`);
 
+        // Add a placeholder user message — will be updated with real transcript
+        const userMsgId = Date.now().toString();
         addMessage({
-          id: Date.now().toString(),
+          id: userMsgId,
           role: 'user',
-          text: '🎙️ ಧ್ವನಿ ಸಂದೇಶ...',
+          text: '🎙️ ಕೇಳುತ್ತಿದೆ...',
           sources: [],
           timestamp: Date.now(),
           is_diagnosis: false,
@@ -98,12 +101,11 @@ export default function ChatScreen() {
         setLoading(true);
         try {
           const response = await sendVoiceQuery(audioResult.base64, audioResult.mimeType, conversationHistory);
-          console.log('[Chat] Voice response received:', response.transcript?.slice(0, 50));
+          const transcript = response.transcript?.trim() || '🎙️ ಧ್ವನಿ ಸಂದೇಶ';
+          console.log('[Chat] Voice response received:', transcript.slice(0, 50));
 
-          // Update user message with real transcript
-          if (response.transcript) {
-            // The placeholder '🎙️ ಧ್ವನಿ ಸಂದೇಶ...' stays — transcript shown in assistant reply
-          }
+          // ✅ Replace placeholder with the actual transcript the user spoke
+          updateMessage(userMsgId, { text: transcript });
 
           addMessage({
             id: (Date.now() + 1).toString(),
@@ -118,9 +120,9 @@ export default function ChatScreen() {
           // Update conversation history for follow-up questions
           setConversationHistory(prev => [
             ...prev,
-            { role: 'user', content: response.transcript || '🎙️' },
+            { role: 'user', content: transcript },
             { role: 'assistant', content: response.answer_text_kn },
-          ].slice(-12)); // Keep last 6 exchanges
+          ].slice(-12));
 
           // Auto-play TTS response if available
           if (response.audio_base64) {

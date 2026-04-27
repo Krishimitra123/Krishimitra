@@ -33,6 +33,7 @@ interface SessionStore {
 
   startNewSession: () => void;
   addMessage:      (msg: Message) => void;
+  updateMessage:   (id: string, patch: Partial<Message>) => void;
   setLoading:      (loading: boolean) => void;
   setError:        (error: string | null) => void;
   endSession:      () => void;
@@ -78,15 +79,20 @@ export const useSessionStore = create<SessionStore>()(
       addMessage: (msg) => {
         const session = get().currentSession;
         if (!session) return;
-
         const messages = [...session.messages, msg];
         const title =
           session.title ||
           (msg.role === 'user' ? msg.text.substring(0, 50) : session.title);
+        set({ currentSession: { ...session, messages, title } });
+      },
 
-        set({
-          currentSession: { ...session, messages, title },
-        });
+      updateMessage: (id, patch) => {
+        const session = get().currentSession;
+        if (!session) return;
+        const messages = session.messages.map((m) =>
+          m.id === id ? { ...m, ...patch } : m
+        );
+        set({ currentSession: { ...session, messages } });
       },
 
       setLoading: (isLoading) => set({ isLoading }),

@@ -7,7 +7,7 @@ router = APIRouter(prefix='/api/diagnose', tags=['diagnose'])
 @router.post('', response_model=DiagnosisFinding)
 async def diagnose_endpoint(request: DiagnosisRequest):
     try:
-        finding = await m4_diagnosis.diagnose_image(request)
+        finding = await m4_diagnosis.diagnose(request)
         return finding
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
