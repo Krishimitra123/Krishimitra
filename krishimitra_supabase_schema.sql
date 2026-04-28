@@ -48,8 +48,10 @@ create table if not exists public.mulching_plants (
     created_at timestamptz default now()
 );
 
+drop table if exists public.document_chunks cascade;
+
 create table if not exists public.document_chunks (
-    id bigserial primary key,
+    id uuid primary key default gen_random_uuid(),
     content text not null,
     embedding vector(768) not null,
     source_doc text not null,
@@ -78,7 +80,7 @@ create function public.match_chunks(
     filter_crop text default null
 )
 returns table (
-    id bigint,
+    id uuid,
     content text,
     source_doc text,
     source_page int,
