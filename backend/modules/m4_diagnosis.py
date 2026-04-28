@@ -5,12 +5,21 @@ Hard 35s overall asyncio timeout. Image result cached by MD5.
 """
 
 import asyncio
+import base64
 import hashlib
 import httpx
+import io
 import json
 import os
 import re
 from models.schemas import DiagnosisRequest, DiagnosisFinding
+
+try:
+    from PIL import Image as PILImage
+    HAS_PIL = True
+except ImportError:
+    HAS_PIL = False
+    print('[M4] WARNING: Pillow not installed — large images will not be auto-resized')
 
 _cache: dict[str, DiagnosisFinding] = {}
 
@@ -61,6 +70,30 @@ RULES:
 
 def _cache_key(b64: str, text: str = '') -> str:
     return hashlib.md5((b64[:300] + text).encode()).hexdigest()
+
+
+def _compress_image(b64: str, mime: str) -> tuple[str, str]:
+    """
+    If image base64 is > 300KB, resize to max 1024x1024 and re-encode at quality 60.
+    Returns (new_b64, new_mime). Falls back to original if PIL not available.
+    """
+    SIZE_LIMIT = 300_000  # 300KB base64 chars
+    if len(b64) <= SIZE_LIMIT or not HAS_PIL:
+        return b64, mime
+
+    try:
+        img_bytes = base64.b64decode(b64)
+        img = PILImage.open(io.BytesIO(img_bytes)).convert('RGB')
+        # Resize to fit within 1024x1024
+        img.thumbnail((1024, 1024), PILImage.LANCZOS)
+        buf = io.BytesIO()
+        img.save(buf, format='JPEG', quality=60, optimize=True)
+        new_b64 = base64.b64encode(buf.getvalue()).decode()
+        print(f'[M4] Compressed image: {len(b64)} -> {len(new_b64)} chars')
+        return new_b64, 'image/jpeg'
+    except Exception as e:
+        print(f'[M4] Compression failed (using original): {e}')
+        return b64, mime
 
 
 def _fallback() -> DiagnosisFinding:
@@ -117,9 +150,13 @@ async def _pixtral(b64: str, mime: str, prompt: str) -> DiagnosisFinding | None:
     """Mistral Pixtral-12b — primary model. 25s timeout."""
     key = os.environ.get('MISTRAL_API_KEY', '').strip()
     if not key:
+        print('[M4] ERROR: MISTRAL_API_KEY not set!')
         return None
 
-    print('[M4] Trying Pixtral-12b...')
+    # Compress large images before sending
+    b64, mime = _compress_image(b64, mime)
+    print(f'[M4] Sending to Pixtral: {len(b64)} chars, mime={mime}')
+
     try:
         async with httpx.AsyncClient(timeout=25.0) as c:
             r = await c.post(MISTRAL_URL,
@@ -135,16 +172,17 @@ async def _pixtral(b64: str, mime: str, prompt: str) -> DiagnosisFinding | None:
                     'max_tokens': 500,
                 })
 
+        print(f'[M4] Pixtral HTTP status: {r.status_code}')
         if r.status_code == 200:
             text = r.json()['choices'][0]['message']['content'].strip()
-            print(f'[M4] Pixtral raw: {text[:120]}')
+            print(f'[M4] Pixtral raw (first 200): {text[:200]}')
             d = _parse(text)
             if d:
                 print(f'[M4] Pixtral OK: {d.get("disease_name")} ({d.get("confidence_pct")}%)')
                 return _build(d, 'Pixtral-12b Vision')
-            print(f'[M4] Pixtral JSON parse failed: {text[:200]}')
+            print(f'[M4] Pixtral JSON parse failed: {text[:300]}')
         else:
-            print(f'[M4] Pixtral HTTP {r.status_code}: {r.text[:200]}')
+            print(f'[M4] Pixtral HTTP {r.status_code}: {r.text[:300]}')
 
     except httpx.TimeoutException:
         print('[M4] Pixtral timed out after 25s')

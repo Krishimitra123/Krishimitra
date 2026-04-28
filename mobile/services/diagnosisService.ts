@@ -72,9 +72,10 @@ export async function captureImage(): Promise<string | null> {
 
   const result = await ImagePicker.launchCameraAsync({
     mediaTypes: ['images'],
-    quality: 0.8,
+    quality: 0.4,
     base64: true,
     allowsEditing: false,
+    exif: false,
   });
 
   const asset = getFirstImageAsset(result);
@@ -95,9 +96,10 @@ export async function pickImage(): Promise<string | null> {
 
   const result = await ImagePicker.launchImageLibraryAsync({
     mediaTypes: ['images'],
-    quality: 0.8,
+    quality: 0.4,
     base64: true,
     allowsEditing: false,
+    exif: false,
   });
 
   const asset = getFirstImageAsset(result);
@@ -115,9 +117,10 @@ export async function captureImageWithUri(): Promise<PickedDiagnosisImage | null
 
   const result = await ImagePicker.launchCameraAsync({
     mediaTypes: ['images'],
-    quality: 0.8,
+    quality: 0.4,
     base64: true,
     allowsEditing: false,
+    exif: false,
   });
 
   const asset = getFirstImageAsset(result);
@@ -144,9 +147,10 @@ export async function pickImageWithUri(): Promise<PickedDiagnosisImage | null> {
 
   const result = await ImagePicker.launchImageLibraryAsync({
     mediaTypes: ['images'],
-    quality: 0.8,
+    quality: 0.4,
     base64: true,
     allowsEditing: false,
+    exif: false,
   });
 
   const asset = getFirstImageAsset(result);
