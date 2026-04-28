@@ -1,0 +1,92 @@
+[
+  {
+    "name_en": "Ragi",
+    "name_kn": "ರಾಗಿ",
+    "category": "cereal",
+    "zones": [4, 5, 6, 10]
+  },
+  {
+    "name_en": "Paddy",
+    "name_kn": "ಭತ್ತ",
+    "category": "cereal",
+    "zones": [3, 9]
+  },
+  {
+    "name_en": "Jowar",
+    "name_kn": "ಜೋಳ",
+    "category": "cereal",
+    "zones": [1, 2, 3]
+  },
+  {
+    "name_en": "Maize",
+    "name_kn": "ಮೆಕ್ಕೆಜೋಳ",
+    "category": "cereal",
+    "zones": [4, 5]
+  },
+  {
+    "name_en": "Groundnut",
+    "name_kn": "ಶೇಂಗಾ",
+    "category": "oilseed",
+    "zones": [4, 5, 10]
+  },
+  {
+    "name_en": "Sunflower",
+    "name_kn": "ಸೂರ್ಯಕಾಂತಿ",
+    "category": "oilseed",
+    "zones": [2, 4]
+  },
+  {
+    "name_en": "Sugarcane",
+    "name_kn": "ಕಬ್ಬು",
+    "category": "commercial",
+    "zones": [2, 6]
+  },
+  {
+    "name_en": "Cotton",
+    "name_kn": "ಹತ್ತಿ",
+    "category": "commercial",
+    "zones": [1, 2, 3]
+  },
+  {
+    "name_en": "Tomato",
+    "name_kn": "ಟೊಮ್ಯಾಟೊ",
+    "category": "vegetable",
+    "zones": [4, 5, 6]
+  },
+  {
+    "name_en": "Onion",
+    "name_kn": "ಈರುಳ್ಳಿ",
+    "category": "vegetable",
+    "zones": [2, 4]
+  },
+  {
+    "name_en": "Chilli",
+    "name_kn": "ಮೆಣಸಿನಕಾಯಿ",
+    "category": "vegetable",
+    "zones": [2, 3]
+  },
+  {
+    "name_en": "Banana",
+    "name_kn": "ಬಾಳೆ",
+    "category": "horticulture",
+    "zones": [6, 9]
+  },
+  {
+    "name_en": "Coconut",
+    "name_kn": "ತೆಂಗು",
+    "category": "horticulture",
+    "zones": [9]
+  },
+  {
+    "name_en": "Areca Nut",
+    "name_kn": "ಅಡಿಕೆ",
+    "category": "plantation",
+    "zones": [7, 8, 9]
+  },
+  {
+    "name_en": "Coffee",
+    "name_kn": "ಕಾಫಿ",
+    "category": "plantation",
+    "zones": [7, 8]
+  }
+]

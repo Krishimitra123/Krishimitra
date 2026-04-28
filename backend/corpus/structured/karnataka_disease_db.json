@@ -1,0 +1,279 @@
+[
+  {
+    "id": "dis_001",
+    "crop_en": "Tomato",
+    "crop_kn": "ಟೊಮ್ಯಾಟೊ",
+    "disease_en": "Tomato Early Blight",
+    "disease_kn": "ಟೊಮ್ಯಾಟೊ ಆರಂಭಿಕ ಸುಡು ರೋಗ",
+    "symptoms": [
+      "Dark brown spots with a yellow halo appear first on older leaves.",
+      "Concentric ring patterns develop inside the spots.",
+      "Leaves yellow and dry from the lower canopy upward."
+    ],
+    "probable_cause": "Fungal",
+    "organic_treatments": [
+      "Remove and destroy heavily infected lower leaves to reduce spore load.",
+      "Spray Trichoderma viride or Trichoderma harzianum suspension at 5 g/L of water, repeat every 7-10 days for 2-3 sprays.",
+      "Alternate with Pseudomonas fluorescens at 5 g/L of water after 7 days if disease pressure remains high.",
+      "Use neem oil at 3 ml/L of water with a sticker, spray every 7 days during humid weather.",
+      "Apply Jeevamrutha as a soil drench around the root zone every 15 days to improve crop vigor."
+    ],
+    "prevention": [
+      "Use healthy seedlings and avoid overhead irrigation late in the day.",
+      "Maintain adequate plant spacing and airflow.",
+      "Mulch to prevent soil splash onto leaves.",
+      "Rotate away from tomato and other solanaceous crops for at least one season."
+    ],
+    "source_doc": "Organic vegetable disease management notes and ZBNF plant protection guidance",
+    "confidence": "high"
+  },
+  {
+    "id": "dis_002",
+    "crop_en": "Tomato",
+    "crop_kn": "ಟೊಮ್ಯಾಟೊ",
+    "disease_en": "Tomato Late Blight",
+    "disease_kn": "ಟೊಮ್ಯಾಟೊ ತಡ ಸುಡು ರೋಗ",
+    "symptoms": [
+      "Water-soaked grey-green patches appear rapidly on leaves.",
+      "White mold growth is visible on the underside of infected leaves in humid weather.",
+      "Fruit develops brown rot and collapses quickly."
+    ],
+    "probable_cause": "Fungal",
+    "organic_treatments": [
+      "Remove severely infected plant parts immediately and destroy them away from the field.",
+      "Spray Trichoderma harzianum or Trichoderma viride at 5 g/L of water every 7 days at first symptom appearance.",
+      "Use Pseudomonas fluorescens at 5 g/L of water in alternation with Trichoderma after 5-7 days.",
+      "Apply neem oil at 5 ml/L of water once weekly during cool humid weather.",
+      "If crop is under severe stress, use a cow urine spray at 3% solution as a general foliar support, avoiding direct spray during hot sunlight."
+    ],
+    "prevention": [
+      "Avoid dense canopy and improve ventilation.",
+      "Do not leave wet foliage overnight when humidity is high.",
+      "Use clean staking and avoid working in the field when plants are wet.",
+      "Monitor weather closely because the disease spreads rapidly in cool, wet conditions."
+    ],
+    "source_doc": "Organic tomato blight management guidance and extension disease alerts",
+    "confidence": "high"
+  },
+  {
+    "id": "dis_003",
+    "crop_en": "Ragi",
+    "crop_kn": "ರಾಗಿ",
+    "disease_en": "Ragi Blast",
+    "disease_kn": "ರಾಗಿ ಬ್ಲಾಸ್ಟ್",
+    "symptoms": [
+      "Diamond-shaped grey spots with a brown border appear on leaves.",
+      "The neck of the panicle can rot and dry suddenly.",
+      "Severe infection causes poor grain filling and white heads."
+    ],
+    "probable_cause": "Fungal",
+    "organic_treatments": [
+      "Seed treat with Trichoderma viride at 4 g/kg seed before sowing.",
+      "Spray Pseudomonas fluorescens at 5 g/L water at tillering and repeat after 10 days if symptoms appear.",
+      "Apply neem leaf extract 5% as a foliar spray once weekly during high disease risk periods.",
+      "Use Jeevamrutha soil application to maintain plant vigor and microbial balance every 15 days."
+    ],
+    "prevention": [
+      "Use blast-tolerant varieties where available.",
+      "Avoid excess nitrogen that makes the crop too lush.",
+      "Use clean seed and maintain field sanitation.",
+      "Prefer balanced nutrition and timely sowing to reduce disease escape risk."
+    ],
+    "source_doc": "Millet blast organic management recommendations",
+    "confidence": "high"
+  },
+  {
+    "id": "dis_004",
+    "crop_en": "Paddy",
+    "crop_kn": "ಭತ್ತ",
+    "disease_en": "Paddy Stem Borer",
+    "disease_kn": "ಭತ್ತ ಕಾಂಡ ಕೊರೆಯುವ ಹುಳ",
+    "symptoms": [
+      "The central shoot dries and can be pulled out easily in the vegetative stage, called dead heart.",
+      "During the reproductive stage, the ear head turns white and empty, called white ear.",
+      "Small holes may be visible near the stem base with borer damage inside."
+    ],
+    "probable_cause": "Pest",
+    "organic_treatments": [
+      "Install pheromone traps at 8-10 traps per acre from early crop stage and replace lures as recommended.",
+      "Release or conserve natural enemies and avoid broad-spectrum chemicals.",
+      "Spray neem oil at 5 ml/L of water every 7 days when moth activity is high.",
+      "Use a cow urine spray at 3% solution as a repellent support spray on the foliage every 7-10 days.",
+      "Remove and destroy dead hearts if infestation is localized."
+    ],
+    "prevention": [
+      "Synchronize sowing or transplanting in an area to reduce pest buildup.",
+      "Avoid excess nitrogen that attracts pests.",
+      "Keep bunds and field edges clean of host grasses.",
+      "Monitor trap catches weekly and act early."
+    ],
+    "source_doc": "Organic rice insect management notes",
+    "confidence": "high"
+  },
+  {
+    "id": "dis_005",
+    "crop_en": "Paddy",
+    "crop_kn": "ಭತ್ತ",
+    "disease_en": "Paddy BPH (Brown Planthopper)",
+    "disease_kn": "ಭತ್ತ ಕಂದು ಜಿಗಿ ಹುಳ",
+    "symptoms": [
+      "Circular yellowing patches appear in the field and may expand into hopper burn.",
+      "Sticky honeydew is visible on leaves and stems.",
+      "Black sooty mold develops on the sticky surfaces."
+    ],
+    "probable_cause": "Pest",
+    "organic_treatments": [
+      "Avoid excess nitrogen and stop any lush over-fertilization immediately.",
+      "Spray neem oil at 5 ml/L of water with a sticker every 5-7 days during infestation.",
+      "Use cow urine spray at 3% solution as a contact-repellent spray in the evening.",
+      "Conserve natural predators such as spiders and mirid bugs by avoiding disturbance and chemicals.",
+      "Where feasible, use yellow sticky traps along field edges to monitor and reduce adults."
+    ],
+    "prevention": [
+      "Use resistant varieties when available.",
+      "Maintain proper spacing and avoid continuous rice cropping without breaks.",
+      "Monitor the lower canopy regularly for early colonies.",
+      "Do not over-irrigate and keep the crop balanced with organic inputs."
+    ],
+    "source_doc": "Organic rice pest management guidance",
+    "confidence": "high"
+  },
+  {
+    "id": "dis_006",
+    "crop_en": "Cotton",
+    "crop_kn": "ಹತ್ತಿ",
+    "disease_en": "Cotton Bollworm",
+    "disease_kn": "ಹತ್ತಿ ಕಾಯಿ ಕೊರೆಯುವ ಹುಳ",
+    "symptoms": [
+      "Holes are seen in the bolls and lint may be damaged inside.",
+      "Frass or insect droppings are visible near entry points.",
+      "Bolls may open prematurely or become rotten."
+    ],
+    "probable_cause": "Pest",
+    "organic_treatments": [
+      "Install pheromone traps at 8-10 traps per acre and inspect them twice weekly.",
+      "Use neem oil at 3-5 ml/L of water every 7 days on the crop canopy.",
+      "Apply botanical sprays such as neem seed kernel extract or neem leaf extract in rotation weekly.",
+      "Use hand removal of damaged bolls in small plots and destroy infested material away from the field.",
+      "Use light traps at night where appropriate to monitor moth activity."
+    ],
+    "prevention": [
+      "Avoid prolonged flowering overlap with nearby host crops.",
+      "Keep field borders and weeds managed.",
+      "Use timely sowing so the crop escapes peak pest pressure.",
+      "Encourage beneficial insects by maintaining habitat diversity."
+    ],
+    "source_doc": "Organic cotton insect management guidance",
+    "confidence": "high"
+  },
+  {
+    "id": "dis_007",
+    "crop_en": "Groundnut",
+    "crop_kn": "ಶೇಂಗಾ",
+    "disease_en": "Groundnut Tikka Disease",
+    "disease_kn": "ಶೇಂಗಾ ಟಿಕ್ಕಾ ರೋಗ",
+    "symptoms": [
+      "Small circular brown spots appear on leaves.",
+      "Spots may merge and the leaf area becomes yellow and dry.",
+      "Severe infection causes early defoliation and yield loss."
+    ],
+    "probable_cause": "Fungal",
+    "organic_treatments": [
+      "Seed treat with Trichoderma viride at 4 g/kg seed before sowing.",
+      "Spray Pseudomonas fluorescens at 5 g/L water every 10 days once first spots appear.",
+      "Apply neem oil at 3 ml/L of water as a supportive foliar spray every 7 days.",
+      "Use Jeevamrutha around the root zone every 15 days to support crop resilience."
+    ],
+    "prevention": [
+      "Use disease-free seed and crop rotation.",
+      "Avoid dense crop stand and promote airflow.",
+      "Remove crop debris after harvest to reduce carryover inoculum.",
+      "Monitor the crop from early vegetative stage onward."
+    ],
+    "source_doc": "Organic groundnut foliar disease management notes",
+    "confidence": "high"
+  },
+  {
+    "id": "dis_008",
+    "crop_en": "Banana",
+    "crop_kn": "ಬಾಳೆ",
+    "disease_en": "Banana Panama Wilt",
+    "disease_kn": "ಬಾಳೆ ಪನಾಮ ಸೊರಗು ರೋಗ",
+    "symptoms": [
+      "Lower leaves yellow first and then wilt progressively.",
+      "The pseudostem shows internal brown streaks when cut open.",
+      "Plants may collapse and stop producing marketable bunches."
+    ],
+    "probable_cause": "Fungal",
+    "organic_treatments": [
+      "Remove severely affected mats and destroy them away from the plantation.",
+      "Drench the pit or basin with Trichoderma harzianum at 10 g/L water around the root zone, repeat after 15 days.",
+      "Apply Pseudomonas fluorescens at 5 g/L of water as a root-zone drench monthly.",
+      "Use well-decomposed compost and Jeevamrutha in healthy plants to improve root-zone biology.",
+      "Avoid moving contaminated soil or suckers from infected fields."
+    ],
+    "prevention": [
+      "Use disease-free planting material only.",
+      "Do not plant in fields with a known wilt history unless sanitation is strong.",
+      "Maintain drainage and avoid water stagnation.",
+      "Sterilize tools between plants if working in infected plots."
+    ],
+    "source_doc": "Organic banana wilt management guidance",
+    "confidence": "high"
+  },
+  {
+    "id": "dis_009",
+    "crop_en": "Onion",
+    "crop_kn": "ಈರುಳ್ಳಿ",
+    "disease_en": "Onion Purple Blotch",
+    "disease_kn": "ಈರುಳ್ಳಿ ನೇರಳೆ ಚುಕ್ಕೆ ರೋಗ",
+    "symptoms": [
+      "Small water-soaked lesions appear on the leaves.",
+      "Lesions become purple with a yellow halo around them.",
+      "Leaves dry from the tip and bulb development is reduced."
+    ],
+    "probable_cause": "Fungal",
+    "organic_treatments": [
+      "Spray Trichoderma viride at 5 g/L of water every 7 days at early symptom stage.",
+      "Alternate with Pseudomonas fluorescens at 5 g/L of water after 5-7 days.",
+      "Use neem oil at 3 ml/L of water with a spreader once weekly during humid periods.",
+      "Avoid waterlogging and improve field aeration to reduce disease spread."
+    ],
+    "prevention": [
+      "Use healthy seedlings and avoid crowded planting.",
+      "Do not irrigate late in the day when leaf wetness will persist overnight.",
+      "Remove crop residues after harvest.",
+      "Rotate with non-allium crops."
+    ],
+    "source_doc": "Organic onion disease management notes",
+    "confidence": "high"
+  },
+  {
+    "id": "dis_010",
+    "crop_en": "Chilli",
+    "crop_kn": "ಮೆಣಸಿನಕಾಯಿ",
+    "disease_en": "Chilli Die-back",
+    "disease_kn": "ಮೆಣಸಿನಕಾಯಿ ಒಣಗಿಸು ರೋಗ",
+    "symptoms": [
+      "Shoot tips dry first and the dieback moves downward along the branches.",
+      "Fruit anthracnose appears as sunken dark lesions on chilli fruits.",
+      "Affected fruit shrivels and quality drops quickly."
+    ],
+    "probable_cause": "Fungal",
+    "organic_treatments": [
+      "Prune and destroy infected shoots and fruits away from the field.",
+      "Spray Trichoderma harzianum or Trichoderma viride at 5 g/L of water every 7-10 days.",
+      "Use neem oil at 3 ml/L of water on the canopy in alternation with Trichoderma sprays.",
+      "Apply cow urine spray at 3% solution as a supportive foliar spray during early infection.",
+      "Maintain plant vigor with Jeevamrutha soil application every 15 days."
+    ],
+    "prevention": [
+      "Use healthy, disease-free transplants.",
+      "Avoid water stress and root injury.",
+      "Keep field and nursery sanitation strict.",
+      "Ensure good spacing and prompt removal of infected plant parts."
+    ],
+    "source_doc": "Organic chilli fungal disease management guidance",
+    "confidence": "high"
+  }
+]

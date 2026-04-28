@@ -1,0 +1,122 @@
+[
+  {
+    "zone_id": 1,
+    "zone_name": "North-East Transition",
+    "districts": ["Bidar", "Kalaburagi", "Yadgir"],
+    "dominant_soil_type": "medium black Vertisol",
+    "soil_texture": "clayey",
+    "typical_pH_range": {"min": 7.5, "max": 8.5},
+    "key_deficiencies": ["N", "Zn", "S"],
+    "primary_crops": ["tur", "jowar", "chickpea"],
+    "organic_matter_typical": "0.3-0.5%",
+    "notes": "Semi-arid dryland zone with alkaline soils and recurring nitrogen and zinc limitations."
+  },
+  {
+    "zone_id": 2,
+    "zone_name": "North-East Dry",
+    "districts": ["Raichur", "Koppal", "Ballari"],
+    "dominant_soil_type": "deep black Vertisol",
+    "soil_texture": "heavy clay",
+    "typical_pH_range": {"min": 7.8, "max": 8.8},
+    "key_deficiencies": ["Zn", "Fe", "N"],
+    "primary_crops": ["cotton", "sunflower", "jowar"],
+    "organic_matter_typical": "0.2-0.4%",
+    "notes": "Very low organic matter and strong micronutrient stress are common in intensively cultivated black soil tracts."
+  },
+  {
+    "zone_id": 3,
+    "zone_name": "Northern Dry",
+    "districts": ["Vijayapura", "Bagalkot", "Dharwad", "Gadag", "Haveri"],
+    "dominant_soil_type": "medium black",
+    "soil_texture": "clayey loam",
+    "typical_pH_range": {"min": 7.0, "max": 8.0},
+    "key_deficiencies": ["Zn", "B", "S"],
+    "primary_crops": ["cotton", "Bengal gram", "sunflower", "onion"],
+    "organic_matter_typical": "0.3-0.6%",
+    "notes": "Balanced dryland mixed farming zone where zinc and boron management is often critical."
+  },
+  {
+    "zone_id": 4,
+    "zone_name": "Central Dry",
+    "districts": ["Chitradurga", "Davangere", "Chikkamagaluru (plains)"],
+    "dominant_soil_type": "red loam",
+    "soil_texture": "sandy loam",
+    "typical_pH_range": {"min": 6.0, "max": 7.0},
+    "key_deficiencies": ["Zn", "Fe", "B"],
+    "primary_crops": ["ragi", "maize", "groundnut", "sunflower"],
+    "organic_matter_typical": "0.4-0.7%",
+    "notes": "Red soil belt with moderate acidity to near-neutral reaction and frequent micronutrient constraints."
+  },
+  {
+    "zone_id": 5,
+    "zone_name": "Eastern Dry",
+    "districts": ["Tumakuru", "Kolar", "Chikkaballapur", "Ramanagara"],
+    "dominant_soil_type": "red sandy loam",
+    "soil_texture": "sandy loam",
+    "typical_pH_range": {"min": 5.5, "max": 6.5},
+    "key_deficiencies": ["Zn", "Fe", "S"],
+    "primary_crops": ["ragi", "groundnut", "mulberry", "tomato"],
+    "organic_matter_typical": "0.3-0.5%",
+    "notes": "Important benchmark zone with high zinc deficiency prevalence; around 78% zinc deficiency is often cited state-wide."
+  },
+  {
+    "zone_id": 6,
+    "zone_name": "Southern Dry",
+    "districts": ["Mysuru", "Mandya", "Chamarajanagar"],
+    "dominant_soil_type": "red and black mixed",
+    "soil_texture": "loam",
+    "typical_pH_range": {"min": 6.0, "max": 7.5},
+    "key_deficiencies": ["Zn", "B", "Fe"],
+    "primary_crops": ["ragi", "sugarcane", "maize", "banana"],
+    "organic_matter_typical": "0.5-0.8%",
+    "notes": "Mixed soil environment with better organic matter than the northern dry zones but still micronutrient constrained."
+  },
+  {
+    "zone_id": 7,
+    "zone_name": "Hilly",
+    "districts": ["Kodagu", "Hassan", "Chikkamagaluru (hills)"],
+    "dominant_soil_type": "laterite",
+    "soil_texture": "clay loam",
+    "typical_pH_range": {"min": 5.0, "max": 6.0},
+    "key_deficiencies": ["P", "Zn", "Ca"],
+    "primary_crops": ["coffee", "cardamom", "pepper", "paddy"],
+    "organic_matter_typical": "1.5-3.0%",
+    "notes": "High rainfall hill zone with comparatively higher organic matter and strong phosphorus management needs."
+  },
+  {
+    "zone_id": 8,
+    "zone_name": "Coastal",
+    "districts": ["Dakshina Kannada", "Udupi"],
+    "dominant_soil_type": "laterite and alluvial",
+    "soil_texture": "loamy",
+    "typical_pH_range": {"min": 5.0, "max": 6.5},
+    "key_deficiencies": ["P", "K", "Zn"],
+    "primary_crops": ["coconut", "areca nut", "paddy", "banana"],
+    "organic_matter_typical": "1.0-2.5%",
+    "notes": "Humid coastal system with leaching pressure and frequent potassium and phosphorus limitations."
+  },
+  {
+    "zone_id": 9,
+    "zone_name": "North-Western",
+    "districts": ["Uttara Kannada", "Shivamogga"],
+    "dominant_soil_type": "red laterite",
+    "soil_texture": "clay loam",
+    "typical_pH_range": {"min": 5.5, "max": 6.5},
+    "key_deficiencies": ["P", "Zn", "Ca"],
+    "primary_crops": ["paddy", "areca nut", "coconut", "banana"],
+    "organic_matter_typical": "1.0-2.0%",
+    "notes": "Forest-margin and high rainfall zone with good biomass recycling potential and acid lateritic soils."
+  },
+  {
+    "zone_id": 10,
+    "zone_name": "Southern Hills",
+    "districts": ["Bengaluru Rural", "Bengaluru Urban"],
+    "dominant_soil_type": "red loam over gneiss",
+    "soil_texture": "sandy loam",
+    "typical_pH_range": {"min": 6.0, "max": 7.0},
+    "key_deficiencies": ["Zn", "B", "Fe"],
+    "primary_crops": ["ragi", "groundnut", "vegetables", "mulberry"],
+    "organic_matter_typical": "0.4-0.8%",
+    "notes": "Urbanizing southern plateau soils where vegetable and peri-urban horticulture intensify micronutrient demand."
+  }
+]

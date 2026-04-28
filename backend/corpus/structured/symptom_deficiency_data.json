@@ -1,0 +1,273 @@
+[
+  {
+    "symptom_id": "sd_001",
+    "symptom_en": "Interveinal chlorosis on young to middle leaves",
+    "symptom_kn": "ಎಲೆಯ ನರಗಳ ನಡುವೆ ಹಳದಿ ಕಾಣಿಸಿಕೊಳ್ಳುವುದು",
+    "deficiency_probabilities": [
+      {"deficiency": "Zinc", "probability": 0.8},
+      {"deficiency": "Manganese", "probability": 0.4}
+    ],
+    "zone_correlation": {
+      "zones": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+      "note": "High state-wide Zn deficiency prevalence; strongest concern in Zone 5 benchmark areas."
+    },
+    "field_checks": [
+      "Confirm veins remain relatively greener than interveinal area.",
+      "Check new flush leaves for small size and rosetting."
+    ],
+    "confidence": "high"
+  },
+  {
+    "symptom_id": "sd_002",
+    "symptom_en": "Whole older leaves yellow first",
+    "symptom_kn": "ಹಳೆಯ ಎಲೆಗಳು ಮೊದಲು ಸಂಪೂರ್ಣ ಹಳದಿಯಾಗುವುದು",
+    "deficiency_probabilities": [
+      {"deficiency": "Nitrogen", "probability": 0.75},
+      {"deficiency": "Sulphur", "probability": 0.35}
+    ],
+    "zone_correlation": {
+      "zones": [1, 2, 3, 5],
+      "note": "Common in low organic matter dry zones and continuous cereal systems."
+    },
+    "field_checks": [
+      "Observe whether yellowing starts at lower canopy.",
+      "Check stunting and reduced tillering/branching."
+    ],
+    "confidence": "high"
+  },
+  {
+    "symptom_id": "sd_003",
+    "symptom_en": "Youngest leaves become pale yellow or almost white",
+    "symptom_kn": "ಹೊಸ ಎಲೆಗಳು ಬಿಳಿ-ಹಳದಿ ಕಾಣಿಸುವುದು",
+    "deficiency_probabilities": [
+      {"deficiency": "Iron", "probability": 0.7},
+      {"deficiency": "Zinc", "probability": 0.3}
+    ],
+    "zone_correlation": {
+      "zones": [1, 2, 5, 10],
+      "note": "More likely in alkaline/calcareous pockets and high pH irrigation regimes."
+    },
+    "field_checks": [
+      "Check whether younger leaves are affected more than older leaves.",
+      "Assess soil pH trend if available."
+    ],
+    "confidence": "medium_high"
+  },
+  {
+    "symptom_id": "sd_004",
+    "symptom_en": "Dark green leaves with purple underside",
+    "symptom_kn": "ಎಲೆಗಳು ಕಡು ಹಸಿರು ಮತ್ತು ಕೆಳಭಾಗ ನೇರಳೆ ಬಣ್ಣ",
+    "deficiency_probabilities": [
+      {"deficiency": "Phosphorus", "probability": 0.7},
+      {"deficiency": "Potassium", "probability": 0.25}
+    ],
+    "zone_correlation": {
+      "zones": [5, 7, 8, 9],
+      "note": "Frequent in acidic red/lateritic soils where P fixation is high."
+    },
+    "field_checks": [
+      "Look for stunted plants with delayed maturity.",
+      "Confirm purple tint on petiole/leaf underside."
+    ],
+    "confidence": "high"
+  },
+  {
+    "symptom_id": "sd_005",
+    "symptom_en": "Leaf edge scorching or marginal burn",
+    "symptom_kn": "ಎಲೆಯ ಅಂಚು ಕರಗಿದಂತೆ ಒಣಗುವುದು",
+    "deficiency_probabilities": [
+      {"deficiency": "Potassium", "probability": 0.72},
+      {"deficiency": "Calcium", "probability": 0.32}
+    ],
+    "zone_correlation": {
+      "zones": [7, 8, 9],
+      "note": "Seen in high rainfall zones with leaching-prone soils."
+    },
+    "field_checks": [
+      "Check burn progression from margins inward.",
+      "Observe weak stem strength and lodging tendency."
+    ],
+    "confidence": "medium_high"
+  },
+  {
+    "symptom_id": "sd_006",
+    "symptom_en": "Stunted growth with short internodes",
+    "symptom_kn": "ಗಿಡದ ಬೆಳವಣಿಗೆ ಕುಂಠಿತವಾಗಿ ಗುಂಟು ಅಂತರ ಕಡಿಮೆಯಾಗುವುದು",
+    "deficiency_probabilities": [
+      {"deficiency": "Zinc", "probability": 0.68},
+      {"deficiency": "Multiple deficiency", "probability": 0.65}
+    ],
+    "zone_correlation": {
+      "zones": [1, 2, 3, 4, 5, 6, 10],
+      "note": "Likely where OM is low and micronutrient imbalance persists."
+    },
+    "field_checks": [
+      "Assess rosette-like new growth.",
+      "Compare affected plants with healthy patch in same field."
+    ],
+    "confidence": "medium"
+  },
+  {
+    "symptom_id": "sd_007",
+    "symptom_en": "Wilting despite adequate irrigation",
+    "symptom_kn": "ನೀರು ಇದ್ದರೂ ಗಿಡ ಮರುಳುವುದು",
+    "deficiency_probabilities": [
+      {"deficiency": "Soil biology depleted", "probability": 0.7},
+      {"deficiency": "Calcium", "probability": 0.3}
+    ],
+    "zone_correlation": {
+      "zones": [1, 2, 3, 4, 5, 6],
+      "note": "Common where soil compaction and low microbial activity reduce root function."
+    },
+    "field_checks": [
+      "Inspect root health and odor.",
+      "Check for hardpan or crusting in root zone."
+    ],
+    "confidence": "medium"
+  },
+  {
+    "symptom_id": "sd_008",
+    "symptom_en": "Brown spots with yellow halo",
+    "symptom_kn": "ಹಳದಿ ವಲಯದೊಂದಿಗೆ ಕಂದು ಚುಕ್ಕೆಗಳು",
+    "deficiency_probabilities": [
+      {"deficiency": "Fungal disease", "probability": 0.85},
+      {"deficiency": "Potassium", "probability": 0.25}
+    ],
+    "zone_correlation": {
+      "zones": [2, 3, 4, 5, 6, 9],
+      "note": "More frequent under prolonged leaf wetness and dense canopy."
+    },
+    "field_checks": [
+      "Check if lesions expand concentrically.",
+      "Inspect neighboring plants for spread pattern."
+    ],
+    "confidence": "high"
+  },
+  {
+    "symptom_id": "sd_009",
+    "symptom_en": "Mosaic or mottled light-dark green leaf pattern",
+    "symptom_kn": "ಎಲೆಯ ಮೇಲೆ ತೆಳು-ಗಾಢ ಹಸಿರು ಮೋಸೈಕ್ ಮಾದರಿ",
+    "deficiency_probabilities": [
+      {"deficiency": "Viral stress", "probability": 0.8},
+      {"deficiency": "Zinc", "probability": 0.2}
+    ],
+    "zone_correlation": {
+      "zones": [2, 3, 4, 5, 6],
+      "note": "Associated with vector pressure and weak crop immunity in dry belts."
+    },
+    "field_checks": [
+      "Check for curling and reduced leaf size.",
+      "Inspect aphid/whitefly incidence."
+    ],
+    "confidence": "medium_high"
+  },
+  {
+    "symptom_id": "sd_010",
+    "symptom_en": "Poor root growth, brown-black root tips",
+    "symptom_kn": "ಬೇರು ಬೆಳವಣಿಗೆ ಕಡಿಮೆ, ಬೇರು ತುದಿ ಕಂದು-ಕಪ್ಪಾಗುವುದು",
+    "deficiency_probabilities": [
+      {"deficiency": "Calcium", "probability": 0.6},
+      {"deficiency": "Soil biology depleted", "probability": 0.55}
+    ],
+    "zone_correlation": {
+      "zones": [1, 2, 5, 8],
+      "note": "Seen where root-zone stress, salinity, or poor microbial activity exists."
+    },
+    "field_checks": [
+      "Uproot sample plants and inspect fine roots.",
+      "Check drainage and salt crust signs."
+    ],
+    "confidence": "medium"
+  },
+  {
+    "symptom_id": "sd_011",
+    "symptom_en": "Delayed flowering and poor fruit set",
+    "symptom_kn": "ಹೂವು ತಡವಾಗುವುದು ಮತ್ತು ಫಲಧಾರಣೆ ಕಡಿಮೆಯಾಗುವುದು",
+    "deficiency_probabilities": [
+      {"deficiency": "Boron", "probability": 0.7},
+      {"deficiency": "Phosphorus", "probability": 0.35}
+    ],
+    "zone_correlation": {
+      "zones": [3, 4, 6, 10],
+      "note": "Boron deficiency is repeatedly observed in dry red and mixed soils."
+    },
+    "field_checks": [
+      "Check flower drop frequency.",
+      "Observe malformed flowers or brittle petals."
+    ],
+    "confidence": "medium_high"
+  },
+  {
+    "symptom_id": "sd_012",
+    "symptom_en": "Crinkled leaves with brittle texture",
+    "symptom_kn": "ಮಡಚಿದ, ನಜ್ಜುಗುಜ್ಜಾದ ಎಲೆಗಳು",
+    "deficiency_probabilities": [
+      {"deficiency": "Boron", "probability": 0.62},
+      {"deficiency": "Calcium", "probability": 0.4}
+    ],
+    "zone_correlation": {
+      "zones": [3, 6, 10],
+      "note": "More likely in fast-growing vegetable systems with uneven moisture."
+    },
+    "field_checks": [
+      "Look for deformed growing points.",
+      "Check newly emerged leaves for brittleness."
+    ],
+    "confidence": "medium"
+  },
+  {
+    "symptom_id": "sd_013",
+    "symptom_en": "Leaf tip burn on newly emerged leaves",
+    "symptom_kn": "ಹೊಸ ಎಲೆ ತುದಿ ಕರಗಿದಂತೆ ಒಣಗುವುದು",
+    "deficiency_probabilities": [
+      {"deficiency": "Calcium", "probability": 0.68},
+      {"deficiency": "Potassium", "probability": 0.3}
+    ],
+    "zone_correlation": {
+      "zones": [7, 8, 9, 10],
+      "note": "Observed in high rainfall horticulture belts with nutrient imbalance."
+    },
+    "field_checks": [
+      "Inspect youngest leaves and meristem region.",
+      "Check for uneven irrigation patterns."
+    ],
+    "confidence": "medium"
+  },
+  {
+    "symptom_id": "sd_014",
+    "symptom_en": "General chlorosis with thin weak stems",
+    "symptom_kn": "ಸಾಮಾನ್ಯ ಹಳದಿ ಬಣ್ಣ ಮತ್ತು ದುರ್ಬಲ ಕಾಂಡ",
+    "deficiency_probabilities": [
+      {"deficiency": "Sulphur", "probability": 0.6},
+      {"deficiency": "Nitrogen", "probability": 0.5}
+    ],
+    "zone_correlation": {
+      "zones": [1, 3, 5],
+      "note": "Sulphur deficiency is frequent in low-OM rainfed drylands."
+    },
+    "field_checks": [
+      "Compare yellowing pattern in young vs old leaves.",
+      "Assess stem thickness and vigor."
+    ],
+    "confidence": "medium_high"
+  },
+  {
+    "symptom_id": "sd_015",
+    "symptom_en": "Patchy field yellowing in circular clusters",
+    "symptom_kn": "ವೃತ್ತಾಕಾರದ ಭಾಗಗಳಲ್ಲಿ ಹಳದಿ ಮಚ್ಚೆ ತೋರಿಕೆ",
+    "deficiency_probabilities": [
+      {"deficiency": "Pest-induced stress", "probability": 0.7},
+      {"deficiency": "Nitrogen", "probability": 0.4},
+      {"deficiency": "Zinc", "probability": 0.35}
+    ],
+    "zone_correlation": {
+      "zones": [2, 3, 5, 6],
+      "note": "Common in paddy and mixed systems where BPH or localized soil stress occurs."
+    },
+    "field_checks": [
+      "Inspect lower canopy for planthoppers or sap suckers.",
+      "Check whether patches expand rapidly over days."
+    ],
+    "confidence": "medium"
+  }
+]

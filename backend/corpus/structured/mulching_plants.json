@@ -1,0 +1,147 @@
+[
+  {
+    "id": "mp_001",
+    "name_en": "Moringa",
+    "name_kn": "ನುಗ್ಗೆ",
+    "local_name": "Nugge",
+    "scientific_name": "Moringa oleifera",
+    "transliteration": "Nugge",
+    "category": "mulching_plant",
+    "nitrogen_fixed_kg_per_hectare_per_year": 100,
+    "nitrogen_mechanism": "indirect",
+    "lop_height_cm": 150,
+    "lop_frequency_weeks": 6,
+    "decomposition_weeks": 3,
+    "suitable_zones": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+    "planting_season": "June-July",
+    "planting_density": "1 plant per 3 m on boundary",
+    "additional_benefits": [
+      "Edible leaves with about 27% protein",
+      "Cytokinin-rich foliage supports plant growth in companion systems",
+      "Seeds aid in water purification"
+    ],
+    "warnings": [
+      "Lopping should be regular to prevent excessive shading.",
+      "Use boundary planting where root spread will not compete severely with the main crop.",
+      "Leaves and young pods are edible, but old fibrous biomass is less suitable for food use."
+    ],
+    "primary_source": "Natural farming and agroforestry recommendations for Moringa oleifera as a boundary mulch tree",
+    "confidence": "high"
+  },
+  {
+    "id": "mp_002",
+    "name_en": "Agase",
+    "name_kn": "ಅಗಸೆ",
+    "local_name": "Agase",
+    "scientific_name": "Sesbania grandiflora",
+    "transliteration": "Agase",
+    "category": "mulching_plant",
+    "nitrogen_fixed_kg_per_hectare_per_year": 150,
+    "nitrogen_mechanism": "symbiotic",
+    "lop_height_cm": 200,
+    "lop_frequency_weeks": 6,
+    "decomposition_weeks": 3,
+    "suitable_zones": [1, 2, 3, 4, 5, 6, 7, 8, 9],
+    "planting_season": "March-April and September-October",
+    "planting_density": "Boundary or block planting; fast-growing tree reaching about 3 m in 90 days",
+    "additional_benefits": [
+      "Rapid biomass production for green mulch",
+      "Nitrogen becomes available about 2-3 weeks after incorporation",
+      "Useful for quick canopy and fodder biomass in mixed systems"
+    ],
+    "warnings": [
+      "Do not over-lop very young plants before establishment.",
+      "Allow sufficient recovery between harvests to sustain biomass production.",
+      "Best performance requires good drainage and active growth conditions."
+    ],
+    "primary_source": "Sesbania grandiflora natural farming and green manure guidance",
+    "confidence": "high"
+  },
+  {
+    "id": "mp_003",
+    "name_en": "Gliricidia",
+    "name_kn": "ಗ್ಲಿರಿಸಿಡಿಯಾ",
+    "local_name": "Gliricidia",
+    "scientific_name": "Gliricidia sepium",
+    "transliteration": "Gliricidia",
+    "category": "mulching_plant",
+    "nitrogen_fixed_kg_per_hectare_per_year": 110,
+    "nitrogen_mechanism": "symbiotic",
+    "lop_height_cm": 100,
+    "lop_frequency_weeks": 6,
+    "decomposition_weeks": 5,
+    "suitable_zones": [1, 2, 3, 4, 5, 6, 7, 8, 9],
+    "planting_season": "Anytime as cuttings; best during onset of rains",
+    "planting_density": "Directly plant 30 cm cuttings into soil; maintain as boundary hedge",
+    "additional_benefits": [
+      "Fresh leaves are a strong termite repellent in mulch systems",
+      "Excellent hedge biomass for repeated lopping",
+      "Useful as live fence and green manure source"
+    ],
+    "warnings": [
+      "Fresh leaves are toxic to dogs, cats, and livestock if eaten in quantity.",
+      "Do not feed fresh material directly to animals.",
+      "Use well-managed lopping to avoid excessive competition with nearby crops."
+    ],
+    "primary_source": "Gliricidia sepium agroforestry and natural farming lopping protocols",
+    "confidence": "high"
+  },
+  {
+    "id": "mp_004",
+    "name_en": "Sunhemp",
+    "name_kn": "ಸನ್‌ಹೆಂಪ್",
+    "local_name": "Sunhemp",
+    "scientific_name": "Crotalaria juncea",
+    "transliteration": "Sunhemp",
+    "category": "mulching_plant",
+    "nitrogen_fixed_kg_per_hectare_per_year": 138.4,
+    "nitrogen_mechanism": "symbiotic",
+    "lop_height_cm": 0,
+    "lop_frequency_weeks": 0,
+    "decomposition_weeks": 2,
+    "suitable_zones": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+    "planting_season": "Pre-monsoon and early monsoon sowing",
+    "planting_density": "Sow 25 kg seed per acre",
+    "additional_benefits": [
+      "Suppresses weeds effectively",
+      "Helps reduce nematode pressure",
+      "Deep taproot helps break hardpan and improve soil structure"
+    ],
+    "warnings": [
+      "Incorporate at flowering stage around day 45-50 for best green manure value.",
+      "Do not allow seed set if the crop is meant for soil incorporation.",
+      "Requires timely incorporation so biomass does not become too fibrous."
+    ],
+    "primary_source": "Green manure recommendations for Crotalaria juncea in tropical farming systems",
+    "confidence": "medium_high"
+  },
+  {
+    "id": "mp_005",
+    "name_en": "Dhaincha",
+    "name_kn": "ಧೈಂಚ",
+    "local_name": "Dhaincha",
+    "scientific_name": "Sesbania bispinosa",
+    "transliteration": "Dhaincha",
+    "category": "mulching_plant",
+    "nitrogen_fixed_kg_per_hectare_per_year": 173,
+    "nitrogen_mechanism": "symbiotic",
+    "lop_height_cm": 0,
+    "lop_frequency_weeks": 0,
+    "decomposition_weeks": 3,
+    "suitable_zones": [1, 2, 3, 4, 5, 6, 7, 8, 9],
+    "planting_season": "Pre-paddy season before transplanting",
+    "planting_density": "Sow 20 kg seed per acre",
+    "additional_benefits": [
+      "Highly tolerant of waterlogging",
+      "Ideal green manure before paddy transplanting",
+      "Fast biomass production in short cycle"
+    ],
+    "warnings": [
+      "Incorporate before paddy transplanting so biomass decomposes in time.",
+      "Best suited for wet fields and lowland rice systems.",
+      "Do not let the crop become too woody before incorporation."
+    ],
+    "primary_source": "Sesbania bispinosa green manure guidance for lowland rice systems",
+    "confidence": "high"
+  }
+]

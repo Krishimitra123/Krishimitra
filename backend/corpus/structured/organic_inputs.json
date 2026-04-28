@@ -1,0 +1,435 @@
+[
+  {
+    "id": "oi_001",
+    "name_en": "Jeevamrutha",
+    "name_kn": "ಜೀವಾಮೃತ",
+    "transliteration": "Jeevamrutha",
+    "category": "biofertiliser",
+    "phase": "standard",
+    "search_keywords": [
+      "jeevamrutha",
+      "jeevamruta",
+      "jivamrutha",
+      "jivamrita",
+      "jeevamrutham",
+      "jeevamrit",
+      "jivamrut",
+      "जीवामृत",
+      "ಜೀವಾಮೃತ"
+    ],
+    "ingredients": [
+      {
+        "item": "Desi cow dung",
+        "item_kn": "ದೇಶಿ ಹಸುವಿನ ಗೋಮಯ",
+        "quantity": 10,
+        "unit": "kg",
+        "notes": "Use fresh dung from indigenous cow breeds only"
+      },
+      {
+        "item": "Desi cow urine",
+        "item_kn": "ದೇಶಿ ಹಸುವಿನ ಗೋಮೂತ್ರ",
+        "quantity": 10,
+        "unit": "L",
+        "notes": "Freshly collected preferred"
+      },
+      {
+        "item": "Jaggery",
+        "item_kn": "ಬೆಲ್ಲ",
+        "quantity": 2,
+        "unit": "kg",
+        "notes": "Energy source for microbial multiplication"
+      },
+      {
+        "item": "Gram flour",
+        "item_kn": "ಬೇಸನ್ ಹಿಟ್ಟು",
+        "quantity": 2,
+        "unit": "kg",
+        "notes": "Protein source"
+      },
+      {
+        "item": "Bund soil",
+        "item_kn": "ಗದ್ದೆ ಬಂಡೆಯ ಮಣ್ಣು",
+        "quantity": 1,
+        "unit": "handful",
+        "notes": "Collect from undisturbed bund area"
+      },
+      {
+        "item": "Water",
+        "item_kn": "ನೀರು",
+        "quantity": 200,
+        "unit": "L",
+        "notes": "Non-chlorinated water preferred"
+      }
+    ],
+    "preparation_steps_en": [
+      "1. Fill a clean open plastic drum with 200 L water.",
+      "2. Add 10 kg fresh desi cow dung and mix thoroughly.",
+      "3. Add 10 L desi cow urine and stir.",
+      "4. Add 2 kg jaggery and 2 kg gram flour; dissolve fully.",
+      "5. Add one handful of bund soil and mix well.",
+      "6. Keep container open (covered with cloth) and ferment for 48 hours in shade.",
+      "7. Stir clockwise and anticlockwise at least twice daily.",
+      "8. Use immediately after fermentation for best microbial activity."
+    ],
+    "preparation_steps_kn": [
+      "1. ಸ್ವಚ್ಛವಾದ ತೆರೆಯಿರುವ ಪ್ಲಾಸ್ಟಿಕ್ ಡ್ರಮ್‌ನಲ್ಲಿ 200 ಲೀಟರ್ ನೀರನ್ನು ತುಂಬಿ.",
+      "2. 10 ಕೆಜಿ ತಾಜಾ ದೇಶಿ ಹಸುವಿನ ಗೋಮಯ ಸೇರಿಸಿ ಚೆನ್ನಾಗಿ ಕಲಸಿ.",
+      "3. 10 ಲೀಟರ್ ದೇಶಿ ಹಸುವಿನ ಗೋಮೂತ್ರ ಸೇರಿಸಿ ಕಲಸಿ.",
+      "4. 2 ಕೆಜಿ ಬೆಲ್ಲ ಮತ್ತು 2 ಕೆಜಿ ಬೇಸನ್ ಹಿಟ್ಟು ಸೇರಿಸಿ ಸಂಪೂರ್ಣ ಕರಗುವಂತೆ ಕಲಸಿ.",
+      "5. ಗದ್ದೆ ಬಂಡೆಯ ಮಣ್ಣನ್ನು ಒಂದು ಮುಷ್ಟಿ ಸೇರಿಸಿ.",
+      "6. ಡ್ರಮ್ ಅನ್ನು ಬಟ್ಟೆಯಿಂದ ಮುಚ್ಚಿ ನೆರಳಿನಲ್ಲಿ 48 ಗಂಟೆಗಳು ಪಳಿಯಲು ಬಿಡಿ.",
+      "7. ದಿನಕ್ಕೆ ಕನಿಷ್ಠ ಎರಡು ಬಾರಿ ಗಡಿಯಾರದ ದಿಕ್ಕಿನಲ್ಲಿ ಮತ್ತು ವಿರುದ್ಧ ದಿಕ್ಕಿನಲ್ಲಿ ಕಲಸಿ.",
+      "8. ಪಳಿಯಾದ ಕೂಡಲೇ ಬಳಸಿ; ಜೀವಾಣು ಕ್ರಿಯಾಶೀಲತೆ ಹೆಚ್ಚು ಇರುತ್ತದೆ."
+    ],
+    "fermentation_hours": 48,
+    "application_rate_per_acre": 200,
+    "application_unit": "L prepared solution",
+    "application_frequency": "Every 15 days",
+    "application_timing": "From early vegetative stage; apply to moist soil in morning/evening",
+    "cow_requirement": "Mandatory desi cow inputs only (Gir, Sahiwal, Ongole, Hallikar, Amrit Mahal); avoid crossbred/Jersey/HF",
+    "critical_warnings": [
+      "Do not alter base ratio (10 kg dung:10 L urine:2 kg jaggery:2 kg gram flour in 200 L water).",
+      "Use only desi cow dung and urine; microbial quality drops with non-indigenous sources.",
+      "Do not ferment in sealed/anaerobic containers.",
+      "Avoid chlorinated water and direct sunlight during fermentation.",
+      "Expected microbial density can reach about 300 million bacteria per ml only with correct process."
+    ],
+    "common_mistakes": [
+      "Using crossbred cow inputs.",
+      "Keeping the drum tightly closed.",
+      "Skipping twice-daily stirring.",
+      "Fermenting longer than needed and using foul-smelling batch.",
+      "Applying on completely dry soil under hot midday sun."
+    ],
+    "primary_source": "Subhash Palekar Natural Farming (SPNF) field protocol",
+    "secondary_sources": [
+      "Karnataka state natural farming extension notes",
+      "ICAR and SAU extension literature on microbial liquid manures"
+    ],
+    "confidence": "high"
+  },
+  {
+    "id": "oi_002",
+    "name_en": "Gau Krupa Amrutha",
+    "name_kn": "ಗೌ ಕೃಪಾ ಅಮೃತ",
+    "transliteration": "Gau Krupa Amrutha",
+    "category": "biofertiliser",
+    "phase": "simplified_single_cow",
+    "search_keywords": [
+      "gau krupa amrutha",
+      "gaukrupa amrutha",
+      "gau krupa amrut",
+      "gaokrupa",
+      "go krupa amrutha",
+      "gou krupa amrutha",
+      "ಗೌ ಕೃಪಾ ಅಮೃತ"
+    ],
+    "ingredients": [
+      {
+        "item": "Cow dung",
+        "item_kn": "ಹಸುವಿನ ಗೋಮಯ",
+        "quantity": 5,
+        "unit": "kg",
+        "notes": "Fresh dung preferred"
+      },
+      {
+        "item": "Cow urine",
+        "item_kn": "ಹಸುವಿನ ಗೋಮೂತ್ರ",
+        "quantity": 5,
+        "unit": "L",
+        "notes": "Freshly collected"
+      },
+      {
+        "item": "Jaggery",
+        "item_kn": "ಬೆಲ್ಲ",
+        "quantity": 500,
+        "unit": "g",
+        "notes": "Microbial energy source"
+      },
+      {
+        "item": "Gram flour",
+        "item_kn": "ಬೇಸನ್ ಹಿಟ್ಟು",
+        "quantity": 500,
+        "unit": "g",
+        "notes": "Nitrogenous substrate"
+      },
+      {
+        "item": "Water",
+        "item_kn": "ನೀರು",
+        "quantity": 5,
+        "unit": "L",
+        "notes": "For concentrate preparation"
+      }
+    ],
+    "preparation_steps_en": [
+      "1. In a clean container, add 5 L water.",
+      "2. Mix 5 kg cow dung thoroughly into the water.",
+      "3. Add 5 L cow urine and stir well.",
+      "4. Add 500 g jaggery and 500 g gram flour and dissolve completely.",
+      "5. Keep the container open (cloth-covered) in shade for 48 hours.",
+      "6. Stir twice daily during fermentation.",
+      "7. For field use, dilute 5 L concentrate into 200 L water per acre and apply immediately."
+    ],
+    "preparation_steps_kn": [
+      "1. ಸ್ವಚ್ಛ ಪಾತ್ರೆಯಲ್ಲಿ 5 ಲೀಟರ್ ನೀರು ಹಾಕಿ.",
+      "2. ಅದರಲ್ಲಿ 5 ಕೆಜಿ ಗೋಮಯ ಸೇರಿಸಿ ಚೆನ್ನಾಗಿ ಕಲಸಿ.",
+      "3. 5 ಲೀಟರ್ ಗೋಮೂತ್ರ ಸೇರಿಸಿ ಕಲಸಿ.",
+      "4. 500 ಗ್ರಾಂ ಬೆಲ್ಲ ಮತ್ತು 500 ಗ್ರಾಂ ಬೇಸನ್ ಹಿಟ್ಟು ಸೇರಿಸಿ ಸಂಪೂರ್ಣ ಕರಗುವಂತೆ ಕಲಸಿ.",
+      "5. ಪಾತ್ರೆಯನ್ನು ಬಟ್ಟೆಯಿಂದ ಮುಚ್ಚಿ ನೆರಳಿನಲ್ಲಿ 48 ಗಂಟೆಗಳು ಪಳಿಯಲು ಬಿಡಿ.",
+      "6. ಪಳಿಯುವ ಅವಧಿಯಲ್ಲಿ ದಿನಕ್ಕೆ ಎರಡು ಬಾರಿ ಕಲಸಿ.",
+      "7. ಬಳಕೆಗೆ 5 ಲೀಟರ್ ದ್ರಾವಣವನ್ನು 200 ಲೀಟರ್ ನೀರಿಗೆ ಬೆರೆಸಿ ಏಕರೆಗೆ ಹಾಕಿ."
+    ],
+    "fermentation_hours": 48,
+    "application_rate_per_acre": 5,
+    "application_unit": "L concentrate diluted in 200 L water",
+    "application_frequency": "Every 15 days",
+    "application_timing": "Apply as soil drench during vegetative and reproductive growth",
+    "cow_requirement": "Best results with desi cow inputs; designed for smallholders with limited single-cow resources",
+    "critical_warnings": [
+      "Do not over-concentrate at application; always dilute 5 L concentrate in 200 L water per acre.",
+      "Do not ferment in airtight container.",
+      "Do not use spoiled or putrid batch.",
+      "Maintain hygiene of container to avoid contamination."
+    ],
+    "common_mistakes": [
+      "Applying concentrate directly without dilution.",
+      "Using chlorinated water.",
+      "Skipping fermentation stirring.",
+      "Leaving batch in direct sun."
+    ],
+    "primary_source": "Farmer-adapted ZBNF single-cow formulation guidance",
+    "secondary_sources": [
+      "Community natural farming practitioner manuals",
+      "Regional agriculture department field advisories"
+    ],
+    "confidence": "high"
+  },
+  {
+    "id": "oi_003",
+    "name_en": "Kunapa Jala - Phase 1 (Plant-based)",
+    "name_kn": "ಕುಣಪ ಜಲ - ಹಂತ 1 (ಸಸ್ಯ ಆಧಾರಿತ)",
+    "transliteration": "Kunapa Jala Phase 1",
+    "category": "bio_stimulant",
+    "phase": "phase_1",
+    "search_keywords": [
+      "kunapa jala",
+      "kunapajala",
+      "kunapa jal",
+      "kunapam",
+      "plant kunapa",
+      "gliricidia extract",
+      "sesbania extract",
+      "ಕುಣಪ ಜಲ"
+    ],
+    "ingredients": [
+      {
+        "item": "Gliricidia or Sesbania leaves (chopped)",
+        "item_kn": "ಗ್ಲಿರಿಸಿಡಿಯಾ ಅಥವಾ ಸೆಸ್ಬೇನಿಯಾ ಎಲೆಗಳು (ಚೂರು ಮಾಡಿದ)",
+        "quantity": 10,
+        "unit": "kg",
+        "notes": "Use tender green biomass"
+      },
+      {
+        "item": "Water",
+        "item_kn": "ನೀರು",
+        "quantity": 10,
+        "unit": "L",
+        "notes": "For steeping"
+      },
+      {
+        "item": "Jaggery",
+        "item_kn": "ಬೆಲ್ಲ",
+        "quantity": 200,
+        "unit": "g",
+        "notes": "Supports fermentation"
+      }
+    ],
+    "preparation_steps_en": [
+      "1. Chop 10 kg fresh Gliricidia/Sesbania leaves into small pieces.",
+      "2. Put biomass in a non-metal container and add 10 L water.",
+      "3. Add 200 g jaggery and mix thoroughly.",
+      "4. Keep in shade and steep for 5 days (120 hours), stirring once daily.",
+      "5. Filter through cloth to obtain concentrate.",
+      "6. Dilute concentrate at 1:10 with water before field application."
+    ],
+    "preparation_steps_kn": [
+      "1. 10 ಕೆಜಿ ತಾಜಾ ಗ್ಲಿರಿಸಿಡಿಯಾ/ಸೆಸ್ಬೇನಿಯಾ ಎಲೆಗಳನ್ನು ಚಿಕ್ಕದಾಗಿ ಚೂರು ಮಾಡಿ.",
+      "2. ಲೋಹವಲ್ಲದ ಪಾತ್ರೆಯಲ್ಲಿ ಎಲೆಗಳನ್ನು ಹಾಕಿ 10 ಲೀಟರ್ ನೀರು ಸೇರಿಸಿ.",
+      "3. 200 ಗ್ರಾಂ ಬೆಲ್ಲ ಸೇರಿಸಿ ಚೆನ್ನಾಗಿ ಕಲಸಿ.",
+      "4. ನೆರಳಿನಲ್ಲಿ 5 ದಿನ (120 ಗಂಟೆ) ನೆನೆಸಿಟ್ಟು, ದಿನಕ್ಕೆ ಒಂದು ಬಾರಿ ಕಲಸಿ.",
+      "5. ನಂತರ ಬಟ್ಟೆಯಿಂದ ಶೋಧಿಸಿ ಸಾಂದ್ರ ದ್ರಾವಣವನ್ನು ಪಡೆಯಿರಿ.",
+      "6. ಬಳಕೆಗೆ ಮೊದಲು 1:10 ಅನುಪಾತದಲ್ಲಿ ನೀರಿನಲ್ಲಿ ಬೆರೆಸಿ."
+    ],
+    "fermentation_hours": 120,
+    "application_rate_per_acre": "100-150",
+    "application_unit": "L diluted solution",
+    "application_frequency": "Every 20 days",
+    "application_timing": "Foliar spray or soil drench during active crop growth",
+    "cow_requirement": null,
+    "critical_warnings": [
+      "Maintain exact leaf:water:jaggery ratio for predictable extraction.",
+      "Always dilute 1:10 before application to avoid leaf scorch.",
+      "Do not use metal containers for steeping.",
+      "Filter properly to prevent nozzle clogging in sprays."
+    ],
+    "common_mistakes": [
+      "Using old dry leaves with low nutrient content.",
+      "Applying undiluted extract.",
+      "Steeping for too short duration.",
+      "Not filtering before foliar spray."
+    ],
+    "primary_source": "Traditional Kunapa adaptation for plant-based natural farming",
+    "secondary_sources": [
+      "Agroecology field trials using Gliricidia/Sesbania extracts",
+      "Natural farming practitioner documentation"
+    ],
+    "confidence": "medium_high"
+  },
+  {
+    "id": "oi_004",
+    "name_en": "Vermicompost (Eisenia foetida)",
+    "name_kn": "ವರ್ಮಿಕಾಂಪೋಸ್ಟ್ (ಐಸೀನಿಯಾ ಫೆಟಿಡಾ)",
+    "transliteration": "Vermicompost",
+    "category": "compost",
+    "phase": "standard",
+    "search_keywords": [
+      "vermicompost",
+      "vermi compost",
+      "worm compost",
+      "eisenia foetida compost",
+      "eisenia fetida",
+      "ಕೀಟ ಗೊಬ್ಬರ",
+      "ವರ್ಮಿಕಾಂಪೋಸ್ಟ್"
+    ],
+    "ingredients": [
+      {
+        "item": "Partially decomposed organic feedstock",
+        "item_kn": "ಅರ್ಧ ಕುಟ್ಟಿದ ಸಾವಯವ ಅವಶೇಷ",
+        "quantity": null,
+        "unit": "as required",
+        "notes": "Use crop residues/FYM pre-decomposed to avoid heat injury"
+      },
+      {
+        "item": "Eisenia foetida worms",
+        "item_kn": "ಐಸೀನಿಯಾ ಫೆಟಿಡಾ ಹುಳುಗಳು",
+        "quantity": 1,
+        "unit": "kg/sq_m",
+        "notes": "Use only Eisenia foetida for standard high-efficiency composting"
+      },
+      {
+        "item": "Water",
+        "item_kn": "ನೀರು",
+        "quantity": 60,
+        "unit": "percent moisture",
+        "notes": "Maintain bedding moisture around 60%"
+      }
+    ],
+    "preparation_steps_en": [
+      "1. Prepare shaded vermi beds with drainage and aeration.",
+      "2. Fill with partially decomposed feedstock; avoid fresh heating biomass.",
+      "3. Inoculate at 1 kg Eisenia foetida worms per square meter.",
+      "4. Maintain moisture near 60% and protect from ants, predators, and direct sun.",
+      "5. Turn very gently only when required; avoid disturbing worm habitat.",
+      "6. Compost is usually ready in 45-60 days as dark granular castings.",
+      "7. Harvest, shade-dry lightly, and sieve before application."
+    ],
+    "preparation_steps_kn": [
+      "1. ನೆರಳಿರುವ, ನೀರು ಹೊರಹೋಗುವ ವ್ಯವಸ್ಥೆಯಿರುವ ವರ್ಮಿ ಬೆಡ್ ಸಿದ್ಧಪಡಿಸಿ.",
+      "2. ಅರ್ಧ ಕುಟ್ಟಿದ ಸಾವಯವ ಪದಾರ್ಥವನ್ನು ತುಂಬಿ; ಹೊಸದು ಮತ್ತು ಬಿಸಿ ಹುಟ್ಟುವ ಪದಾರ್ಥ ಬೇಡ.",
+      "3. ಪ್ರತಿ ಚದರ ಮೀಟರ್‌ಗೆ 1 ಕೆಜಿ ಐಸೀನಿಯಾ ಫೆಟಿಡಾ ಹುಳುಗಳನ್ನು ಬಿಡಿ.",
+      "4. ತೇವಾಂಶವನ್ನು ಸುಮಾರು 60% ಇಟ್ಟುಕೊಳ್ಳಿ ಮತ್ತು ನೇರ ಸೂರ್ಯದಿಂದ ರಕ್ಷಿಸಿ.",
+      "5. ಅಗತ್ಯವಿದ್ದಾಗ ಮಾತ್ರ ಸೌಮ್ಯವಾಗಿ ಕಲಸಿ; ಹುಳುಗಳ ವಾಸಸ್ಥಳಕ್ಕೆ ಹಾನಿ ಮಾಡಬೇಡಿ.",
+      "6. 45-60 ದಿನಗಳಲ್ಲಿ ಗಾಢ ಬಣ್ಣದ ಕಣಗಳಂತಿರುವ ಗೊಬ್ಬರ ಸಿದ್ಧವಾಗುತ್ತದೆ.",
+      "7. ಶೋಧಿಸಿ, ತುಸು ನೆರಳಿನಲ್ಲಿ ಒಣಗಿಸಿ ನಂತರ ಹೊಲಕ್ಕೆ ಬಳಸಿ."
+    ],
+    "fermentation_hours": null,
+    "application_rate_per_acre": "2 at sowing + 1 at 45 DAS",
+    "application_unit": "tonnes",
+    "application_frequency": "Basal once at sowing and one top-dress at about 45 days",
+    "application_timing": "Apply at sowing/transplanting and top-dress around 45 days after sowing",
+    "cow_requirement": null,
+    "critical_warnings": [
+      "Use Eisenia foetida species only for this protocol.",
+      "Maintain moisture near 60%; too wet causes anaerobic loss, too dry kills worms.",
+      "Do not use fresh hot manure/feedstock directly.",
+      "Protect from extreme heat and heavy rain.",
+      "Typical nutrient range is about 2-3% N, 1.5-2% P, and about 1.5% K; quality drops if process is poor."
+    ],
+    "common_mistakes": [
+      "Using wrong worm species.",
+      "Letting bed dry below optimal moisture.",
+      "Waterlogging the bed.",
+      "Adding fresh undecomposed dung that heats up.",
+      "Harvesting too early before full casting formation."
+    ],
+    "primary_source": "Standard vermicomposting technical guidelines for Eisenia foetida",
+    "secondary_sources": [
+      "ICAR vermicompost production manuals",
+      "State agriculture university organic nutrient management recommendations"
+    ],
+    "confidence": "high"
+  },
+  {
+    "id": "oi_005",
+    "name_en": "Gliricidia Mulch Protocol",
+    "name_kn": "ಗ್ಲಿರಿಸಿಡಿಯಾ ಮಲ್ಚ್ ವಿಧಾನ",
+    "transliteration": "Gliricidia Mulch Protocol",
+    "category": "mulch_input",
+    "phase": "standard",
+    "search_keywords": [
+      "gliricidia mulch",
+      "gliricidia mulching",
+      "glyricidia mulch",
+      "gliricidia sepium mulch",
+      "green leaf mulch",
+      "ಗ್ಲಿರಿಸಿಡಿಯಾ ಮಲ್ಚ್"
+    ],
+    "ingredients": [
+      {
+        "item": "Fresh Gliricidia loppings",
+        "item_kn": "ತಾಜಾ ಗ್ಲಿರಿಸಿಡಿಯಾ ಕತ್ತರಿಸಿದ ಕೊಂಬೆ-ಎಲೆಗಳು",
+        "quantity": null,
+        "unit": "as required",
+        "notes": "Lop hedges at about 1 m height every 6 weeks"
+      }
+    ],
+    "preparation_steps_en": [
+      "1. Maintain Gliricidia boundary/hedge plants and lop at about 1 meter height every 6 weeks.",
+      "2. Spread fresh lopped biomass uniformly around crop rows/basins.",
+      "3. Keep mulch thickness at 4-6 inches for moisture conservation and weed suppression.",
+      "4. Replenish mulch after decomposition or at the next lopping cycle.",
+      "5. Ensure mulch does not smother crop stems directly at collar region."
+    ],
+    "preparation_steps_kn": [
+      "1. ಗ್ಲಿರಿಸಿಡಿಯಾ ಗಿಡಗಳನ್ನು ಗಡಿ ಬೇಲಿಯಾಗಿ ಇಟ್ಟು, ಪ್ರತಿ 6 ವಾರಕ್ಕೊಮ್ಮೆ ಸುಮಾರು 1 ಮೀಟರ್ ಎತ್ತರದಲ್ಲಿ ಕತ್ತರಿಸಿ.",
+      "2. ಕತ್ತರಿಸಿದ ತಾಜಾ ಎಲೆ-ಕೊಂಬೆಗಳನ್ನು ಸಾಲುಗಳ ನಡುವೆ ಅಥವಾ ಗಿಡದ ಸುತ್ತ ಸಮವಾಗಿ ಹಾಸಿ.",
+      "3. ಮಲ್ಚ್ ದಪ್ಪವನ್ನು 4-6 ಇಂಚುಗಳಷ್ಟು ಇರಿಸಿ.",
+      "4. ಕುಸಿದು ಹೋದಂತೆ ಅಥವಾ ಮುಂದಿನ ಕತ್ತರಿಸುವ ಚಕ್ರದಲ್ಲಿ ಮಲ್ಚ್ ಅನ್ನು ಮರುಹಾಸಿ.",
+      "5. ಗಿಡದ ಬುಡಕ್ಕೆ ನೇರವಾಗಿ ಅಂಟದಂತೆ ಸ್ವಲ್ಪ ಅಂತರ ಬಿಡಿ."
+    ],
+    "fermentation_hours": null,
+    "application_rate_per_acre": "Maintain 4-6 inch mulch layer across active root zone",
+    "application_unit": "thickness",
+    "application_frequency": "Replenish every 6 weeks",
+    "application_timing": "Throughout crop cycle; especially before dry spells",
+    "cow_requirement": null,
+    "critical_warnings": [
+      "Fresh Gliricidia biomass is toxic to dogs and cats if ingested.",
+      "Do not pile mulch against crop stems; can cause collar rot.",
+      "Follow 6-week lopping interval to sustain biomass supply.",
+      "Well-managed systems can contribute roughly 100-120 kg N per hectare per year; poor lopping management reduces benefit."
+    ],
+    "common_mistakes": [
+      "Applying very thin mulch layer (<4 inches).",
+      "Delaying replenishment beyond decomposition cycle.",
+      "Leaving large woody sticks without chopping.",
+      "Allowing livestock/pets access to freshly lopped material."
+    ],
+    "primary_source": "Agroforestry and natural farming Gliricidia green leaf manuring protocols",
+    "secondary_sources": [
+      "Tropical alley-cropping biomass transfer studies",
+      "Natural farming field practice notes from southern India"
+    ],
+    "confidence": "high"
+  }
+]
