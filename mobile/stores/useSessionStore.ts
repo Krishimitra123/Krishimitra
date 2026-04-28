@@ -122,6 +122,24 @@ export const useSessionStore = create<SessionStore>()(
     {
       name: 'krishimitra-sessions',
       storage: createJSONStorage(() => AsyncStorage),
+      // Fix SQLITE_FULL: Exclude large audio base64 from persistent storage
+      partialize: (state) => ({
+        ...state,
+        currentSession: state.currentSession ? {
+          ...state.currentSession,
+          messages: state.currentSession.messages.map(m => {
+            const { audio_base64, ...rest } = m;
+            return rest;
+          })
+        } : null,
+        pastSessions: state.pastSessions.map(s => ({
+          ...s,
+          messages: s.messages.map(m => {
+            const { audio_base64, ...rest } = m;
+            return rest;
+          })
+        })),
+      }),
     }
   )
 );
