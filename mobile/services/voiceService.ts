@@ -2,6 +2,7 @@
  * Voice Service — Recording and TTS playback.
  * Uses Audio.RecordingOptionsPresets.HIGH_QUALITY (works in Expo Go).
  * TTS: stops any currently playing audio before starting new playback.
+ * NEW: stopPlayback() can be called to interrupt TTS at any time.
  */
 
 import { Audio } from 'expo-av';
@@ -14,6 +15,7 @@ let _isStopping = false;
 
 // ── Playback state — only ONE sound plays at a time ───────────────
 let _activeSound: Audio.Sound | null = null;
+let _playbackResolve: (() => void) | null = null;
 
 export async function startRecording(): Promise<void> {
   if (_isStarting) {
@@ -24,13 +26,7 @@ export async function startRecording(): Promise<void> {
 
   try {
     // Stop any playing TTS first so recording audio session can take over
-    if (_activeSound) {
-      try {
-        await _activeSound.stopAsync();
-        await _activeSound.unloadAsync();
-      } catch {}
-      _activeSound = null;
-    }
+    await stopPlayback();
 
     if (_recording) {
       try { await _recording.stopAndUnloadAsync(); } catch {}
@@ -105,8 +101,35 @@ export async function stopRecordingAndGetBase64(): Promise<{ base64: string; mim
 }
 
 /**
+ * Stop any currently playing TTS audio immediately.
+ * Can be called at any time — safe to call even when nothing is playing.
+ */
+export async function stopPlayback(): Promise<void> {
+  if (_activeSound) {
+    try {
+      await _activeSound.stopAsync();
+      await _activeSound.unloadAsync();
+    } catch {}
+    _activeSound = null;
+  }
+  // Resolve any pending playback promise
+  if (_playbackResolve) {
+    _playbackResolve();
+    _playbackResolve = null;
+  }
+}
+
+/**
+ * Check if audio is currently playing.
+ */
+export function isPlaying(): boolean {
+  return _activeSound !== null;
+}
+
+/**
  * Play TTS audio. Stops any currently playing audio first.
  * Sarvam bulbul:v3 returns 22050Hz WAV — crisp and clear.
+ * Can be interrupted at any time by calling stopPlayback().
  */
 export async function playBase64Audio(base64Audio: string): Promise<void> {
   if (!base64Audio || base64Audio.length < 100) {
@@ -115,13 +138,7 @@ export async function playBase64Audio(base64Audio: string): Promise<void> {
   }
 
   // Stop any currently playing audio
-  if (_activeSound) {
-    try {
-      await _activeSound.stopAsync();
-      await _activeSound.unloadAsync();
-    } catch {}
-    _activeSound = null;
-  }
+  await stopPlayback();
 
   const fileUri = `${FileSystem.cacheDirectory}tts_${Date.now()}.wav`;
   await FileSystem.writeAsStringAsync(fileUri, base64Audio, {
@@ -144,8 +161,11 @@ export async function playBase64Audio(base64Audio: string): Promise<void> {
   _activeSound = sound;
 
   await new Promise<void>((resolve) => {
+    _playbackResolve = resolve;
+
     const cleanup = async () => {
       if (_activeSound === sound) _activeSound = null;
+      _playbackResolve = null;
       try { await sound.unloadAsync(); } catch {}
       try { await FileSystem.deleteAsync(fileUri, { idempotent: true }); } catch {}
     };

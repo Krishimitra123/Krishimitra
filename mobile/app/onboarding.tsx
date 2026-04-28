@@ -34,7 +34,7 @@ export default function OnboardingScreen() {
   // Profile form state
   const [name, setName] = useState('');
   const [selectedDistrict, setSelectedDistrict] = useState('');
-  const [selectedCrop, setSelectedCrop] = useState('');
+  const [selectedCrops, setSelectedCrops] = useState<string[]>([]);
   const [districtSearch, setDistrictSearch] = useState('');
   const [cropSearch, setCropSearch] = useState('');
 
@@ -49,15 +49,16 @@ export default function OnboardingScreen() {
         Alert.alert('ಜಿಲ್ಲೆ ಅಗತ್ಯ', 'ದಯವಿಟ್ಟು ನಿಮ್ಮ ಜಿಲ್ಲೆಯನ್ನು ಆಯ್ಕೆ ಮಾಡಿ');
         return;
       }
-      if (!selectedCrop) {
-        Alert.alert('ಬೆಳೆ ಅಗತ್ಯ', 'ದಯವಿಟ್ಟು ನಿಮ್ಮ ಮುಖ್ಯ ಬೆಳೆಯನ್ನು ಆಯ್ಕೆ ಮಾಡಿ');
+      if (selectedCrops.length === 0) {
+        Alert.alert('ಬೆಳೆ ಅಗತ್ಯ', 'ದಯವಿಟ್ಟು ಕನಿಷ್ಠ ಒಂದು ಬೆಳೆಯನ್ನು ಆಯ್ಕೆ ಮಾಡಿ');
         return;
       }
       // Save profile
       setProfile({
         farmer_name: name.trim(),
         district: selectedDistrict,
-        primary_crop: selectedCrop,
+        primary_crop: selectedCrops[0],
+        crops: selectedCrops,
       });
     }
     if (step < 2) {
@@ -201,9 +202,9 @@ export default function OnboardingScreen() {
             ) : null}
           </View>
 
-          {/* Crop Picker */}
+          {/* Crop Picker — Multi Select */}
           <View style={styles.formGroup}>
-            <Text style={styles.formLabel}>🌾 ಮುಖ್ಯ ಬೆಳೆ:</Text>
+            <Text style={styles.formLabel}>🌾 ನಿಮ್ಮ ಬೆಳೆಗಳು (ಒಂದು ಅಥವಾ ಹೆಚ್ಚು ಆಯ್ಕೆ ಮಾಡಿ):</Text>
             <TextInput
               style={styles.formInput}
               placeholder="ಬೆಳೆ ಹುಡುಕಿ..."
@@ -212,31 +213,38 @@ export default function OnboardingScreen() {
               onChangeText={setCropSearch}
             />
             <View style={styles.chipGrid}>
-              {filteredCrops.slice(0, 12).map((c) => (
-                <TouchableOpacity
-                  key={c.name_en}
-                  style={[
-                    styles.chip,
-                    selectedCrop === c.name_en && styles.chipSelected,
-                  ]}
-                  onPress={() => {
-                    setSelectedCrop(c.name_en);
-                    setCropSearch('');
-                  }}
-                >
-                  <Text
+              {filteredCrops.slice(0, 15).map((c) => {
+                const isSelected = selectedCrops.includes(c.name_en);
+                return (
+                  <TouchableOpacity
+                    key={c.name_en}
                     style={[
-                      styles.chipText,
-                      selectedCrop === c.name_en && styles.chipTextSelected,
+                      styles.chip,
+                      isSelected && styles.chipSelected,
                     ]}
+                    onPress={() => {
+                      if (isSelected) {
+                        setSelectedCrops(selectedCrops.filter(cr => cr !== c.name_en));
+                      } else {
+                        setSelectedCrops([...selectedCrops, c.name_en]);
+                      }
+                      setCropSearch('');
+                    }}
                   >
-                    {c.icon} {c.name_kn}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+                    <Text
+                      style={[
+                        styles.chipText,
+                        isSelected && styles.chipTextSelected,
+                      ]}
+                    >
+                      {isSelected ? '✓ ' : ''}{c.icon} {c.name_kn}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
-            {selectedCrop ? (
-              <Text style={styles.selectedBadge}>✅ {selectedCrop}</Text>
+            {selectedCrops.length > 0 ? (
+              <Text style={styles.selectedBadge}>✅ {selectedCrops.join(', ')} ({selectedCrops.length} ಬೆಳೆ)</Text>
             ) : null}
           </View>
         </ScrollView>

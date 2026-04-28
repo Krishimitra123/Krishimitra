@@ -1,6 +1,7 @@
 /**
  * Chat Screen — Conversation interface with message list, mic + text input bar.
  * Shows chat bubbles with source citations and audio playback.
+ * NEW: New Chat button, Stop Playback button, conversation history persistence.
  */
 
 import React, { useState, useCallback, useRef, useEffect } from 'react';
@@ -23,7 +24,7 @@ import { MicButton } from '@/components/MicButton';
 import { Colors, FontSize, Spacing, BorderRadius, Shadows } from '@/constants/theme';
 import { useSessionStore, Message } from '@/stores/useSessionStore';
 import { useAudioStore } from '@/stores/useAudioStore';
-import { startRecording, stopRecordingAndGetBase64, playBase64Audio } from '@/services/voiceService';
+import { startRecording, stopRecordingAndGetBase64, playBase64Audio, stopPlayback } from '@/services/voiceService';
 import { sendVoiceQuery, sendTextQuery, ConversationTurn } from '@/services/queryService';
 
 export default function ChatScreen() {
@@ -95,9 +96,36 @@ export default function ChatScreen() {
     return `${m}:${s.toString().padStart(2, '0')}`;
   };
 
+  // ── New Chat Handler ────────────────────────────────────────
+  const handleNewChat = useCallback(() => {
+    // Stop any playing audio
+    stopPlayback();
+    audioStore.setState('IDLE');
+    // Start a new session (archives current one)
+    startNewSession();
+    // Clear local conversation history
+    setConversationHistory([]);
+    setTextInput('');
+    setLoading(false);
+  }, []);
+
+  // ── Stop Playback Handler ───────────────────────────────────
+  const handleStopPlayback = useCallback(async () => {
+    await stopPlayback();
+    audioStore.setState('IDLE');
+  }, []);
+
   // ── Voice Handler ────────────────────────────────────────────
   const handleMicPress = useCallback(async () => {
     try {
+      // If audio is playing, stop it first so user can speak
+      if (audioStore.state === 'PLAYING') {
+        await stopPlayback();
+        audioStore.setState('IDLE');
+        // Small delay then start recording
+        await new Promise(r => setTimeout(r, 200));
+      }
+
       if (audioStore.state === 'IDLE' || audioStore.state === 'ERROR') {
         audioStore.setState('RECORDING');
         await startRecording();
@@ -200,6 +228,10 @@ export default function ChatScreen() {
   const handleTextSubmit = useCallback(async () => {
     if (!textInput.trim() || isLoading) return;
 
+    // Stop any playing audio
+    await stopPlayback();
+    audioStore.setState('IDLE');
+
     const query = textInput.trim();
     setTextInput('');
 
@@ -237,9 +269,12 @@ export default function ChatScreen() {
       // Auto-play TTS response
       if (response.audio_base64) {
         try {
+          audioStore.setState('PLAYING');
           await playBase64Audio(response.audio_base64);
         } catch {
           // Non-fatal
+        } finally {
+          audioStore.setState('IDLE');
         }
       }
     } catch (e: any) {
@@ -299,7 +334,14 @@ export default function ChatScreen() {
 
   return (
     <View style={styles.container}>
-      <NivettiHeader title="KrishiMitra Chat" />
+      <NivettiHeader
+        title="KrishiMitra Chat"
+        rightAction={
+          <TouchableOpacity onPress={handleNewChat} style={styles.newChatBtn}>
+            <Text style={styles.newChatText}>+ ಹೊಸ ಚಾಟ್</Text>
+          </TouchableOpacity>
+        }
+      />
 
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -333,6 +375,19 @@ export default function ChatScreen() {
               <Text style={styles.loadingText}>ಯೋಚಿಸುತ್ತಿದೆ...</Text>
             </View>
           </View>
+        )}
+
+        {/* Stop Playback Button — visible when TTS is playing */}
+        {audioStore.state === 'PLAYING' && (
+          <TouchableOpacity
+            style={styles.stopPlaybackBar}
+            onPress={handleStopPlayback}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.stopPlaybackIcon}>⏹</Text>
+            <Text style={styles.stopPlaybackText}>ಆಡಿಯೋ ನಿಲ್ಲಿಸಿ</Text>
+            <Text style={styles.stopPlaybackHint}>ಮತ್ತೊಮ್ಮೆ ಕೇಳಲು ಮೈಕ್ ಒತ್ತಿ</Text>
+          </TouchableOpacity>
         )}
 
         {/* Recording Overlay */}
@@ -391,6 +446,17 @@ const styles = StyleSheet.create({
   },
   flex: {
     flex: 1,
+  },
+  newChatBtn: {
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.xs,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderRadius: BorderRadius.full,
+  },
+  newChatText: {
+    fontSize: FontSize.sm,
+    color: Colors.textOnPrimary,
+    fontWeight: '700',
   },
   messageList: {
     paddingVertical: Spacing.md,
@@ -454,6 +520,29 @@ const styles = StyleSheet.create({
   loadingText: {
     fontSize: FontSize.sm,
     color: Colors.textMuted,
+  },
+  stopPlaybackBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.md,
+    backgroundColor: '#FFF3E0',
+    borderTopWidth: 1,
+    borderTopColor: '#FFB74D',
+    gap: Spacing.sm,
+  },
+  stopPlaybackIcon: {
+    fontSize: 18,
+  },
+  stopPlaybackText: {
+    fontSize: FontSize.md,
+    fontWeight: '700',
+    color: '#E65100',
+  },
+  stopPlaybackHint: {
+    fontSize: FontSize.xs,
+    color: '#BF360C',
   },
   inputBar: {
     flexDirection: 'row',

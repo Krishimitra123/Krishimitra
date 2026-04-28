@@ -1,6 +1,6 @@
 /**
  * User Profile Store — Zustand with AsyncStorage persistence.
- * Stores farmer name, district, primary crop, and onboarding status.
+ * Stores farmer name, district, crops (multiple), and onboarding status.
  */
 
 import { create } from 'zustand';
@@ -12,6 +12,7 @@ interface UserProfile {
   farmer_name:   string;
   district:      string;
   primary_crop:  string;
+  crops:         string[];
   agro_zone:     number | null;
   is_onboarded:  boolean;
 }
@@ -28,6 +29,7 @@ export const useUserStore = create<UserStore>()(
       farmer_name: '',
       district: '',
       primary_crop: '',
+      crops: [],
       agro_zone: null,
       is_onboarded: false,
 
@@ -37,6 +39,10 @@ export const useUserStore = create<UserStore>()(
           // Auto-derive zone when district changes
           if (p.district) {
             updated.agro_zone = getZoneForDistrict(p.district);
+          }
+          // Sync primary_crop with first crop in array
+          if (p.crops && p.crops.length > 0 && !p.primary_crop) {
+            updated.primary_crop = p.crops[0];
           }
           return updated;
         }),
@@ -48,6 +54,7 @@ export const useUserStore = create<UserStore>()(
           farmer_name: '',
           district: '',
           primary_crop: '',
+          crops: [],
           agro_zone: null,
           is_onboarded: false,
         }),
