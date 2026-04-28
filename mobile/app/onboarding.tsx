@@ -16,6 +16,7 @@ import {
   Dimensions,
   FlatList,
   Alert,
+  Image,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -114,7 +115,11 @@ export default function OnboardingScreen() {
       >
         <View style={styles.welcomeContainer}>
           <View style={styles.logoCircle}>
-            <Text style={styles.logoEmoji}>🌿</Text>
+            <Image
+              source={require('@/assets/images/nivetti-logo.png')}
+              style={styles.welcomeLogo}
+              resizeMode="contain"
+            />
           </View>
           <Text style={styles.welcomeTitle}>ನಮಸ್ಕಾರ!</Text>
           <Text style={styles.welcomeSubtitle}>
@@ -315,6 +320,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: Spacing.lg,
+  },
+  welcomeLogo: {
+    width: 80,
+    height: 80,
   },
   logoEmoji: {
     fontSize: 50,

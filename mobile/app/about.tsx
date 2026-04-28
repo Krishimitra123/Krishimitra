@@ -3,7 +3,7 @@
  */
 
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking, Image } from 'react-native';
 import { useRouter } from 'expo-router';
 import { NivettiHeader } from '@/components/NivettiHeader';
 import { Colors, FontSize, Spacing, BorderRadius, Shadows } from '@/constants/theme';
@@ -18,7 +18,11 @@ export default function AboutScreen() {
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         {/* App Identity */}
         <View style={styles.logoSection}>
-          <Text style={styles.appIcon}>🌾</Text>
+          <Image
+            source={require('@/assets/images/nivetti-logo.png')}
+            style={styles.aboutLogo}
+            resizeMode="contain"
+          />
           <Text style={styles.appName}>KrishiMitra</Text>
           <Text style={styles.appTagline}>ಕೃಷಿ ಮಿತ್ರ — ನಿಮ್ಮ ಜೈವಿಕ ಕೃಷಿ ಸಹಾಯಕ</Text>
           <Text style={styles.version}>v3.0.0</Text>
@@ -26,7 +30,14 @@ export default function AboutScreen() {
 
         {/* Company Card */}
         <View style={[styles.card, Shadows.sm]}>
-          <Text style={styles.cardTitle}>Nivetti Systems</Text>
+          <View style={styles.companyHeader}>
+            <Image
+              source={require('@/assets/images/nivetti-logo.png')}
+              style={styles.companyLogo}
+              resizeMode="contain"
+            />
+            <Text style={styles.cardTitle}>Nivetti Systems</Text>
+          </View>
           <Text style={styles.cardText}>
             Nivetti Systems ನಿಂದ ನಿರ್ಮಿಸಲಾಗಿದೆ. ಕರ್ನಾಟಕ ರೈತರ ಸೇವೆಗಾಗಿ ಸಮರ್ಪಿತ AI ತಂತ್ರಜ್ಞಾನ.
           </Text>
@@ -92,8 +103,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: Spacing.xl,
   },
-  appIcon: {
-    fontSize: 64,
+  aboutLogo: {
+    width: 100,
+    height: 100,
     marginBottom: Spacing.sm,
   },
   appName: {
@@ -101,6 +113,16 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: Colors.primaryDark,
     letterSpacing: 1,
+  },
+  companyHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    marginBottom: Spacing.xs,
+  },
+  companyLogo: {
+    width: 24,
+    height: 24,
   },
   appTagline: {
     fontSize: FontSize.md,
