@@ -1,10 +1,10 @@
 /**
- * NivettiHeader — Branded header component with KrishiMitra logo.
+ * NivettiHeader — Branded header component with Nivetti Systems logo.
  * Shows on all screens — Nivetti Systems branding requirement.
  */
 
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { Colors, FontSize, Spacing, BorderRadius } from '@/constants/theme';
 
 interface NivettiHeaderProps {
@@ -29,7 +29,11 @@ export function NivettiHeader({
           </TouchableOpacity>
         )}
         <View style={styles.logoContainer}>
-          <Text style={styles.logoIcon}>🌿</Text>
+          <Image
+            source={require('@/assets/images/nivetti-logo.png')}
+            style={styles.logoImage}
+            resizeMode="contain"
+          />
         </View>
         <View>
           <Text style={styles.title}>{title}</Text>
@@ -73,12 +77,14 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: BorderRadius.full,
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    backgroundColor: 'rgba(255,255,255,0.15)',
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
   },
-  logoIcon: {
-    fontSize: 22,
+  logoImage: {
+    width: 34,
+    height: 34,
   },
   title: {
     fontSize: FontSize.lg,
