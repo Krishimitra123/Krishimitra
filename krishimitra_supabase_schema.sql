@@ -68,7 +68,9 @@ create index if not exists document_chunks_embedding_hnsw_idx
     using hnsw (embedding vector_cosine_ops)
     with (m = 16, ef_construction = 64);
 
-create or replace function public.match_chunks(
+drop function if exists public.match_chunks(vector(768), float, int, text, text);
+
+create function public.match_chunks(
     query_embedding vector(768),
     match_threshold float default 0.7,
     match_count int default 5,
