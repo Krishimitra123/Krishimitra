@@ -1,5 +1,5 @@
 """
-Module M4 — Crop Diagnosis (Pixtral primary, Gemini fallback)
+Module M4 — Crop Diagnosis (Pixtral-12b direct)
 Key fix: image_url must be {"url": "data:..."} not a bare string.
 Hard 35s overall asyncio timeout. Image result cached by MD5.
 """
@@ -15,7 +15,6 @@ from models.schemas import DiagnosisRequest, DiagnosisFinding
 _cache: dict[str, DiagnosisFinding] = {}
 
 MISTRAL_URL = 'https://api.mistral.ai/v1/chat/completions'
-GEMINI_BASE = 'https://generativelanguage.googleapis.com/v1beta/models'
 
 CHEMICAL_TERMS = [
     'urea', 'DAP', 'NPK', 'chlorpyrifos', 'imidacloprid',
@@ -133,7 +132,7 @@ async def _pixtral(b64: str, mime: str, prompt: str) -> DiagnosisFinding | None:
                         {'type': 'text', 'text': prompt},
                     ]}],
                     'temperature': 0.1,
-                    'max_tokens': 800,
+                    'max_tokens': 500,
                 })
 
         if r.status_code == 200:
@@ -154,51 +153,11 @@ async def _pixtral(b64: str, mime: str, prompt: str) -> DiagnosisFinding | None:
     return None
 
 
-async def _gemini(b64: str, mime: str, prompt: str) -> DiagnosisFinding | None:
-    """Gemini Vision — fallback if Pixtral fails. 15s timeout per model."""
-    api_key = os.environ.get('GEMINI_API_KEY', '').strip()
-    if not api_key:
-        return None
-
-    body = {
-        'contents': [{'parts': [
-            {'text': prompt},
-            {'inline_data': {'mime_type': mime, 'data': b64}},
-        ]}],
-        'generationConfig': {'temperature': 0.1, 'maxOutputTokens': 800},
-    }
-
-    for model in ['gemini-2.0-flash', 'gemini-2.0-flash-lite']:
-        print(f'[M4] Trying Gemini {model}...')
-        try:
-            async with httpx.AsyncClient(timeout=15.0) as c:
-                r = await c.post(
-                    f'{GEMINI_BASE}/{model}:generateContent?key={api_key}',
-                    json=body)
-
-            if r.status_code == 200:
-                parts = r.json()['candidates'][0]['content']['parts']
-                text = parts[0].get('text', '').strip()
-                print(f'[M4] Gemini {model} raw: {text[:120]}')
-                d = _parse(text)
-                if d:
-                    print(f'[M4] Gemini OK: {d.get("disease_name")} ({d.get("confidence_pct")}%)')
-                    return _build(d, f'Gemini {model}')
-            else:
-                print(f'[M4] Gemini {model} HTTP {r.status_code}: {r.text[:100]}')
-
-        except httpx.TimeoutException:
-            print(f'[M4] Gemini {model} timed out')
-        except Exception as e:
-            print(f'[M4] Gemini {model} error: {e}')
-
-    return None
-
 
 async def diagnose(request: DiagnosisRequest) -> DiagnosisFinding:
     """
-    Run diagnosis: Pixtral → Gemini fallback → static fallback.
-    Hard 35s overall timeout.
+    Run diagnosis: Pixtral-12b direct.
+    Hard 30s overall timeout.
     """
     b64 = request.image_base64
     mime = request.image_mime or 'image/jpeg'
@@ -217,16 +176,14 @@ async def diagnose(request: DiagnosisRequest) -> DiagnosisFinding:
     async def _run() -> DiagnosisFinding:
         result = await _pixtral(b64, mime, prompt)
         if result is None:
-            result = await _gemini(b64, mime, prompt)
-        if result is None:
-            print('[M4] Both models failed — returning fallback')
+            print('[M4] Pixtral failed — returning fallback')
             result = _fallback()
         return result
 
     try:
-        result = await asyncio.wait_for(_run(), timeout=35.0)
+        result = await asyncio.wait_for(_run(), timeout=30.0)
     except asyncio.TimeoutError:
-        print('[M4] 35s hard timeout hit')
+        print('[M4] 30s hard timeout hit')
         result = _fallback()
 
     if result.is_reliable:
