@@ -43,7 +43,16 @@ apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
     if (__DEV__) {
-      console.error('[API Error]', error?.message, error?.response?.status);
+      if (error?.response) {
+        // Server responded with error status
+        console.error('[API Error]', error.message, error.response.status, error.response.data);
+      } else if (error?.request) {
+        // Request was made but no response received (network issue)
+        console.error('[API NetworkError] No response from server. Check:', error.config?.baseURL, '| Code:', error.code);
+      } else {
+        // Something else happened
+        console.error('[API Error]', error?.message);
+      }
     }
     return Promise.reject(error);
   }
