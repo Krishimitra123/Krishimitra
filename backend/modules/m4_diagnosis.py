@@ -169,7 +169,7 @@ async def _pixtral(b64: str, mime: str, prompt: str) -> DiagnosisFinding | None:
                         {'type': 'text', 'text': prompt},
                     ]}],
                     'temperature': 0.1,
-                    'max_tokens': 500,
+                    'max_tokens': 1000,
                 })
 
         print(f'[M4] Pixtral HTTP status: {r.status_code}')
