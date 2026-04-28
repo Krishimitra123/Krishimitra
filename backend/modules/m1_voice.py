@@ -221,35 +221,67 @@ def _split_text_for_tts(text: str, max_chars: int = 450) -> list[str]:
     return chunks or [text[:max_chars]]
 
 
-def _concat_wav_base64(parts: list[str]) -> str:
-    """Concatenate multiple WAV base64 strings into one by merging PCM data."""
+def _find_wav_data_offset(wav_bytes: bytes) -> tuple[int, int]:
+    """
+    Parse WAV RIFF structure to find the byte offset and size of the 'data' chunk.
+    Returns (data_start_offset, data_size).
+    Falls back to (44, remaining) for malformed files.
+    """
     import struct
-    import io
+    if len(wav_bytes) < 12 or wav_bytes[:4] != b'RIFF' or wav_bytes[8:12] != b'WAVE':
+        return 44, max(0, len(wav_bytes) - 44)
+
+    offset = 12  # Skip the 12-byte RIFF+size+WAVE header
+    while offset + 8 <= len(wav_bytes):
+        chunk_id = wav_bytes[offset:offset + 4]
+        chunk_size = struct.unpack_from('<I', wav_bytes, offset + 4)[0]
+        if chunk_id == b'data':
+            return offset + 8, chunk_size
+        offset += 8 + chunk_size
+        if chunk_size % 2 != 0:
+            offset += 1  # WAV chunks are padded to even byte boundaries
+
+    return 44, max(0, len(wav_bytes) - 44)
+
+
+def _concat_wav_base64(parts: list[str]) -> str:
+    """
+    Concatenate multiple WAV base64 strings into one by merging PCM data.
+    Properly parses the WAV chunk structure — does NOT assume data starts at byte 44.
+    """
+    import struct
 
     decoded = [base64.b64decode(p) for p in parts]
 
-    # First part has the header — use it as template
     first = decoded[0]
     if len(first) < 44:
         return parts[0]
 
-    # WAV header is 44 bytes. Concatenate PCM data from all parts.
-    pcm_data = first[44:]
+    # Find where the actual PCM data starts in the first WAV
+    data_offset, _ = _find_wav_data_offset(first)
+
+    # Collect PCM data from all chunks
+    pcm_data = first[data_offset:]
     for wav in decoded[1:]:
-        if len(wav) > 44:
-            pcm_data += wav[44:]
+        offset, _ = _find_wav_data_offset(wav)
+        if len(wav) > offset:
+            pcm_data += wav[offset:]
 
-    # Rebuild header with correct sizes
     data_size = len(pcm_data)
-    file_size = 36 + data_size
+    # RIFF chunk size = everything after the first 8 bytes (RIFF + size field)
+    riff_chunk_size = (data_offset - 8) + data_size
 
-    # Read format info from original header
-    header = bytearray(first[:44])
-    # Update RIFF chunk size (offset 4, 4 bytes LE)
-    struct.pack_into('<I', header, 4, file_size)
-    # Update data chunk size (offset 40, 4 bytes LE)
-    struct.pack_into('<I', header, 40, data_size)
+    # Copy the full original header up to the data offset
+    header = bytearray(first[:data_offset])
+
+    # Patch RIFF chunk size at offset 4
+    struct.pack_into('<I', header, 4, riff_chunk_size)
+    # Patch data chunk size at (data_offset - 4)
+    struct.pack_into('<I', header, data_offset - 4, data_size)
 
     combined_wav = bytes(header) + pcm_data
-    return base64.b64encode(combined_wav).decode()
+    result = base64.b64encode(combined_wav).decode()
+    print(f'[M1-TTS] WAV concat: {len(parts)} parts, data_offset={data_offset}, '
+          f'pcm={data_size}B → {len(result)} chars')
+    return result
 
