@@ -1,6 +1,6 @@
 /**
  * Root Layout — KrishiMitra
- * Handles font loading, splash screen, and onboarding redirect.
+ * Handles font loading, splash screen, auth gate, and onboarding redirect.
  */
 
 import FontAwesome from '@expo/vector-icons/FontAwesome';
@@ -9,6 +9,7 @@ import { Stack, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import { LogBox, StatusBar } from 'react-native';
+import { Audio, InterruptionModeIOS, InterruptionModeAndroid } from 'expo-av';
 import 'react-native-reanimated';
 import { useUserStore } from '@/stores/useUserStore';
 import { Colors } from '@/constants/theme';
@@ -86,6 +87,17 @@ export default function RootLayout() {
 
   useEffect(() => {
     if (loaded) {
+      // Configure audio for speaker playback at startup
+      Audio.setAudioModeAsync({
+        allowsRecordingIOS: false,
+        playsInSilentModeIOS: true,
+        staysActiveInBackground: false,
+        interruptionModeIOS: InterruptionModeIOS.DuckOthers,
+        interruptionModeAndroid: InterruptionModeAndroid.DuckOthers,
+        shouldDuckAndroid: true,
+        playThroughEarpieceAndroid: false,
+      }).catch(() => {});
+
       migrateAsyncStorage().finally(() => {
         SplashScreen.hideAsync();
       });
@@ -102,19 +114,31 @@ export default function RootLayout() {
 function RootLayoutNav() {
   const router = useRouter();
   const segments = useSegments();
+  const isAuthenticated = useUserStore((s) => s.is_authenticated);
   const isOnboarded = useUserStore((s) => s.is_onboarded);
 
-  // Redirect to onboarding if not yet completed
+  // Auth + onboarding routing
   useEffect(() => {
-    if (!isOnboarded) {
+    const inLogin = segments[0] === 'login';
+    const inOnboarding = segments[0] === 'onboarding';
+
+    if (!isAuthenticated && !inLogin) {
+      // Not logged in → go to login
+      router.replace('/login');
+    } else if (isAuthenticated && !isOnboarded && !inOnboarding) {
+      // Logged in but not onboarded → go to onboarding
       router.replace('/onboarding');
+    } else if (isAuthenticated && isOnboarded && (inLogin || inOnboarding)) {
+      // Fully set up but still on login/onboarding → go to tabs
+      router.replace('/(tabs)');
     }
-  }, [isOnboarded]);
+  }, [isAuthenticated, isOnboarded, segments]);
 
   return (
     <>
       <StatusBar barStyle="light-content" backgroundColor={Colors.primaryDark} />
       <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="login" options={{ animation: 'fade' }} />
         <Stack.Screen name="(tabs)" />
         <Stack.Screen
           name="onboarding"

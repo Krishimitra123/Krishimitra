@@ -58,12 +58,13 @@ async def diagnose_endpoint(request: DiagnosisRequest):
 
         # Generate TTS audio for the Kannada summary
         sarvam_key = os.environ.get('SARVAM_API_KEY', '').strip()
+        tts_lang = getattr(request, 'tts_language', 'kn') or 'kn'
         if sarvam_key and summary_kn:
             try:
-                audio_b64 = await m1_voice.text_to_audio(summary_kn, sarvam_key)
+                audio_b64 = await m1_voice.text_to_audio(summary_kn, sarvam_key, language=tts_lang)
                 if audio_b64:
                     finding.audio_base64 = audio_b64
-                    print(f'[Diagnose] TTS generated: {len(audio_b64)} chars')
+                    print(f'[Diagnose] TTS generated ({tts_lang}): {len(audio_b64)} chars')
             except Exception as e:
                 print(f'[Diagnose] TTS failed (non-fatal): {e}')
 

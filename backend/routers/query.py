@@ -77,12 +77,15 @@ async def _run_query(request: QueryRequest) -> QueryResponse:
     if request.user_context and request.user_context.farmer_name:
         farmer_name = request.user_context.farmer_name
 
+    tts_lang = getattr(request, 'tts_language', 'kn') or 'kn'
+
     answer_task = asyncio.create_task(
         m5_response.generate(
             nlp_result=nlp,
             farmer_name=farmer_name,
             rag_chunks=rag_chunks,
             conversation_history=request.conversation_history,
+            tts_language=tts_lang,
         )
     )
 
@@ -91,8 +94,9 @@ async def _run_query(request: QueryRequest) -> QueryResponse:
 
     # ── Step 4: TTS — text → audio (15s timeout, non-fatal) ──────────
     audio_b64: str | None = None
+    tts_lang = getattr(request, 'tts_language', 'kn') or 'kn'
     try:
-        tts_result = await m1_voice.text_to_audio(answer, SARVAM_KEY())
+        tts_result = await m1_voice.text_to_audio(answer, SARVAM_KEY(), language=tts_lang)
         if tts_result:
             audio_b64 = tts_result
     except Exception as e:
@@ -110,14 +114,13 @@ async def _run_query(request: QueryRequest) -> QueryResponse:
 @router.post('', response_model=QueryResponse)
 async def query_endpoint(request: QueryRequest):
     """
-    Hard 45s cap — backend always responds before mobile's 60s axios timeout.
-    If something hangs (e.g. Sarvam STT on a bad format), we return a
-    clear Kannada error message instead of letting the mobile time out silently.
+    Hard 90s cap — backend always responds before mobile's 120s axios timeout.
+    Pipeline budget: ffmpeg(10s) + STT(14s) + Mistral(20s) + TTS(9s) = ~53s with headroom.
     """
     try:
-        return await asyncio.wait_for(_run_query(request), timeout=45.0)
+        return await asyncio.wait_for(_run_query(request), timeout=90.0)
     except asyncio.TimeoutError:
-        print('[Query] 45s overall timeout hit — returning error response')
+        print('[Query] 90s overall timeout hit — returning error response')
         return QueryResponse(
             answer_text_kn=(
                 'ಸರ್ವರ್ ತುಂಬಾ ನಿಧಾನವಾಗಿದೆ. ದಯವಿಟ್ಟು ಮತ್ತೊಮ್ಮೆ ಪ್ರಯತ್ನಿಸಿ.'

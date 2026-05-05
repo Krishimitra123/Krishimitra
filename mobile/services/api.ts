@@ -19,9 +19,9 @@ export const apiClient = axios.create({
   },
 });
 
-// Interceptor: attach user context to every POST request
+// Interceptor: attach user context to every POST request (except auth endpoints)
 apiClient.interceptors.request.use((config) => {
-  if (config.method === 'post') {
+  if (config.method === 'post' && !config.url?.includes('/api/auth/')) {
     try {
       const user = useUserStore.getState();
       if (!config.data) config.data = {};

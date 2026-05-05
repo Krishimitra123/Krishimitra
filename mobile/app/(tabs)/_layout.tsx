@@ -1,6 +1,6 @@
 /**
  * Tab Layout — Bottom tab navigation for KrishiMitra.
- * 4 tabs: Home, Chat, Diagnose, History
+ * 5 tabs: Home, Chat, Diagnose, History, Settings
  */
 
 import React from 'react';
@@ -58,6 +58,14 @@ export default function TabLayout() {
           ),
         }}
       />
+      <Tabs.Screen
+        name="settings"
+        options={{
+          tabBarIcon: ({ focused }) => (
+            <TabIcon icon="⚙️" label="ಸೆಟ್ಟಿಂಗ್ಸ್" focused={focused} />
+          ),
+        }}
+      />
     </Tabs>
   );
 }
@@ -81,14 +89,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   tabIcon: {
-    fontSize: 22,
+    fontSize: 20,
     opacity: 0.5,
   },
   tabIconActive: {
     opacity: 1,
   },
   tabLabel: {
-    fontSize: 11,
+    fontSize: 10,
     color: Colors.textMuted,
     marginTop: 2,
   },

@@ -16,11 +16,13 @@ BASE_DIR = Path(__file__).resolve().parent
 load_dotenv(BASE_DIR / '.env')
 
 from routers import query, diagnose, admin
+from routers import weather, soil, market
+from routers import auth
 
 app = FastAPI(
     title='KrishiMitra API',
     description='Organic farming AI for Karnataka farmers — Nivetti Systems',
-    version='1.0.0',
+    version='2.0.0',
 )
 
 # CORS — allow Expo app
@@ -36,14 +38,25 @@ app.add_middleware(
 app.include_router(query.router)
 app.include_router(diagnose.router)
 app.include_router(admin.router)
+app.include_router(weather.router)
+app.include_router(soil.router)
+app.include_router(market.router)
+app.include_router(auth.router)
 
 @app.get('/health')
 async def health_check():
     """GET /health — Simple health check endpoint."""
     return {
         'status': 'ok',
-        'version': '1.0.0',
+        'version': '2.0.0',
         'app': 'KrishiMitra by Nivetti Systems',
+        'endpoints': {
+            'query': '/api/query',
+            'diagnose': '/api/diagnose',
+            'weather': '/api/weather',
+            'soil': '/api/soil',
+            'market': '/api/market',
+        }
     }
 
 @app.on_event('startup')

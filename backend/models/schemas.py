@@ -29,6 +29,7 @@ class DiagnosisRequest(BaseModel):
     image_mime: str = "image/jpeg"
     user_context: Optional[UserContext] = None
     optional_text: Optional[str] = None
+    tts_language: str = "kn"  # 'kn' for Kannada, 'en' for English
 
 class DiagnosisFinding(BaseModel):
     plant_health_status: str
@@ -54,6 +55,7 @@ class QueryRequest(BaseModel):
     image_mime: str = "image/jpeg"
     user_context: Optional[UserContext] = None
     conversation_history: Optional[List[ConversationMessage]] = None  # Last N exchanges for context
+    tts_language: str = "kn"  # 'kn' for Kannada, 'en' for English
 
 class QueryResponse(BaseModel):
     transcript: Optional[str] = None

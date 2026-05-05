@@ -1,9 +1,11 @@
 /**
  * Query Service — API calls for text/voice queries and diagnosis.
  * Sends conversation_history for follow-up question support.
+ * Passes tts_language preference from user settings.
  */
 
 import { apiClient } from './api';
+import { useUserStore } from '@/stores/useUserStore';
 
 export interface ConversationTurn {
   role: 'user' | 'assistant';
@@ -33,6 +35,16 @@ export interface DiagnosisResponse {
   needs_retake:        boolean;
   sources:             string[];
   is_reliable:         boolean;
+  summary_kn?:         string;
+  audio_base64?:       string;
+}
+
+function getTtsLanguage(): string {
+  try {
+    return useUserStore.getState().tts_language || 'kn';
+  } catch {
+    return 'kn';
+  }
 }
 
 /**
@@ -54,6 +66,7 @@ export async function sendVoiceQuery(
     audio_base64: audioBase64,
     audio_mime: mimeType,
     conversation_history: conversationHistory?.slice(-6) ?? [],
+    tts_language: getTtsLanguage(),
   }, {
     timeout: 60000,
   });
@@ -77,6 +90,7 @@ export async function sendTextQuery(
   const res = await apiClient.post('/api/query', {
     text_query: text,
     conversation_history: conversationHistory?.slice(-6) ?? [],
+    tts_language: getTtsLanguage(),
   }, {
     timeout: 60000,
   });
@@ -101,6 +115,7 @@ export async function sendDiagnosis(
     image_base64: imageBase64,
     image_mime: imageMime,
     optional_text: optionalText || undefined,
+    tts_language: getTtsLanguage(),
   }, {
     timeout: 120000,
   });

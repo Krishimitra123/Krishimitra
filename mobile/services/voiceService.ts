@@ -1,11 +1,10 @@
 /**
  * Voice Service — Recording and TTS playback.
- * Uses Audio.RecordingOptionsPresets.HIGH_QUALITY (works in Expo Go).
- * TTS: stops any currently playing audio before starting new playback.
- * NEW: stopPlayback() can be called to interrupt TTS at any time.
+ * FIX: Forces audio through SPEAKER (not earpiece) for loud playback.
+ * Uses expo-av Audio module compatible with Expo Go SDK 54.
  */
 
-import { Audio } from 'expo-av';
+import { Audio, InterruptionModeIOS, InterruptionModeAndroid } from 'expo-av';
 import * as FileSystem from 'expo-file-system/legacy';
 
 // ── Recording state ───────────────────────────────────────────────
@@ -17,6 +16,34 @@ let _isStopping = false;
 let _activeSound: Audio.Sound | null = null;
 let _playbackResolve: (() => void) | null = null;
 
+/**
+ * Set audio mode for PLAYBACK — forces speaker output (loud).
+ */
+async function _setPlaybackMode(): Promise<void> {
+  await Audio.setAudioModeAsync({
+    allowsRecordingIOS: false,
+    playsInSilentModeIOS: true,
+    staysActiveInBackground: false,
+    interruptionModeIOS: InterruptionModeIOS.DuckOthers,
+    interruptionModeAndroid: InterruptionModeAndroid.DuckOthers,
+    shouldDuckAndroid: true,
+    playThroughEarpieceAndroid: false,  // Force SPEAKER, not earpiece
+  });
+}
+
+/**
+ * Set audio mode for RECORDING.
+ */
+async function _setRecordingMode(): Promise<void> {
+  await Audio.setAudioModeAsync({
+    allowsRecordingIOS: true,
+    playsInSilentModeIOS: true,
+    interruptionModeIOS: InterruptionModeIOS.DuckOthers,
+    interruptionModeAndroid: InterruptionModeAndroid.DuckOthers,
+    shouldDuckAndroid: true,
+  });
+}
+
 export async function startRecording(): Promise<void> {
   if (_isStarting) {
     console.warn('[Voice] Already starting — ignoring');
@@ -25,7 +52,6 @@ export async function startRecording(): Promise<void> {
   _isStarting = true;
 
   try {
-    // Stop any playing TTS first so recording audio session can take over
     await stopPlayback();
 
     if (_recording) {
@@ -36,13 +62,7 @@ export async function startRecording(): Promise<void> {
     const { granted } = await Audio.requestPermissionsAsync();
     if (!granted) throw new Error('Microphone permission denied');
 
-    await Audio.setAudioModeAsync({
-      allowsRecordingIOS: true,
-      playsInSilentModeIOS: true,
-      interruptionModeIOS: 1,
-      shouldDuckAndroid: true,
-      interruptionModeAndroid: 1,
-    });
+    await _setRecordingMode();
 
     console.log('[Voice] Starting recording...');
     const { recording } = await Audio.Recording.createAsync(
@@ -76,11 +96,8 @@ export async function stopRecordingAndGetBase64(): Promise<{ base64: string; mim
     if (!uri) throw new Error('Recording URI is null');
     console.log('[Voice] Saved to:', uri);
 
-    // Switch audio session back to playback mode
-    await Audio.setAudioModeAsync({
-      allowsRecordingIOS: false,
-      playsInSilentModeIOS: true,
-    });
+    // IMMEDIATELY switch to playback mode after recording
+    await _setPlaybackMode();
 
     const ext = uri.split('.').pop()?.toLowerCase() ?? 'wav';
     const mimeType = ext === 'm4a' ? 'audio/mp4' : ext === '3gp' ? 'audio/3gpp' : 'audio/wav';
@@ -102,7 +119,6 @@ export async function stopRecordingAndGetBase64(): Promise<{ base64: string; mim
 
 /**
  * Stop any currently playing TTS audio immediately.
- * Can be called at any time — safe to call even when nothing is playing.
  */
 export async function stopPlayback(): Promise<void> {
   if (_activeSound) {
@@ -112,24 +128,19 @@ export async function stopPlayback(): Promise<void> {
     } catch {}
     _activeSound = null;
   }
-  // Resolve any pending playback promise
   if (_playbackResolve) {
     _playbackResolve();
     _playbackResolve = null;
   }
 }
 
-/**
- * Check if audio is currently playing.
- */
 export function isPlaying(): boolean {
   return _activeSound !== null;
 }
 
 /**
- * Play TTS audio. Stops any currently playing audio first.
- * Sarvam bulbul:v3 returns 22050Hz WAV — crisp and clear.
- * Can be interrupted at any time by calling stopPlayback().
+ * Play TTS audio LOUD through the speaker.
+ * Forces playback mode before every play to ensure speaker output.
  */
 export async function playBase64Audio(base64Audio: string): Promise<void> {
   if (!base64Audio || base64Audio.length < 100) {
@@ -137,7 +148,6 @@ export async function playBase64Audio(base64Audio: string): Promise<void> {
     return;
   }
 
-  // Stop any currently playing audio
   await stopPlayback();
 
   const fileUri = `${FileSystem.cacheDirectory}tts_${Date.now()}.wav`;
@@ -145,43 +155,47 @@ export async function playBase64Audio(base64Audio: string): Promise<void> {
     encoding: FileSystem.EncodingType.Base64,
   });
 
-  await Audio.setAudioModeAsync({
-    allowsRecordingIOS: false,
-    playsInSilentModeIOS: true,
-    staysActiveInBackground: false,
-  });
+  // CRITICAL: Force speaker mode BEFORE creating sound
+  await _setPlaybackMode();
 
-  console.log('[Voice] Playing TTS audio...');
+  console.log('[Voice] Playing TTS audio through SPEAKER...');
 
-  const { sound } = await Audio.Sound.createAsync(
-    { uri: fileUri },
-    { shouldPlay: true, volume: 1.0 }
-  );
+  try {
+    const { sound } = await Audio.Sound.createAsync(
+      { uri: fileUri },
+      { shouldPlay: true, volume: 1.0 }
+    );
 
-  _activeSound = sound;
+    _activeSound = sound;
 
-  await new Promise<void>((resolve) => {
-    _playbackResolve = resolve;
+    await new Promise<void>((resolve) => {
+      _playbackResolve = resolve;
 
-    const cleanup = async () => {
-      if (_activeSound === sound) _activeSound = null;
-      _playbackResolve = null;
-      try { await sound.unloadAsync(); } catch {}
-      try { await FileSystem.deleteAsync(fileUri, { idempotent: true }); } catch {}
-    };
+      const cleanup = async () => {
+        if (_activeSound === sound) _activeSound = null;
+        _playbackResolve = null;
+        try { await sound.unloadAsync(); } catch {}
+        try { await FileSystem.deleteAsync(fileUri, { idempotent: true }); } catch {}
+      };
 
-    const TIMEOUT = setTimeout(async () => {
-      await cleanup();
-      resolve();
-    }, 60000); // 60s max for long answers
-
-    sound.setOnPlaybackStatusUpdate(async (s) => {
-      if (!s.isLoaded) return;
-      if (s.didJustFinish) {
-        clearTimeout(TIMEOUT);
+      const TIMEOUT = setTimeout(async () => {
         await cleanup();
         resolve();
-      }
+      }, 60000);
+
+      sound.setOnPlaybackStatusUpdate(async (s) => {
+        if (!s.isLoaded) return;
+        if (s.didJustFinish) {
+          clearTimeout(TIMEOUT);
+          await cleanup();
+          resolve();
+        }
+      });
     });
-  });
+  } catch (err: any) {
+    console.error('[Voice] Playback error:', err.message);
+    try { await FileSystem.deleteAsync(fileUri, { idempotent: true }); } catch {}
+    _activeSound = null;
+    _playbackResolve = null;
+  }
 }

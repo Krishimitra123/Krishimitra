@@ -1,26 +1,18 @@
 /**
- * Diagnose Screen — Crop disease image diagnosis.
- * Upload/capture crop photo → optional text → send to M4 → show DiagnosisCard.
+ * Diagnose Screen — Voice-first crop disease detection.
+ * Take photo → AI analyzes → speaks the result. Minimal text.
  */
 
 import React, { useState, useCallback } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  Image,
-  TextInput,
-  ActivityIndicator,
-  Alert,
+  View, Text, StyleSheet, ScrollView, TouchableOpacity,
+  Image, TextInput, ActivityIndicator, Alert,
 } from 'react-native';
 import { NivettiHeader } from '@/components/NivettiHeader';
-import { DiagnosisCard } from '@/components/DiagnosisCard';
 import { Colors, FontSize, Spacing, BorderRadius, Shadows } from '@/constants/theme';
 import { captureImageWithUri, pickImageWithUri } from '@/services/diagnosisService';
 import { sendDiagnosis } from '@/services/queryService';
-import { playBase64Audio } from '@/services/voiceService';
+import { playBase64Audio, stopPlayback } from '@/services/voiceService';
 import { useAudioStore } from '@/stores/useAudioStore';
 
 export default function DiagnoseScreen() {
@@ -34,137 +26,79 @@ export default function DiagnoseScreen() {
 
   const audioStore = useAudioStore();
 
-  // ── Camera Capture ────────────────────────────────────────────
   const handleCamera = useCallback(async () => {
     try {
       const img = await captureImageWithUri();
-      if (img) {
-        setImageUri(img.uri);
-        setImageBase64(img.base64);
-        setImageMimeType(img.mimeType);
-        setResult(null);
-      }
-    } catch (err: any) {
-      Alert.alert('ಕ್ಯಾಮೆರಾ ದೋಷ', err.message);
-    }
+      if (img) { setImageUri(img.uri); setImageBase64(img.base64); setImageMimeType(img.mimeType); setResult(null); setAnswerAudio(null); }
+    } catch (err: any) { Alert.alert('ದೋಷ', err.message); }
   }, []);
 
-  // ── Gallery Pick ──────────────────────────────────────────────
   const handleGallery = useCallback(async () => {
     try {
       const img = await pickImageWithUri();
-      if (img) {
-        setImageUri(img.uri);
-        setImageBase64(img.base64);
-        setImageMimeType(img.mimeType);
-        setResult(null);
-      }
-    } catch (err: any) {
-      Alert.alert('ಗ್ಯಾಲರಿ ದೋಷ', err.message);
-    }
+      if (img) { setImageUri(img.uri); setImageBase64(img.base64); setImageMimeType(img.mimeType); setResult(null); setAnswerAudio(null); }
+    } catch (err: any) { Alert.alert('ದೋಷ', err.message); }
   }, []);
 
-  // ── Diagnose ──────────────────────────────────────────────────
   const handleDiagnose = useCallback(async () => {
-    if (!imageBase64) {
-      Alert.alert('ಫೋಟೋ ಅಗತ್ಯ', 'ದಯವಿಟ್ಟು ಮೊದಲು ಫೋಟೋ ತೆಗೆಯಿರಿ');
-      return;
-    }
+    if (!imageBase64) { Alert.alert('', 'ಮೊದಲು ಫೋಟೋ ತೆಗೆಯಿರಿ'); return; }
 
-    setIsAnalyzing(true);
-    setResult(null);
-    setAnswerAudio(null);
+    setIsAnalyzing(true); setResult(null); setAnswerAudio(null);
 
     try {
-      console.log('[Diagnose] Sending diagnosis request...');
-      const finding = await sendDiagnosis(
-        imageBase64,
-        imageMimeType,
-        description || undefined
-      );
-      console.log('[Diagnose] Finding received:', finding.disease_name, finding.confidence_pct + '%');
+      const finding = await sendDiagnosis(imageBase64, imageMimeType, description || undefined);
       setResult(finding);
 
-      // Store and auto-play the Kannada TTS audio if available
+      // Auto-play the voice result
       if ((finding as any).audio_base64) {
         const audioB64 = (finding as any).audio_base64;
         setAnswerAudio(audioB64);
         try {
           audioStore.setState('PLAYING');
           await playBase64Audio(audioB64);
-        } catch (ttsErr) {
-          console.warn('[Diagnose] TTS playback failed (non-fatal):', ttsErr);
-        } finally {
-          audioStore.setState('IDLE');
-        }
+        } catch {} finally { audioStore.setState('IDLE'); }
       }
     } catch (err: any) {
-      console.error('[Diagnose] Error:', err.message, err.response?.data);
-      const errorMsg = err.response?.data?.detail
-        || err.response?.data?.message
-        || 'ದಯವಿಟ್ಟು ಮತ್ತೊಮ್ಮೆ ಪ್ರಯತ್ನಿಸಿ';
-      Alert.alert('ವಿಶ್ಲೇಷಣೆ ದೋಷ', errorMsg);
+      Alert.alert('ದೋಷ', err.response?.data?.detail || 'ಮತ್ತೊಮ್ಮೆ ಪ್ರಯತ್ನಿಸಿ');
     }
-
     setIsAnalyzing(false);
   }, [imageBase64, imageMimeType, description]);
 
-  // ── Play Audio ────────────────────────────────────────────────
   const handlePlayAudio = useCallback(async () => {
     if (answerAudio) {
-      try {
-        audioStore.setState('PLAYING');
-        await playBase64Audio(answerAudio);
-        audioStore.setState('IDLE');
-      } catch {
-        audioStore.setState('IDLE');
-      }
+      try { audioStore.setState('PLAYING'); await playBase64Audio(answerAudio); }
+      catch {} finally { audioStore.setState('IDLE'); }
     }
   }, [answerAudio]);
 
-  // ── Clear ─────────────────────────────────────────────────────
+  const handleStopAudio = useCallback(async () => {
+    await stopPlayback(); audioStore.setState('IDLE');
+  }, []);
+
   const handleClear = () => {
-    setImageUri(null);
-    setImageBase64(null);
-    setImageMimeType('image/jpeg');
-    setDescription('');
-    setResult(null);
-    setAnswerAudio(null);
+    setImageUri(null); setImageBase64(null); setDescription(''); setResult(null); setAnswerAudio(null);
   };
+
+  const isPlaying = audioStore.state === 'PLAYING';
 
   return (
     <View style={styles.container}>
-      <NivettiHeader title="ಬೆಳೆ ರೋಗ ಪತ್ತೆ" />
+      <NivettiHeader title="📸 ರೋಗ ಪತ್ತೆ" />
 
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Image Upload Zone */}
-        <TouchableOpacity
-          style={[
-            styles.imageZone,
-            imageUri && styles.imageZoneWithImage,
-          ]}
-          onPress={handleCamera}
-          activeOpacity={0.8}
-        >
+      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+        {/* Image Zone */}
+        <TouchableOpacity style={[styles.imageZone, imageUri && styles.imageZoneActive]} onPress={handleCamera} activeOpacity={0.8}>
           {imageUri ? (
-            <Image source={{ uri: imageUri }} style={styles.previewImage} />
+            <Image source={{ uri: imageUri }} style={styles.preview} />
           ) : (
-            <View style={styles.imagePlaceholder}>
-              <Text style={styles.cameraIcon}>📸</Text>
-              <Text style={styles.uploadText}>
-                ಫೋಟೋ ತೆಗೆಯಿರಿ ಅಥವಾ ಆಯ್ಕೆ ಮಾಡಿ
-              </Text>
-              <Text style={styles.uploadHint}>
-                ಎಲೆ, ಕಾಂಡ ಅಥವಾ ಹಣ್ಣಿನ ಸ್ಪಷ್ಟ ಫೋಟೋ
-              </Text>
+            <View style={styles.placeholder}>
+              <Text style={styles.camIcon}>📸</Text>
+              <Text style={styles.camText}>ಫೋಟೋ ತೆಗೆಯಿರಿ</Text>
             </View>
           )}
         </TouchableOpacity>
 
-        {/* Camera / Gallery Buttons */}
+        {/* Action Buttons */}
         <View style={styles.actionRow}>
           <TouchableOpacity style={[styles.actionBtn, Shadows.sm]} onPress={handleCamera}>
             <Text style={styles.actionIcon}>📷</Text>
@@ -183,261 +117,99 @@ export default function DiagnoseScreen() {
         </View>
 
         {/* Optional Description */}
-        <View style={styles.inputSection}>
-          <Text style={styles.inputLabel}>ಹೆಚ್ಚಿನ ವಿವರಣೆ ನೀಡಿ (ಐಚ್ಛಿಕ)</Text>
-          <TextInput
-            style={styles.textInput}
-            placeholder="ಎಲೆ ಹಳದಿ ಆಗಿದೆ, ಚುಕ್ಕಿ ಇದೆ..."
-            placeholderTextColor={Colors.textMuted}
-            value={description}
-            onChangeText={setDescription}
-            multiline
-            numberOfLines={2}
-          />
-        </View>
+        <TextInput
+          style={styles.descInput}
+          placeholder="ಹೆಚ್ಚಿನ ವಿವರ (ಐಚ್ಛಿಕ)..."
+          placeholderTextColor={Colors.textMuted}
+          value={description} onChangeText={setDescription}
+          multiline numberOfLines={1}
+        />
 
         {/* Diagnose Button */}
         <TouchableOpacity
-          style={[
-            styles.diagnoseBtn,
-            (!imageBase64 || isAnalyzing) && styles.diagnoseBtnDisabled,
-          ]}
-          onPress={handleDiagnose}
-          disabled={!imageBase64 || isAnalyzing}
-          activeOpacity={0.7}
+          style={[styles.diagnoseBtn, (!imageBase64 || isAnalyzing) && styles.diagnoseBtnOff]}
+          onPress={handleDiagnose} disabled={!imageBase64 || isAnalyzing} activeOpacity={0.7}
         >
           {isAnalyzing ? (
-            <View style={styles.loadingRow}>
-              <ActivityIndicator size="small" color={Colors.textOnPrimary} />
-              <Text style={styles.diagnoseBtnText}>ವಿಶ್ಲೇಷಿಸಲಾಗುತ್ತಿದೆ...</Text>
+            <View style={styles.loadRow}>
+              <ActivityIndicator size="small" color="#fff" />
+              <Text style={styles.diagnoseTxt}>ವಿಶ್ಲೇಷಿಸಲಾಗುತ್ತಿದೆ...</Text>
             </View>
           ) : (
-            <Text style={styles.diagnoseBtnText}>🔍 ರೋಗ ಪತ್ತೆ ಮಾಡಿ</Text>
+            <Text style={styles.diagnoseTxt}>🔍 ರೋಗ ಪತ್ತೆ</Text>
           )}
         </TouchableOpacity>
 
-        {/* Results */}
+        {/* RESULT — Voice-first, minimal text */}
         {result && (
-          <View style={styles.resultSection}>
-            <Text style={styles.resultHeader}>ಫಲಿತಾಂಶ</Text>
+          <View style={[styles.resultCard, Shadows.sm]}>
+            {/* Status badge */}
+            <View style={[styles.statusBadge, result.is_reliable ? styles.badgeGreen : styles.badgeOrange]}>
+              <Text style={styles.statusIcon}>{result.is_reliable ? '✅' : '⚠️'}</Text>
+              <Text style={styles.statusText}>
+                {result.disease_name_kn || result.disease_name || 'ಫಲಿತಾಂಶ'}
+              </Text>
+            </View>
 
-            {/* Kannada Summary */}
-            {result.summary_kn && (
-              <View style={[styles.summaryCard, Shadows.sm]}>
-                <Text style={styles.summaryText}>{result.summary_kn}</Text>
-                {answerAudio && (
-                  <TouchableOpacity onPress={handlePlayAudio} style={styles.playAgainBtn}>
-                    <Text style={styles.playAgainText}>🔊 ಮತ್ತೊಮ್ಮೆ ಕೇಳಿ</Text>
-                  </TouchableOpacity>
-                )}
-              </View>
+            {/* Confidence */}
+            {result.confidence_pct > 0 && (
+              <Text style={styles.confidence}>{result.confidence_pct}% ವಿಶ್ವಾಸ</Text>
             )}
 
-            {result.disease_name ? (
-              <DiagnosisCard
-                finding={result}
-                onPlayAudio={answerAudio ? handlePlayAudio : undefined}
-              />
-            ) : (
-              <View style={[styles.resultCard, Shadows.sm]}>
-                <Text style={styles.resultText}>
-                  {'ಫೋಟೋ ಮತ್ತೊಮ್ಮೆ ತೆಗೆಯಿರಿ — ಸ್ಪಷ್ಟ ಬೆಳಕಿನಲ್ಲಿ ತೆಗೆಯಿರಿ.'}
+            {/* Play / Stop Audio — PRIMARY action */}
+            {answerAudio && (
+              <TouchableOpacity
+                style={[styles.playBtn, isPlaying && styles.playBtnStop]}
+                onPress={isPlaying ? handleStopAudio : handlePlayAudio}
+              >
+                <Text style={styles.playIcon}>{isPlaying ? '⏹' : '🔊'}</Text>
+                <Text style={styles.playTxt}>
+                  {isPlaying ? 'ನಿಲ್ಲಿಸಿ' : 'ಉತ್ತರ ಕೇಳಿ'}
                 </Text>
-              </View>
+              </TouchableOpacity>
+            )}
+
+            {/* Collapsed text — only shows if no audio */}
+            {!answerAudio && result.summary_kn && (
+              <Text style={styles.summaryTxt}>{result.summary_kn}</Text>
             )}
           </View>
         )}
-
-        {/* Tips Section */}
-        <View style={styles.tipsSection}>
-          <Text style={styles.tipsTitle}>📌 ಉತ್ತಮ ಫೋಟೋ ಸಲಹೆಗಳು</Text>
-          <Text style={styles.tipItem}>• ನೈಸರ್ಗಿಕ ಬೆಳಕಿನಲ್ಲಿ ಫೋಟೋ ತೆಗೆಯಿರಿ</Text>
-          <Text style={styles.tipItem}>• ರೋಗಪೀಡಿತ ಭಾಗವನ್ನು ಹತ್ತಿರದಿಂದ ತೋರಿಸಿ</Text>
-          <Text style={styles.tipItem}>• ಸ್ಪಷ್ಟ ಮತ್ತು ಮಸುಕಿಲ್ಲದ ಫೋಟೋ ಅಗತ್ಯ</Text>
-        </View>
       </ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.background,
-  },
-  scrollContent: {
-    padding: Spacing.md,
-    paddingBottom: Spacing.xxl,
-  },
-  imageZone: {
-    height: 224,
-    borderRadius: BorderRadius.lg,
-    borderWidth: 2,
-    borderColor: Colors.primary,
-    borderStyle: 'dashed',
-    overflow: 'hidden',
-    marginBottom: Spacing.md,
-  },
-  imageZoneWithImage: {
-    borderStyle: 'solid',
-    borderColor: Colors.primary,
-  },
-  imagePlaceholder: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: Colors.primarySoft,
-  },
-  cameraIcon: {
-    fontSize: 48,
-    marginBottom: Spacing.sm,
-  },
-  uploadText: {
-    fontSize: FontSize.md,
-    color: Colors.primary,
-    fontWeight: '600',
-  },
-  uploadHint: {
-    fontSize: FontSize.sm,
-    color: Colors.textMuted,
-    marginTop: 4,
-  },
-  previewImage: {
-    width: '100%',
-    height: '100%',
-    resizeMode: 'cover',
-  },
-  actionRow: {
-    flexDirection: 'row',
-    gap: Spacing.sm,
-    marginBottom: Spacing.lg,
-  },
-  actionBtn: {
-    flex: 1,
-    backgroundColor: Colors.surface,
-    borderRadius: BorderRadius.md,
-    padding: Spacing.md,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  clearBtn: {
-    borderColor: Colors.error + '40',
-    backgroundColor: '#FFF5F5',
-  },
-  actionIcon: {
-    fontSize: 24,
-    marginBottom: 4,
-  },
-  actionLabel: {
-    fontSize: FontSize.sm,
-    color: Colors.textSecondary,
-    fontWeight: '600',
-  },
-  inputSection: {
-    marginBottom: Spacing.lg,
-  },
-  inputLabel: {
-    fontSize: FontSize.md,
-    color: Colors.textSecondary,
-    fontWeight: '600',
-    marginBottom: Spacing.xs,
-  },
-  textInput: {
-    backgroundColor: Colors.surface,
-    borderRadius: BorderRadius.md,
-    padding: Spacing.md,
-    fontSize: FontSize.md,
-    color: Colors.textPrimary,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    minHeight: 60,
-    textAlignVertical: 'top',
-  },
-  diagnoseBtn: {
-    backgroundColor: Colors.primary,
-    borderRadius: BorderRadius.full,
-    paddingVertical: Spacing.md,
-    alignItems: 'center',
-    marginBottom: Spacing.lg,
-  },
-  diagnoseBtnDisabled: {
-    backgroundColor: Colors.disabled,
-  },
-  diagnoseBtnText: {
-    fontSize: FontSize.lg,
-    color: Colors.textOnPrimary,
-    fontWeight: '700',
-  },
-  loadingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-  },
-  resultSection: {
-    marginBottom: Spacing.lg,
-  },
-  resultHeader: {
-    fontSize: FontSize.lg,
-    fontWeight: '700',
-    color: Colors.textPrimary,
-    marginBottom: Spacing.sm,
-  },
-  resultCard: {
-    backgroundColor: Colors.surface,
-    borderRadius: BorderRadius.lg,
-    padding: Spacing.md,
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  resultText: {
-    fontSize: FontSize.md,
-    color: Colors.textPrimary,
-    lineHeight: 24,
-  },
-  tipsSection: {
-    backgroundColor: Colors.accentSoft,
-    borderRadius: BorderRadius.lg,
-    padding: Spacing.md,
-    borderLeftWidth: 3,
-    borderLeftColor: Colors.accent,
-  },
-  tipsTitle: {
-    fontSize: FontSize.md,
-    fontWeight: '700',
-    color: Colors.earth,
-    marginBottom: Spacing.sm,
-  },
-  tipItem: {
-    fontSize: FontSize.sm,
-    color: Colors.textSecondary,
-    marginBottom: 4,
-    lineHeight: 20,
-  },
-  summaryCard: {
-    backgroundColor: '#F0F8F0',
-    borderRadius: BorderRadius.lg,
-    padding: Spacing.md,
-    marginBottom: Spacing.sm,
-    borderWidth: 1,
-    borderColor: Colors.primary + '30',
-  },
-  summaryText: {
-    fontSize: FontSize.md,
-    color: Colors.textPrimary,
-    lineHeight: 26,
-  },
-  playAgainBtn: {
-    marginTop: Spacing.sm,
-    alignSelf: 'flex-start',
-    backgroundColor: Colors.primarySoft,
-    paddingVertical: 6,
-    paddingHorizontal: Spacing.md,
-    borderRadius: BorderRadius.full,
-  },
-  playAgainText: {
-    fontSize: FontSize.sm,
-    color: Colors.primary,
-    fontWeight: '600',
-  },
+  container: { flex: 1, backgroundColor: Colors.background },
+  scroll: { padding: Spacing.md, paddingBottom: Spacing.xxl },
+  imageZone: { height: 200, borderRadius: BorderRadius.lg, borderWidth: 2, borderColor: Colors.primary, borderStyle: 'dashed', overflow: 'hidden', marginBottom: Spacing.md },
+  imageZoneActive: { borderStyle: 'solid' },
+  placeholder: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.primarySoft },
+  camIcon: { fontSize: 48, marginBottom: Spacing.xs },
+  camText: { fontSize: FontSize.md, color: Colors.primary, fontWeight: '600' },
+  preview: { width: '100%', height: '100%', resizeMode: 'cover' },
+  actionRow: { flexDirection: 'row', gap: Spacing.sm, marginBottom: Spacing.md },
+  actionBtn: { flex: 1, backgroundColor: Colors.surface, borderRadius: BorderRadius.md, padding: Spacing.sm, alignItems: 'center', borderWidth: 1, borderColor: Colors.border },
+  clearBtn: { borderColor: Colors.error + '40', backgroundColor: '#FFF5F5' },
+  actionIcon: { fontSize: 24, marginBottom: 2 },
+  actionLabel: { fontSize: FontSize.xs, color: Colors.textSecondary, fontWeight: '600' },
+  descInput: { backgroundColor: Colors.surface, borderRadius: BorderRadius.md, padding: Spacing.md, fontSize: FontSize.md, color: Colors.textPrimary, borderWidth: 1, borderColor: Colors.border, marginBottom: Spacing.md, minHeight: 44 },
+  diagnoseBtn: { backgroundColor: Colors.primary, borderRadius: BorderRadius.full, paddingVertical: Spacing.md, alignItems: 'center', marginBottom: Spacing.lg },
+  diagnoseBtnOff: { backgroundColor: Colors.disabled },
+  diagnoseTxt: { fontSize: FontSize.lg, color: '#fff', fontWeight: '700' },
+  loadRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
+  // Result
+  resultCard: { backgroundColor: Colors.surface, borderRadius: BorderRadius.lg, padding: Spacing.lg, borderWidth: 1, borderColor: Colors.primary + '30' },
+  statusBadge: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, paddingVertical: Spacing.sm, paddingHorizontal: Spacing.md, borderRadius: BorderRadius.full, alignSelf: 'flex-start', marginBottom: Spacing.md },
+  badgeGreen: { backgroundColor: '#E8F5E9' },
+  badgeOrange: { backgroundColor: '#FFF3E0' },
+  statusIcon: { fontSize: 20 },
+  statusText: { fontSize: FontSize.lg, fontWeight: '700', color: Colors.textPrimary },
+  confidence: { fontSize: FontSize.sm, color: Colors.textMuted, marginBottom: Spacing.md },
+  playBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Spacing.sm, backgroundColor: Colors.primary, borderRadius: BorderRadius.full, paddingVertical: Spacing.md, paddingHorizontal: Spacing.xl },
+  playBtnStop: { backgroundColor: '#E65100' },
+  playIcon: { fontSize: 24 },
+  playTxt: { fontSize: FontSize.lg, color: '#fff', fontWeight: '700' },
+  summaryTxt: { fontSize: FontSize.md, color: Colors.textPrimary, lineHeight: 24, marginTop: Spacing.sm },
 });

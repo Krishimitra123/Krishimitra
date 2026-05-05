@@ -108,7 +108,7 @@ async def audio_to_transcript(audio_base64: str, api_key: str, mime_type: str = 
     print(f'[M1-STT] Sending {len(wav_bytes)} bytes as audio.wav to Sarvam...')
 
     try:
-        async with httpx.AsyncClient(timeout=20.0) as client:
+        async with httpx.AsyncClient(timeout=15.0) as client:
             resp = await asyncio.wait_for(
                 client.post(
                     'https://api.sarvam.ai/speech-to-text',
@@ -116,10 +116,10 @@ async def audio_to_transcript(audio_base64: str, api_key: str, mime_type: str = 
                     data={'language_code': 'kn-IN', 'model': 'saarika:v2.5'},
                     files={'file': ('audio.wav', wav_bytes, 'audio/wav')},
                 ),
-                timeout=18.0,
+                timeout=14.0,
             )
     except asyncio.TimeoutError:
-        raise ValueError('Sarvam STT timed out after 18s')
+        raise ValueError('Sarvam STT timed out after 14s')
 
     if resp.status_code != 200:
         raise ValueError(f'STT {resp.status_code}: {resp.text[:200]}')
@@ -129,24 +129,34 @@ async def audio_to_transcript(audio_base64: str, api_key: str, mime_type: str = 
     return {'transcript': transcript, 'language': 'kn-IN', 'confidence': 1.0}
 
 
-async def text_to_audio(text_kannada: str, api_key: str) -> str:
+async def text_to_audio(text: str, api_key: str, language: str = 'kn') -> str:
     """
-    Kannada text → WAV base64 via Sarvam bulbul:v3.
+    Text → WAV base64 via Sarvam bulbul:v3.
+    Supports Kannada (kn) and English (en).
     Splits long text into sentence-level chunks (max 450 chars each),
     generates audio for each, and concatenates WAV data.
     Non-fatal: returns '' on failure.
     """
-    if not text_kannada or len(text_kannada.strip()) < 5:
+    if not text or len(text.strip()) < 5:
         return ''
 
+    # Map language code to Sarvam format
+    LANG_MAP = {
+        'kn': 'kn-IN', 'en': 'en-IN', 'hi': 'hi-IN', 'ta': 'ta-IN',
+        'te': 'te-IN', 'ml': 'ml-IN', 'mr': 'mr-IN', 'bn': 'bn-IN',
+        'gu': 'gu-IN', 'pa': 'pa-IN', 'od': 'od-IN',
+    }
+    lang_code = LANG_MAP.get(language, 'kn-IN')
+    speaker = 'meera' if language == 'en' else 'amit'
+
     # Split into sentence-sized chunks that fit Sarvam's 500 char limit
-    chunks = _split_text_for_tts(text_kannada.strip(), max_chars=450)
-    print(f'[M1-TTS] Generating audio for {len(text_kannada)} chars in {len(chunks)} chunk(s)...')
+    chunks = _split_text_for_tts(text.strip(), max_chars=450)
+    print(f'[M1-TTS] Generating {lang_code} audio for {len(text)} chars in {len(chunks)} chunk(s)...')
 
     audio_parts: list[str] = []
     for i, chunk in enumerate(chunks):
         try:
-            async with httpx.AsyncClient(timeout=15.0) as client:
+            async with httpx.AsyncClient(timeout=10.0) as client:
                 resp = await asyncio.wait_for(
                     client.post(
                         'https://api.sarvam.ai/text-to-speech',
@@ -156,14 +166,14 @@ async def text_to_audio(text_kannada: str, api_key: str) -> str:
                         },
                         json={
                             'inputs': [chunk],
-                            'target_language_code': 'kn-IN',
-                            'speaker': 'amit',
+                            'target_language_code': lang_code,
+                            'speaker': speaker,
                             'speech_sample_rate': 22050,
                             'enable_preprocessing': True,
-                            'model': 'bulbul:v3',
+                            'model': 'bulbul:v2',
                         },
                     ),
-                    timeout=13.0,
+                    timeout=9.0,
                 )
 
             if resp.status_code != 200:

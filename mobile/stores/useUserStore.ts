@@ -1,6 +1,6 @@
 /**
  * User Profile Store — Zustand with AsyncStorage persistence.
- * Stores farmer name, district, crops (multiple), and onboarding status.
+ * Stores farmer name, phone, district, crops (multiple), auth + onboarding status.
  */
 
 import { create } from 'zustand';
@@ -10,16 +10,22 @@ import { getZoneForDistrict } from '@/constants/districts';
 
 interface UserProfile {
   farmer_name:   string;
+  phone:         string;
   district:      string;
   primary_crop:  string;
   crops:         string[];
   agro_zone:     number | null;
+  tts_language:  string;  // 'kn','en','hi','ta','te','ml','mr','bn','gu','pa','od'
+  is_authenticated: boolean;
+  auth_token:    string;
   is_onboarded:  boolean;
 }
 
 interface UserStore extends UserProfile {
   setProfile: (profile: Partial<UserProfile>) => void;
+  setAuthenticated: (phone: string, token: string) => void;
   completeOnboarding: () => void;
+  logout: () => void;
   reset: () => void;
 }
 
@@ -27,10 +33,14 @@ export const useUserStore = create<UserStore>()(
   persist(
     (set) => ({
       farmer_name: '',
+      phone: '',
       district: '',
       primary_crop: '',
       crops: [],
       agro_zone: null,
+      tts_language: 'kn',
+      is_authenticated: false,
+      auth_token: '',
       is_onboarded: false,
 
       setProfile: (p) =>
@@ -47,15 +57,29 @@ export const useUserStore = create<UserStore>()(
           return updated;
         }),
 
+      setAuthenticated: (phone, token) =>
+        set({ phone, auth_token: token, is_authenticated: true }),
+
       completeOnboarding: () => set({ is_onboarded: true }),
+
+      logout: () =>
+        set({
+          is_authenticated: false,
+          auth_token: '',
+          phone: '',
+        }),
 
       reset: () =>
         set({
           farmer_name: '',
+          phone: '',
           district: '',
           primary_crop: '',
           crops: [],
           agro_zone: null,
+          tts_language: 'kn',
+          is_authenticated: false,
+          auth_token: '',
           is_onboarded: false,
         }),
     }),

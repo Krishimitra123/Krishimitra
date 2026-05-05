@@ -1,5 +1,5 @@
 """
-Module M4 — Crop Diagnosis (Pixtral-12b direct)
+Module M4 — Crop Diagnosis (Gemini primary, Pixtral-12b fallback)
 Key fix: image_url must be {"url": "data:..."} not a bare string.
 Hard 35s overall asyncio timeout. Image result cached by MD5.
 """
@@ -24,6 +24,7 @@ except ImportError:
 _cache: dict[str, DiagnosisFinding] = {}
 
 MISTRAL_URL = 'https://api.mistral.ai/v1/chat/completions'
+GEMINI_URL_TEMPLATE = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={key}'
 
 CHEMICAL_TERMS = [
     'urea', 'DAP', 'NPK', 'chlorpyrifos', 'imidacloprid',
@@ -146,8 +147,65 @@ def _build(data: dict, source: str) -> DiagnosisFinding:
     )
 
 
+async def _gemini(b64: str, mime: str, prompt: str) -> DiagnosisFinding | None:
+    """Google Gemini 2.0 Flash — PRIMARY model. 25s timeout."""
+    key = os.environ.get('GEMINI_API_KEY', '').strip()
+    if not key:
+        print('[M4] GEMINI_API_KEY not set — skipping Gemini')
+        return None
+
+    # Compress large images before sending
+    b64, mime = _compress_image(b64, mime)
+    print(f'[M4] Sending to Gemini Flash: {len(b64)} chars, mime={mime}')
+
+    url = GEMINI_URL_TEMPLATE.format(key=key)
+
+    payload = {
+        'contents': [{
+            'parts': [
+                {
+                    'inline_data': {
+                        'mime_type': mime,
+                        'data': b64,
+                    }
+                },
+                {
+                    'text': prompt,
+                },
+            ]
+        }],
+        'generationConfig': {
+            'temperature': 0.1,
+            'maxOutputTokens': 1500,
+        },
+    }
+
+    try:
+        async with httpx.AsyncClient(timeout=25.0) as c:
+            r = await c.post(url, json=payload)
+
+        print(f'[M4] Gemini HTTP status: {r.status_code}')
+        if r.status_code == 200:
+            data = r.json()
+            text = data['candidates'][0]['content']['parts'][0]['text'].strip()
+            print(f'[M4] Gemini raw (first 200): {text[:200]}')
+            d = _parse(text)
+            if d:
+                print(f'[M4] Gemini OK: {d.get("disease_name")} ({d.get("confidence_pct")}%)')
+                return _build(d, 'Gemini 2.0 Flash Vision')
+            print(f'[M4] Gemini JSON parse failed: {text[:300]}')
+        else:
+            print(f'[M4] Gemini HTTP {r.status_code}: {r.text[:300]}')
+
+    except httpx.TimeoutException:
+        print('[M4] Gemini timed out after 25s')
+    except Exception as e:
+        print(f'[M4] Gemini error: {e}')
+    return None
+
+
 async def _pixtral(b64: str, mime: str, prompt: str) -> DiagnosisFinding | None:
-    """Mistral Pixtral-12b — primary model. 25s timeout."""
+    """Mistral Pixtral-12b — FALLBACK model. 25s timeout."""
     key = os.environ.get('MISTRAL_API_KEY', '').strip()
     if not key:
         print('[M4] ERROR: MISTRAL_API_KEY not set!')
@@ -155,7 +213,7 @@ async def _pixtral(b64: str, mime: str, prompt: str) -> DiagnosisFinding | None:
 
     # Compress large images before sending
     b64, mime = _compress_image(b64, mime)
-    print(f'[M4] Sending to Pixtral: {len(b64)} chars, mime={mime}')
+    print(f'[M4] Sending to Pixtral (fallback): {len(b64)} chars, mime={mime}')
 
     try:
         async with httpx.AsyncClient(timeout=25.0) as c:
@@ -179,7 +237,7 @@ async def _pixtral(b64: str, mime: str, prompt: str) -> DiagnosisFinding | None:
             d = _parse(text)
             if d:
                 print(f'[M4] Pixtral OK: {d.get("disease_name")} ({d.get("confidence_pct")}%)')
-                return _build(d, 'Pixtral-12b Vision')
+                return _build(d, 'Pixtral-12b Vision (fallback)')
             print(f'[M4] Pixtral JSON parse failed: {text[:300]}')
         else:
             print(f'[M4] Pixtral HTTP {r.status_code}: {r.text[:300]}')
@@ -194,7 +252,7 @@ async def _pixtral(b64: str, mime: str, prompt: str) -> DiagnosisFinding | None:
 
 async def diagnose(request: DiagnosisRequest) -> DiagnosisFinding:
     """
-    Run diagnosis: Pixtral-12b direct.
+    Run diagnosis: Gemini 2.0 Flash primary, Pixtral-12b fallback.
     Hard 30s overall timeout.
     """
     b64 = request.image_base64
@@ -212,11 +270,19 @@ async def diagnose(request: DiagnosisRequest) -> DiagnosisFinding:
         prompt += f'\n\nAdditional context from farmer: "{extra}"'
 
     async def _run() -> DiagnosisFinding:
+        # Primary: Gemini 2.0 Flash
+        result = await _gemini(b64, mime, prompt)
+        if result is not None:
+            return result
+
+        # Fallback: Pixtral-12b
+        print('[M4] Gemini failed — trying Pixtral fallback...')
         result = await _pixtral(b64, mime, prompt)
-        if result is None:
-            print('[M4] Pixtral failed — returning fallback')
-            result = _fallback()
-        return result
+        if result is not None:
+            return result
+
+        print('[M4] Both models failed — returning fallback')
+        return _fallback()
 
     try:
         result = await asyncio.wait_for(_run(), timeout=30.0)
