@@ -254,6 +254,20 @@ export default function DiagnoseScreen() {
     }
   }, [addMessage, audioStore, currentSession?.messages, playDiagnosisAudio]);
 
+  const resetDiagnosis = useCallback(() => {
+    setImageUri(null);
+    setImageBase64(null);
+    setImageMimeType('image/jpeg');
+    setResult(null);
+    setCanAskFollowUp(false);
+    setDiseaseOverlay(null);
+    if (audioStore.state === 'PLAYING') {
+      audioStore.setState('IDLE');
+      // Ideally we would stop audio here, but we'll let it play or stop naturally when unmounting
+    }
+  }, [audioStore]);
+
+
   const handlePrimaryPress = useCallback(async () => {
     if (overlayMode === 'analyzing' || overlayMode === 'processing' || overlayMode === 'speaking') {
       return;
@@ -318,6 +332,16 @@ export default function DiagnoseScreen() {
           <Animated.View style={[styles.diseaseOverlay, { opacity: diseaseOpacity }]}>
             <Text style={styles.diseaseNameText}>{diseaseOverlay}</Text>
           </Animated.View>
+        )}
+
+        {imageUri && overlayMode !== 'analyzing' && overlayMode !== 'processing' && (
+          <TouchableOpacity 
+            style={styles.retakeButton} 
+            onPress={resetDiagnosis}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.retakeButtonText}>🔄</Text>
+          </TouchableOpacity>
         )}
       </TouchableOpacity>
 
@@ -449,6 +473,24 @@ const styles = StyleSheet.create({
   },
   primaryButtonIcon: {
     fontSize: 34,
+    color: '#fff',
+  },
+  retakeButton: {
+    position: 'absolute',
+    top: Spacing.xl + 20,
+    right: Spacing.xl,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.4)',
+    ...Shadows.sm,
+  },
+  retakeButtonText: {
+    fontSize: 22,
     color: '#fff',
   },
 });
