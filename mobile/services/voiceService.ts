@@ -5,7 +5,8 @@
  */
 
 import { Audio, InterruptionModeIOS, InterruptionModeAndroid } from 'expo-av';
-import * as FileSystem from 'expo-file-system/legacy';
+import * as FileSystem from 'expo-file-system/legacy';  // Use legacy API to avoid deprecation warning
+import * as Speech from 'expo-speech';
 
 // ── Recording state ───────────────────────────────────────────────
 let _recording: Audio.Recording | null = null;
@@ -41,6 +42,7 @@ async function _setRecordingMode(): Promise<void> {
     interruptionModeIOS: InterruptionModeIOS.DuckOthers,
     interruptionModeAndroid: InterruptionModeAndroid.DuckOthers,
     shouldDuckAndroid: true,
+    playThroughEarpieceAndroid: false,
   });
 }
 
@@ -103,7 +105,7 @@ export async function stopRecordingAndGetBase64(): Promise<{ base64: string; mim
     const mimeType = ext === 'm4a' ? 'audio/mp4' : ext === '3gp' ? 'audio/3gpp' : 'audio/wav';
 
     const base64 = await FileSystem.readAsStringAsync(uri, {
-      encoding: FileSystem.EncodingType.Base64,
+      encoding: 'base64',
     });
 
     console.log(`[Voice] Audio: ${base64.length} chars, .${ext}, ${mimeType}`);
@@ -150,9 +152,13 @@ export async function playBase64Audio(base64Audio: string): Promise<void> {
 
   await stopPlayback();
 
-  const fileUri = `${FileSystem.cacheDirectory}tts_${Date.now()}.wav`;
+  if (!(FileSystem as any).cacheDirectory) {
+    throw new Error('Cache directory unavailable for audio playback');
+  }
+
+  const fileUri = `${(FileSystem as any).cacheDirectory}tts_${Date.now()}.wav`;
   await FileSystem.writeAsStringAsync(fileUri, base64Audio, {
-    encoding: FileSystem.EncodingType.Base64,
+    encoding: 'base64',
   });
 
   // CRITICAL: Force speaker mode BEFORE creating sound
@@ -176,6 +182,7 @@ export async function playBase64Audio(base64Audio: string): Promise<void> {
         _playbackResolve = null;
         try { await sound.unloadAsync(); } catch {}
         try { await FileSystem.deleteAsync(fileUri, { idempotent: true }); } catch {}
+        try { await _setRecordingMode(); } catch {}
       };
 
       const TIMEOUT = setTimeout(async () => {
@@ -198,4 +205,22 @@ export async function playBase64Audio(base64Audio: string): Promise<void> {
     _activeSound = null;
     _playbackResolve = null;
   }
+}
+
+export async function speakText(text: string, language: string = 'kn-IN'): Promise<void> {
+  const cleanText = text.trim();
+  if (!cleanText) return;
+
+  await stopPlayback();
+
+  await new Promise<void>((resolve) => {
+    Speech.speak(cleanText, {
+      language,
+      rate: 0.95,
+      pitch: 1.0,
+      onDone: resolve,
+      onStopped: resolve,
+      onError: (err) => resolve(),
+    });
+  });
 }

@@ -23,12 +23,14 @@ class UserContext(BaseModel):
     primary_crop: Optional[str] = None
     agro_zone: Optional[int] = None
     season: Optional[str] = None
+    preferred_language: Optional[str] = None
 
 class DiagnosisRequest(BaseModel):
     image_base64: str
     image_mime: str = "image/jpeg"
     user_context: Optional[UserContext] = None
     optional_text: Optional[str] = None
+    preferred_language: Optional[str] = None
     tts_language: str = "kn"  # 'kn' for Kannada, 'en' for English
 
 class DiagnosisFinding(BaseModel):
@@ -55,6 +57,7 @@ class QueryRequest(BaseModel):
     image_mime: str = "image/jpeg"
     user_context: Optional[UserContext] = None
     conversation_history: Optional[List[ConversationMessage]] = None  # Last N exchanges for context
+    preferred_language: Optional[str] = None
     tts_language: str = "kn"  # 'kn' for Kannada, 'en' for English
 
 class QueryResponse(BaseModel):

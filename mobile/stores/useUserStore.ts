@@ -15,6 +15,7 @@ interface UserProfile {
   primary_crop:  string;
   crops:         string[];
   agro_zone:     number | null;
+  preferred_language: string;  // 'kn-IN', 'hi-IN', 'ta-IN', etc.
   tts_language:  string;  // 'kn','en','hi','ta','te','ml','mr','bn','gu','pa','od'
   is_authenticated: boolean;
   auth_token:    string;
@@ -23,6 +24,7 @@ interface UserProfile {
 
 interface UserStore extends UserProfile {
   setProfile: (profile: Partial<UserProfile>) => void;
+  setLanguage: (lang: string) => void;
   setAuthenticated: (phone: string, token: string) => void;
   completeOnboarding: () => void;
   logout: () => void;
@@ -38,7 +40,8 @@ export const useUserStore = create<UserStore>()(
       primary_crop: '',
       crops: [],
       agro_zone: null,
-      tts_language: 'kn',
+      preferred_language: 'kn-IN',
+      tts_language: 'kn-IN',
       is_authenticated: false,
       auth_token: '',
       is_onboarded: false,
@@ -50,12 +53,21 @@ export const useUserStore = create<UserStore>()(
           if (p.district) {
             updated.agro_zone = getZoneForDistrict(p.district);
           }
+          if (p.preferred_language) {
+            updated.tts_language = p.preferred_language;
+          }
+          if (p.tts_language) {
+            updated.preferred_language = p.tts_language;
+          }
           // Sync primary_crop with first crop in array
           if (p.crops && p.crops.length > 0 && !p.primary_crop) {
             updated.primary_crop = p.crops[0];
           }
           return updated;
         }),
+
+      setLanguage: (lang) =>
+        set({ preferred_language: lang, tts_language: lang }),
 
       setAuthenticated: (phone, token) =>
         set({ phone, auth_token: token, is_authenticated: true }),
@@ -77,7 +89,8 @@ export const useUserStore = create<UserStore>()(
           primary_crop: '',
           crops: [],
           agro_zone: null,
-          tts_language: 'kn',
+          preferred_language: 'kn-IN',
+          tts_language: 'kn-IN',
           is_authenticated: false,
           auth_token: '',
           is_onboarded: false,

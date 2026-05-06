@@ -1,18 +1,15 @@
 """
-Auth Router — OTP-based phone authentication using Fast2SMS.
+Auth Router — OTP-based phone authentication (Demo OTP only).
 Endpoints:
-  POST /api/auth/send-otp   — Send OTP to Indian mobile number
-  POST /api/auth/verify-otp — Verify OTP and return session token
+    POST /api/auth/send-otp   — Generate OTP (demo)
+    POST /api/auth/verify-otp — Verify OTP and return session token
 
-Uses Fast2SMS Quick Transactional SMS route (no website verification needed).
-OTPs expire after 5 minutes. Dev mode available when ENVIRONMENT=development.
+OTPs expire after 5 minutes.
 """
 
-import os
 import time
 import random
 import hashlib
-import httpx
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
@@ -24,7 +21,6 @@ _otp_store: dict[str, tuple[str, float, int]] = {}
 
 OTP_EXPIRY = 300       # 5 minutes
 MAX_ATTEMPTS = 3
-FAST2SMS_URL = 'https://www.fast2sms.com/dev/bulkV2'
 
 
 def _hash_phone(phone: str) -> str:
@@ -45,10 +41,6 @@ def _clean_phone(phone: str) -> str:
     if len(phone) != 10 or not phone.isdigit():
         raise HTTPException(status_code=400, detail='ದಯವಿಟ್ಟು 10 ಅಂಕಿಯ ಮೊಬೈಲ್ ಸಂಖ್ಯೆ ನಮೂದಿಸಿ (Invalid phone number)')
     return phone
-
-
-def _is_dev_mode() -> bool:
-    return os.environ.get('ENVIRONMENT', 'development').lower() in ('development', 'dev')
 
 
 # ── Request/Response Models ──────────────────────────────────
@@ -75,7 +67,7 @@ class VerifyOTPResponse(BaseModel):
 
 @router.post('/send-otp', response_model=SendOTPResponse)
 async def send_otp(request: SendOTPRequest):
-    """Send a 6-digit OTP to the given Indian mobile number via Fast2SMS."""
+    """Generate a 6-digit OTP for the given Indian mobile number (demo only)."""
     phone = _clean_phone(request.phone)
     phone_hash = _hash_phone(phone)
 
@@ -90,90 +82,11 @@ async def send_otp(request: SendOTPRequest):
 
     otp = _generate_otp()
     _otp_store[phone_hash] = (otp, time.time(), 0)
-
-    api_key = os.environ.get('FAST2SMS_API_KEY', '').strip()
-
-    # ── DEV MODE: Skip actual SMS, return OTP directly ───────
-    if _is_dev_mode() and not api_key:
-        print(f'[Auth][DEV] OTP for ***{phone[-4:]}: {otp}')
-        return SendOTPResponse(
-            success=True,
-            message=f'[DEV] OTP: {otp} — ಡೆವ್ ಮೋಡ್‌ನಲ್ಲಿ SMS ಕಳುಹಿಸಲಾಗಿಲ್ಲ.',
-            dev_otp=otp,
-        )
-
-    if not api_key:
-        raise HTTPException(status_code=500, detail='Fast2SMS API key not configured')
-
-    # ── Try Quick Transactional SMS route ─────────────────────
-    sms_sent = False
-    message_text = f'Your KrishiMitra OTP is {otp}. Valid for 5 minutes. Do not share.'
-
-    # Method 1: Quick Transactional route (route=q)
-    try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            resp = await client.post(
-                FAST2SMS_URL,
-                headers={
-                    'authorization': api_key,
-                    'Content-Type': 'application/json',
-                },
-                json={
-                    'route': 'q',
-                    'message': message_text,
-                    'flash': '0',
-                    'numbers': phone,
-                },
-            )
-
-        resp_data = resp.json()
-        print(f'[Auth] Fast2SMS (route=q) response: {resp.status_code} — {resp_data}')
-
-        if resp.status_code == 200 and resp_data.get('return'):
-            sms_sent = True
-
-    except Exception as e:
-        print(f'[Auth] Fast2SMS route=q failed: {e}')
-
-    # Method 2: If route=q fails, try the variables route (route=v3)
-    if not sms_sent:
-        try:
-            async with httpx.AsyncClient(timeout=10.0) as client:
-                resp = await client.get(
-                    'https://www.fast2sms.com/dev/bulkV2',
-                    params={
-                        'authorization': api_key,
-                        'route': 'v3',
-                        'sender_id': 'KMITRA',
-                        'message': message_text,
-                        'flash': '0',
-                        'numbers': phone,
-                    },
-                    headers={'authorization': api_key},
-                )
-
-            resp_data = resp.json()
-            print(f'[Auth] Fast2SMS (route=v3) response: {resp.status_code} — {resp_data}')
-
-            if resp.status_code == 200 and resp_data.get('return'):
-                sms_sent = True
-
-        except Exception as e:
-            print(f'[Auth] Fast2SMS route=v3 also failed: {e}')
-
-    # ── If all SMS routes fail, use DEV fallback ─────────────
-    if not sms_sent:
-        print(f'[Auth][DEV FALLBACK] OTP for ***{phone[-4:]}: {otp}')
-        return SendOTPResponse(
-            success=True,
-            message=f'SMS ವಿಫಲ — DEV ಮೋಡ್ OTP: {otp}',
-            dev_otp=otp,
-        )
-
-    print(f'[Auth] OTP sent to ***{phone[-4:]}')
+    print(f'[Auth][DEMO] OTP for ***{phone[-4:]}: {otp}')
     return SendOTPResponse(
         success=True,
-        message=f'OTP ಅನ್ನು ***{phone[-4:]} ಗೆ ಕಳುಹಿಸಲಾಗಿದೆ.',
+        message=f'[DEMO] OTP: {otp} — ಡೆಮೊ ಮೋಡ್‌ನಲ್ಲಿ SMS ಕಳುಹಿಸಲಾಗುವುದಿಲ್ಲ.',
+        dev_otp=otp,
     )
 
 

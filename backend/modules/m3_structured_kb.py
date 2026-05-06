@@ -14,9 +14,18 @@ def _require_env(name: str) -> str:
         raise RuntimeError(f"Missing required environment variable: {name}")
     return value
 
+
+def _get_supabase_key() -> str:
+    return (
+        os.getenv("SUPABASE_SERVICE_KEY")
+        or os.getenv("SUPABASE_ANON_KEY")
+        or os.getenv("SUPABASE_KEY")
+        or ""
+    )
+
 _supabase: Client = create_client(
     _require_env("SUPABASE_URL"),
-    os.getenv("SUPABASE_ANON_KEY") or _require_env("SUPABASE_KEY")
+    _get_supabase_key() or _require_env("SUPABASE_SERVICE_KEY")
 )
 
 def get_organic_input(query: str) -> Optional[dict]:

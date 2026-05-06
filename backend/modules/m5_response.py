@@ -11,6 +11,8 @@ import httpx
 import os
 import re
 
+from modules import m3_structured_kb
+
 # ── Pre-defined responses (no LLM needed) ────────────────────────
 COMING_SOON_KN = (
     "ಈ ವಿಷಯ ಶೀಘ್ರದಲ್ಲೇ KrishiMitra ಗೆ ಸೇರಿಸಲಾಗುವುದು. "
@@ -136,13 +138,14 @@ async def generate(
     skb_record: dict | None = None,
     rag_chunks: list | None = None,
     conversation_history: list | None = None,
-    tts_language: str = 'kn',
+    preferred_language: str = 'kn-IN',
+    tts_language: str | None = None,
 ) -> tuple[str, list[str]]:
     """
     Main M5 entry point.
     Returns (answer_text, sources_list)
     conversation_history: list of {role, content} dicts for follow-up support.
-    tts_language: language code for response generation (kn, en, hi, ta, te, ml, etc.)
+    preferred_language: language code for response generation (kn-IN, hi-IN, ta-IN, etc.)
     """
     from models.schemas import Intent
 
@@ -184,10 +187,27 @@ async def generate(
     # SKB record (structured knowledge base — Shinan's data)
     if skb_record:
         context_block += f"\n\nVERIFIED RECIPE FROM {skb_record.get('primary_source', 'Palekar ZBNF')}:\n"
-        for ing in skb_record.get('ingredients', []):
-            context_block += f"  • {ing['quantity']} {ing['unit']} {ing['name_en']}\n"
-        for i, step in enumerate(skb_record.get('preparation_steps', []), 1):
-            context_block += f"  Step {i}: {step}\n"
+
+        raw_ingredients = skb_record.get('ingredients', [])
+        if isinstance(raw_ingredients, list):
+            for ing in raw_ingredients:
+                if isinstance(ing, dict):
+                    qty = ing.get('quantity', '')
+                    unit = ing.get('unit', '')
+                    name = ing.get('name_en') or ing.get('item') or ing.get('name_kn') or ''
+                    context_block += f"  • {qty} {unit} {name}".strip() + "\n"
+                else:
+                    context_block += f"  • {str(ing)}\n"
+        else:
+            context_block += f"  • {str(raw_ingredients)}\n"
+
+        steps = skb_record.get('preparation_steps') or skb_record.get('preparation_steps_en') or []
+        if isinstance(steps, list):
+            for i, step in enumerate(steps, 1):
+                context_block += f"  Step {i}: {step}\n"
+        elif steps:
+            context_block += f"  Step 1: {steps}\n"
+
         sources.append(skb_record.get('primary_source', 'Palekar ZBNF Vol 1'))
 
     # RAG chunks from Supabase (Rikash's embedded documents)
@@ -204,12 +224,20 @@ async def generate(
 
     # Map language code to Sarvam format for the TARGET LANGUAGE instruction
     LANG_NAMES = {
-        'kn': 'kn-IN (Kannada)', 'en': 'en-IN (English)', 'hi': 'hi-IN (Hindi)',
-        'ta': 'ta-IN (Tamil)', 'te': 'te-IN (Telugu)', 'ml': 'ml-IN (Malayalam)',
-        'mr': 'mr-IN (Marathi)', 'bn': 'bn-IN (Bengali)', 'gu': 'gu-IN (Gujarati)',
-        'pa': 'pa-IN (Punjabi)', 'od': 'od-IN (Odia)',
+        'kn-IN': 'kn-IN (Kannada)', 'kn': 'kn-IN (Kannada)',
+        'en-IN': 'en-IN (English)', 'en': 'en-IN (English)',
+        'hi-IN': 'hi-IN (Hindi)', 'hi': 'hi-IN (Hindi)',
+        'ta-IN': 'ta-IN (Tamil)', 'ta': 'ta-IN (Tamil)',
+        'te-IN': 'te-IN (Telugu)', 'te': 'te-IN (Telugu)',
+        'ml-IN': 'ml-IN (Malayalam)', 'ml': 'ml-IN (Malayalam)',
+        'mr-IN': 'mr-IN (Marathi)', 'mr': 'mr-IN (Marathi)',
+        'bn-IN': 'bn-IN (Bengali)', 'bn': 'bn-IN (Bengali)',
+        'gu-IN': 'gu-IN (Gujarati)', 'gu': 'gu-IN (Gujarati)',
+        'pa-IN': 'pa-IN (Punjabi)', 'pa': 'pa-IN (Punjabi)',
+        'or-IN': 'or-IN (Odia)', 'od': 'or-IN (Odia)',
     }
-    target_lang = LANG_NAMES.get(tts_language, 'kn-IN (Kannada)')
+    language_code = (preferred_language or tts_language or 'kn-IN').strip()
+    target_lang = LANG_NAMES.get(language_code, 'kn-IN (Kannada)')
 
     user_message = (
         f"Farmer: {farmer_name}\n"
@@ -226,6 +254,9 @@ async def generate(
         history_dicts = [{'role': m.role, 'content': m.content} for m in conversation_history]
 
     answer = await _call_mistral(SYSTEM_PROMPT, user_message, history=history_dicts)
+
+    if skb_record and (answer == KVK_REDIRECT_KN or not answer.strip()):
+        answer = m3_structured_kb.format_recipe_for_response(skb_record)
 
     if not sources:
         sources = ['ಸುಭಾಷ್ ಪಾಲೇಕರ್ ZBNF', 'ICAR ಸಾವಯವ ಕೃಷಿ ಮಾರ್ಗದರ್ಶಿ']

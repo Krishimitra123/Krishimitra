@@ -99,7 +99,9 @@ export default function HomeScreen() {
         let audioResult: { base64: string; mimeType: string };
         try {
           audioResult = await stopRecordingAndGetBase64();
-        } catch {
+          console.log('[HomeScreen] Recording stopped, got audio');
+        } catch (err: any) {
+          console.error('[HomeScreen] Recording error:', err.message);
           audioStore.setState('IDLE');
           return;
         }
@@ -109,23 +111,51 @@ export default function HomeScreen() {
         router.push('/(tabs)/chat');
 
         try {
+          console.log('[HomeScreen] Sending voice query to backend...');
           const response = await sendVoiceQuery(audioResult.base64, audioResult.mimeType);
+          console.log('[HomeScreen] Got response from backend ✓');
+          
           addMessage({
             id: (Date.now() + 1).toString(), role: 'assistant',
             text: response.answer_text_kn, sources: response.sources || [],
             timestamp: Date.now(), is_diagnosis: false,
             audio_base64: response.audio_base64 || undefined,
           });
+          
           if (response.audio_base64) {
-            try { audioStore.setState('PLAYING'); await playBase64Audio(response.audio_base64); }
-            catch {} finally { audioStore.setState('IDLE'); }
+            try {
+              console.log('[HomeScreen] Playing TTS audio...');
+              audioStore.setState('PLAYING');
+              await playBase64Audio(response.audio_base64);
+              console.log('[HomeScreen] TTS playback finished ✓');
+            } catch (playErr) {
+              console.error('[HomeScreen] TTS playback error:', playErr);
+            } finally {
+              audioStore.setState('IDLE');
+            }
+          } else {
+            console.warn('[HomeScreen] No audio in response');
+            audioStore.setState('IDLE');
           }
         } catch (e: any) {
-          addMessage({ id: (Date.now() + 1).toString(), role: 'assistant', text: 'ಸೇವೆ ಲಭ್ಯವಿಲ್ಲ', sources: [], timestamp: Date.now(), is_diagnosis: false });
+          console.error('[HomeScreen] Query error:', {
+            message: e.message,
+            code: e.code,
+            response: e.response?.status,
+          });
+          addMessage({
+            id: (Date.now() + 1).toString(),
+            role: 'assistant',
+            text: `ಸೇವೆ ಲಭ್ಯವಿಲ್ಲ: ${e.message || 'ಅಜ್ಞಾತ ದೋಷ'}`,
+            sources: [],
+            timestamp: Date.now(),
+            is_diagnosis: false,
+          });
+          audioStore.setState('IDLE');
         }
-        audioStore.setState('IDLE');
       }
     } catch (err: any) {
+      console.error('[HomeScreen] Unexpected error:', err.message);
       audioStore.setError(err.message);
     }
   }, [audioStore.state, currentSession]);

@@ -12,7 +12,7 @@ console.log('[API] Base URL:', API_BASE);
 
 export const apiClient = axios.create({
   baseURL: API_BASE,
-  timeout: 120000,
+  timeout: 120000,  // 120s to match backend 90s timeout + overhead
   headers: {
     'Content-Type': 'application/json',
     'Bypass-Tunnel-Reminder': 'true',  // Required for localtunnel
@@ -25,12 +25,21 @@ apiClient.interceptors.request.use((config) => {
     try {
       const user = useUserStore.getState();
       if (!config.data) config.data = {};
+      const preferredLanguage = user.preferred_language || user.tts_language || 'kn-IN';
       config.data.user_context = {
         farmer_name:  user.farmer_name  || 'ರೈತ',
         district:     user.district     || 'Bengaluru Rural',
         primary_crop: user.primary_crop || 'Ragi',
         agro_zone:    user.agro_zone    || 'Southern Dry Zone',
+        preferred_language: preferredLanguage,
       };
+      // Keep legacy and new language fields in sync for all endpoints.
+      if (!config.data.tts_language) {
+        config.data.tts_language = preferredLanguage;
+      }
+      if (!config.data.preferred_language) {
+        config.data.preferred_language = preferredLanguage;
+      }
     } catch (e) {
       // User store not ready — continue without context
     }
@@ -45,10 +54,19 @@ apiClient.interceptors.response.use(
     if (__DEV__) {
       if (error?.response) {
         // Server responded with error status
-        console.error('[API Error]', error.message, error.response.status, error.response.data);
+        console.error('[API Error]', {
+          status: error.response.status,
+          message: error.message,
+          data: error.response.data,
+        });
       } else if (error?.request) {
         // Request was made but no response received (network issue)
-        console.error('[API NetworkError] No response from server. Check:', error.config?.baseURL, '| Code:', error.code);
+        console.error('[API NetworkError] No response from server:', {
+          baseURL: error.config?.baseURL,
+          url: error.config?.url,
+          code: error.code,
+          message: error.message,
+        });
       } else {
         // Something else happened
         console.error('[API Error]', error?.message);

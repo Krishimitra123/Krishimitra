@@ -14,6 +14,35 @@ import tempfile
 import httpx
 
 
+def _normalize_language_code(language_code: str | None) -> str:
+    code = (language_code or 'kn-IN').strip()
+    aliases = {
+        'kn': 'kn-IN',
+        'kn-IN': 'kn-IN',
+        'en': 'en-IN',
+        'en-IN': 'en-IN',
+        'hi': 'hi-IN',
+        'hi-IN': 'hi-IN',
+        'ta': 'ta-IN',
+        'ta-IN': 'ta-IN',
+        'te': 'te-IN',
+        'te-IN': 'te-IN',
+        'ml': 'ml-IN',
+        'ml-IN': 'ml-IN',
+        'mr': 'mr-IN',
+        'mr-IN': 'mr-IN',
+        'bn': 'bn-IN',
+        'bn-IN': 'bn-IN',
+        'gu': 'gu-IN',
+        'gu-IN': 'gu-IN',
+        'pa': 'pa-IN',
+        'pa-IN': 'pa-IN',
+        'od': 'or-IN',
+        'or-IN': 'or-IN',
+    }
+    return aliases.get(code, code)
+
+
 def _convert_audio_to_wav(audio_bytes: bytes, mime_type: str) -> bytes:
     """
     Convert any audio format to 16kHz mono WAV using ffmpeg.
@@ -129,10 +158,10 @@ async def audio_to_transcript(audio_base64: str, api_key: str, mime_type: str = 
     return {'transcript': transcript, 'language': 'kn-IN', 'confidence': 1.0}
 
 
-async def text_to_audio(text: str, api_key: str, language: str = 'kn') -> str:
+async def text_to_audio(text: str, api_key: str, language_code: str = 'kn-IN') -> str:
     """
-    Text → WAV base64 via Sarvam bulbul:v3.
-    Supports Kannada (kn) and English (en).
+    Text → WAV base64 via Sarvam Bulbul.
+    Supports Kannada and the other Sarvam TTS languages.
     Splits long text into sentence-level chunks (max 450 chars each),
     generates audio for each, and concatenates WAV data.
     Non-fatal: returns '' on failure.
@@ -140,54 +169,67 @@ async def text_to_audio(text: str, api_key: str, language: str = 'kn') -> str:
     if not text or len(text.strip()) < 5:
         return ''
 
-    # Map language code to Sarvam format
-    LANG_MAP = {
-        'kn': 'kn-IN', 'en': 'en-IN', 'hi': 'hi-IN', 'ta': 'ta-IN',
-        'te': 'te-IN', 'ml': 'ml-IN', 'mr': 'mr-IN', 'bn': 'bn-IN',
-        'gu': 'gu-IN', 'pa': 'pa-IN', 'od': 'od-IN',
+    LANGUAGE_SPEAKER_MAP = {
+        'kn-IN': 'meera',
+        'hi-IN': 'arvind',
+        'ta-IN': 'anitha',
+        'te-IN': 'vijay',
+        'ml-IN': 'neel',
+        'mr-IN': 'meera',
+        'bn-IN': 'meera',
+        'gu-IN': 'meera',
+        'pa-IN': 'meera',
+        'or-IN': 'meera',
+        'en-IN': 'meera',
     }
-    lang_code = LANG_MAP.get(language, 'kn-IN')
-    speaker = 'meera' if language == 'en' else 'amit'
+    lang_code = _normalize_language_code(language_code)
+    speaker_candidates = [LANGUAGE_SPEAKER_MAP.get(lang_code, 'aditya')]
+    env_speaker = os.environ.get('SARVAM_TTS_SPEAKER', '').strip()
+    if env_speaker and env_speaker not in speaker_candidates:
+        speaker_candidates.append(env_speaker)
+    if 'aditya' not in speaker_candidates:
+        speaker_candidates.append('aditya')
 
-    # Split into sentence-sized chunks that fit Sarvam's 500 char limit
+    # Split into sentence-sized chunks that fit Sarvam's limit
     chunks = _split_text_for_tts(text.strip(), max_chars=450)
     print(f'[M1-TTS] Generating {lang_code} audio for {len(text)} chars in {len(chunks)} chunk(s)...')
 
     audio_parts: list[str] = []
     for i, chunk in enumerate(chunks):
-        try:
-            async with httpx.AsyncClient(timeout=10.0) as client:
-                resp = await asyncio.wait_for(
-                    client.post(
-                        'https://api.sarvam.ai/text-to-speech',
-                        headers={
-                            'api-subscription-key': api_key,
-                            'Content-Type': 'application/json',
-                        },
-                        json={
-                            'inputs': [chunk],
-                            'target_language_code': lang_code,
-                            'speaker': speaker,
-                            'speech_sample_rate': 22050,
-                            'enable_preprocessing': True,
-                            'model': 'bulbul:v2',
-                        },
-                    ),
-                    timeout=9.0,
-                )
+        chunk_audio = ''
+        for speaker_name in speaker_candidates:
+            try:
+                async with httpx.AsyncClient(timeout=10.0) as client:
+                    resp = await asyncio.wait_for(
+                        client.post(
+                            'https://api.sarvam.ai/text-to-speech',
+                            headers={
+                                'api-subscription-key': api_key,
+                                'Content-Type': 'application/json',
+                            },
+                            json={
+                                'inputs': [chunk],
+                                'target_language_code': lang_code,
+                                'speaker': speaker_name,
+                                'model': 'bulbul:v3',
+                            },
+                        ),
+                        timeout=9.0,
+                    )
 
-            if resp.status_code != 200:
-                print(f'[M1-TTS] Chunk {i+1} error {resp.status_code}')
-                continue
+                if resp.status_code == 200:
+                    audios = resp.json().get('audios', [])
+                    if audios and audios[0]:
+                        chunk_audio = audios[0]
+                        print(f'[M1-TTS] Chunk {i+1}/{len(chunks)} via {speaker_name}: {len(chunk_audio)} chars')
+                        break
 
-            audios = resp.json().get('audios', [])
-            if audios and audios[0]:
-                audio_parts.append(audios[0])
-                print(f'[M1-TTS] Chunk {i+1}/{len(chunks)}: {len(audios[0])} chars')
+                print(f'[M1-TTS] Chunk {i+1} error {resp.status_code} via {speaker_name}: {resp.text[:200]}')
+            except Exception as e:
+                print(f'[M1-TTS] Chunk {i+1} failed via {speaker_name}: {e}')
 
-        except Exception as e:
-            print(f'[M1-TTS] Chunk {i+1} failed: {e}')
-            continue
+        if chunk_audio:
+            audio_parts.append(chunk_audio)
 
     if not audio_parts:
         print('[M1-TTS] No audio generated')

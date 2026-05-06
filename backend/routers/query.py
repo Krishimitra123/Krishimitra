@@ -7,7 +7,7 @@ TTS is non-fatal — if it fails, text answer is still returned.
 import asyncio
 from fastapi import APIRouter
 from models.schemas import QueryRequest, QueryResponse, Intent
-from modules import m1_voice, m2_nlp, m3_rag, m5_response
+from modules import m1_voice, m2_nlp, m3_rag, m3_structured_kb, m5_response
 import os
 
 router = APIRouter(prefix='/api/query', tags=['query'])
@@ -72,20 +72,49 @@ async def _run_query(request: QueryRequest) -> QueryResponse:
     except Exception as e:
         print(f'[Query] RAG failed (non-fatal): {e}')
 
+    skb_record = None
+    if nlp.intent == Intent.SF_PREP:
+        prep_candidates = [
+            'jeevamrutha', 'jivamrita', 'ಜೀವಾಮೃತ', 'ಜೀವ ಅಮೃತ',
+            'panchagavya', 'ಪಂಚಗವ್ಯ', 'beejamrutha', 'ಬೀಜಾಮೃತ',
+            'vermicompost', 'ಎರೆಹುಳು ಗೊಬ್ಬರ',
+        ]
+        for candidate in prep_candidates:
+            skb_record = m3_structured_kb.get_organic_input(candidate)
+            if skb_record:
+                break
+        if not skb_record:
+            skb_record = m3_structured_kb.get_organic_input(nlp.normalised_query or query_text)
+    elif nlp.intent == Intent.SF_MULCH:
+        mulch_candidates = ['gliricidia', 'ನುಗ್ಗೆ', 'agase', 'ಅಗಸೆ']
+        for candidate in mulch_candidates:
+            skb_record = m3_structured_kb.get_mulching_plant(candidate)
+            if skb_record:
+                break
+        if not skb_record:
+            skb_record = m3_structured_kb.get_mulching_plant(nlp.normalised_query or query_text)
+
     # ── Step 4: M5 — Mistral Kannada answer with RAG context ─────────
     farmer_name = 'ರೈತರೇ'
     if request.user_context and request.user_context.farmer_name:
         farmer_name = request.user_context.farmer_name
 
-    tts_lang = getattr(request, 'tts_language', 'kn') or 'kn'
+    preferred_language = (
+        request.user_context.preferred_language
+        if request.user_context and request.user_context.preferred_language
+        else request.preferred_language
+        or request.tts_language
+        or 'kn-IN'
+    )
 
     answer_task = asyncio.create_task(
         m5_response.generate(
             nlp_result=nlp,
             farmer_name=farmer_name,
+            skb_record=skb_record,
             rag_chunks=rag_chunks,
             conversation_history=request.conversation_history,
-            tts_language=tts_lang,
+            preferred_language=preferred_language,
         )
     )
 
@@ -94,9 +123,9 @@ async def _run_query(request: QueryRequest) -> QueryResponse:
 
     # ── Step 4: TTS — text → audio (15s timeout, non-fatal) ──────────
     audio_b64: str | None = None
-    tts_lang = getattr(request, 'tts_language', 'kn') or 'kn'
+    tts_lang = preferred_language
     try:
-        tts_result = await m1_voice.text_to_audio(answer, SARVAM_KEY(), language=tts_lang)
+        tts_result = await m1_voice.text_to_audio(answer, SARVAM_KEY(), language_code=tts_lang)
         if tts_result:
             audio_b64 = tts_result
     except Exception as e:

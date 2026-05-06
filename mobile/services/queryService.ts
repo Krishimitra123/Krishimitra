@@ -1,7 +1,7 @@
 /**
  * Query Service — API calls for text/voice queries and diagnosis.
  * Sends conversation_history for follow-up question support.
- * Passes tts_language preference from user settings.
+ * Passes preferred_language preference from user settings.
  */
 
 import { apiClient } from './api';
@@ -39,11 +39,12 @@ export interface DiagnosisResponse {
   audio_base64?:       string;
 }
 
-function getTtsLanguage(): string {
+function getPreferredLanguage(): string {
   try {
-    return useUserStore.getState().tts_language || 'kn';
+    const state = useUserStore.getState();
+    return state.preferred_language || state.tts_language || 'kn-IN';
   } catch {
-    return 'kn';
+    return 'kn-IN';
   }
 }
 
@@ -60,17 +61,31 @@ export async function sendVoiceQuery(
     throw new Error('Audio recording too short or empty');
   }
 
-  console.log(`[QueryService] Sending voice query, audio size: ${audioBase64.length} chars, mime: ${mimeType}`);
+  const audioSizeKB = Math.round(audioBase64.length / 1024);
+  console.log(`[QueryService] Sending voice query - Size: ${audioSizeKB}KB, Mime: ${mimeType}`);
 
-  const res = await apiClient.post('/api/query', {
-    audio_base64: audioBase64,
-    audio_mime: mimeType,
-    conversation_history: conversationHistory?.slice(-6) ?? [],
-    tts_language: getTtsLanguage(),
-  }, {
-    timeout: 60000,
-  });
-  return res.data;
+  try {
+    const res = await apiClient.post('/api/query', {
+      audio_base64: audioBase64,
+      audio_mime: mimeType,
+      conversation_history: conversationHistory?.slice(-6) ?? [],
+      tts_language: getPreferredLanguage(),
+      preferred_language: getPreferredLanguage(),
+    }, {
+      timeout: 120000,  // 120s to match backend timeout
+    });
+    console.log('[QueryService] Voice query succeeded ✓', { intent: res.data.intent, answerLen: res.data.answer_text_kn?.length });
+    return res.data;
+  } catch (error: any) {
+    console.error('[QueryService] Voice query FAILED:', {
+      status: error?.response?.status,
+      message: error?.message,
+      code: error?.code,
+      url: error?.config?.url,
+      baseURL: error?.config?.baseURL,
+    });
+    throw error;
+  }
 }
 
 /**
@@ -87,14 +102,27 @@ export async function sendTextQuery(
 
   console.log(`[QueryService] Sending text query: "${text.slice(0, 50)}"`);
 
-  const res = await apiClient.post('/api/query', {
-    text_query: text,
-    conversation_history: conversationHistory?.slice(-6) ?? [],
-    tts_language: getTtsLanguage(),
-  }, {
-    timeout: 60000,
-  });
-  return res.data;
+  try {
+    const res = await apiClient.post('/api/query', {
+      text_query: text,
+      conversation_history: conversationHistory?.slice(-6) ?? [],
+      tts_language: getPreferredLanguage(),
+      preferred_language: getPreferredLanguage(),
+    }, {
+      timeout: 120000,  // 120s to match backend timeout
+    });
+    console.log('[QueryService] Text query succeeded ✓', { intent: res.data.intent, answerLen: res.data.answer_text_kn?.length });
+    return res.data;
+  } catch (error: any) {
+    console.error('[QueryService] Text query FAILED:', {
+      status: error?.response?.status,
+      message: error?.message,
+      code: error?.code,
+      url: error?.config?.url,
+      baseURL: error?.config?.baseURL,
+    });
+    throw error;
+  }
 }
 
 /**
@@ -115,7 +143,8 @@ export async function sendDiagnosis(
     image_base64: imageBase64,
     image_mime: imageMime,
     optional_text: optionalText || undefined,
-    tts_language: getTtsLanguage(),
+    tts_language: getPreferredLanguage(),
+    preferred_language: getPreferredLanguage(),
   }, {
     timeout: 120000,
   });

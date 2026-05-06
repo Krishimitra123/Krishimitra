@@ -53,6 +53,11 @@
 - [ ] Virtual environment set up
 - [ ] Dependencies installed via `pip install -r requirements.txt`
 
+### Post-Build Documentation (Required)
+- [ ] Record build date, git commit, and environment in `TEST_REPORT.txt`
+- [ ] Capture any build warnings/errors and resolutions in `TEST_REPORT.txt`
+- [ ] Note runtime verification steps and results in `TEST_REPORT.txt`
+
 ---
 
 ## What Your Friend Needs to Do

@@ -14,7 +14,7 @@ import { Colors, FontSize, Spacing, BorderRadius, Shadows } from '@/constants/th
 import { useSessionStore, Message } from '@/stores/useSessionStore';
 import { useAudioStore } from '@/stores/useAudioStore';
 import { useUserStore } from '@/stores/useUserStore';
-import { startRecording, stopRecordingAndGetBase64, playBase64Audio, stopPlayback } from '@/services/voiceService';
+import { startRecording, stopRecordingAndGetBase64, playBase64Audio, speakText, stopPlayback } from '@/services/voiceService';
 import { sendVoiceQuery, sendTextQuery, ConversationTurn } from '@/services/queryService';
 
 export default function ChatScreen() {
@@ -127,6 +127,8 @@ export default function ChatScreen() {
               audioStore.setState('PLAYING');
               await playBase64Audio(response.audio_base64);
             } catch {} finally { audioStore.setState('IDLE'); }
+          } else {
+            await speakText(response.answer_text_kn);
           }
         } catch (e: any) {
           const errorMsg = e.response?.data?.detail || e.response?.data?.answer_text_kn || 'ಸೇವೆ ಲಭ್ಯವಿಲ್ಲ';
@@ -164,6 +166,8 @@ export default function ChatScreen() {
       if (response.audio_base64) {
         try { audioStore.setState('PLAYING'); await playBase64Audio(response.audio_base64); }
         catch {} finally { audioStore.setState('IDLE'); }
+      } else {
+        await speakText(response.answer_text_kn);
       }
     } catch (e: any) {
       addMessage({ id: (Date.now() + 1).toString(), role: 'assistant', text: 'ಸೇವೆ ಲಭ್ಯವಿಲ್ಲ', sources: [], timestamp: Date.now(), is_diagnosis: false });
