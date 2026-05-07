@@ -15,6 +15,7 @@
     },
     "ios": {
       "supportsTablet": false,
+      "bundleIdentifier": "com.nivettisystems.krishimitra",
       "infoPlist": {
         "NSMicrophoneUsageDescription": "KrishiMitra needs microphone access for voice queries in Kannada",
         "NSCameraUsageDescription": "KrishiMitra needs camera access for crop disease diagnosis",
