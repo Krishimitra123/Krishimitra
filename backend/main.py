@@ -72,6 +72,17 @@ async def health_check():
         }
     }
 
+from fastapi import Request
+from fastapi.responses import JSONResponse
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    print(f"[GlobalError] {exc}")
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "ನಮಸ್ಕಾರ, ಸರ್ವರ್‌ನಲ್ಲಿ ತಾಂತ್ರಿಕ ದೋಷವಾಗಿದೆ. ದಯವಿಟ್ಟು ಸ್ವಲ್ಪ ಸಮಯದ ನಂತರ ಪ್ರಯತ್ನಿಸಿ."},
+    )
+
 @app.on_event('startup')
 async def startup_event():
     print(f'KrishiMitra backend starting...')
