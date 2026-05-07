@@ -12,6 +12,7 @@ import {
   Alert,
 } from 'react-native';
 import { NivettiHeader } from '@/components/NivettiHeader';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Colors, FontSize, Spacing, BorderRadius, Shadows } from '@/constants/theme';
 import { useSessionStore, Session } from '@/stores/useSessionStore';
 
@@ -53,7 +54,7 @@ export default function HistoryScreen() {
       >
         <View style={styles.sessionHeader}>
           <View style={styles.sessionIcon}>
-            <Text style={styles.iconEmoji}>💬</Text>
+            <MaterialCommunityIcons name="microphone" size={18} color={Colors.primary} />
           </View>
           <View style={styles.sessionInfo}>
             <Text style={styles.sessionTitle} numberOfLines={1}>
@@ -70,9 +71,7 @@ export default function HistoryScreen() {
 
         {lastMsg && (
           <View style={styles.previewRow}>
-            <Text style={styles.previewRole}>
-              {lastMsg.role === 'user' ? '🧑‍🌾' : '🌿'}
-            </Text>
+            <MaterialCommunityIcons name={lastMsg.role === 'user' ? 'account' : 'robot'} size={16} color={lastMsg.role === 'user' ? Colors.textMuted : Colors.primary} style={{ marginRight: 4 }} />
             <Text style={styles.previewText} numberOfLines={2}>
               {lastMsg.text}
             </Text>
@@ -82,8 +81,9 @@ export default function HistoryScreen() {
         {/* Source count badge */}
         {lastMsg?.sources?.length > 0 && (
           <View style={styles.sourceBadge}>
+            <MaterialCommunityIcons name="file-document-outline" size={11} color={Colors.earth} />
             <Text style={styles.sourceBadgeText}>
-              📄 {lastMsg.sources.length} ಮೂಲಗಳು
+              {lastMsg.sources.length} ಮೂಲಗಳು
             </Text>
           </View>
         )}
@@ -114,7 +114,9 @@ export default function HistoryScreen() {
         ]}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <Text style={styles.emptyIcon}>📋</Text>
+            <View style={styles.emptyIconCircle}>
+              <MaterialCommunityIcons name="history" size={48} color={Colors.primary} />
+            </View>
             <Text style={styles.emptyTitle}>ಇತಿಹಾಸ ಖಾಲಿ</Text>
             <Text style={styles.emptySubtitle}>
               ನಿಮ್ಮ ಮೊದಲ ಪ್ರಶ್ನೆ ಕೇಳಿ — ಇಲ್ಲಿ ಕಾಣಿಸುತ್ತದೆ
@@ -212,6 +214,9 @@ const styles = StyleSheet.create({
   sourceBadge: {
     marginTop: Spacing.xs,
     alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
     backgroundColor: Colors.sourceBg,
     paddingHorizontal: Spacing.sm,
     paddingVertical: 2,
@@ -226,6 +231,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: Spacing.xl,
+  },
+  emptyIconCircle: {
+    width: 96, height: 96, borderRadius: 48,
+    backgroundColor: Colors.primarySoft,
+    alignItems: 'center', justifyContent: 'center',
+    marginBottom: Spacing.lg,
   },
   emptyIcon: {
     fontSize: 56,

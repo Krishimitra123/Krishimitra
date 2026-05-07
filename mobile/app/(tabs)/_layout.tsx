@@ -1,18 +1,31 @@
 /**
- * Tab Layout — Bottom tab navigation for KrishiMitra.
- * 5 tabs: Home, Chat, Diagnose, History, Settings
+ * Tab Layout — KrishiMitra
+ * Premium bottom tab bar with MaterialCommunityIcons — no emojis.
  */
 
 import React from 'react';
 import { Tabs } from 'expo-router';
-import { Text, StyleSheet, View } from 'react-native';
+import { View, StyleSheet, Platform } from 'react-native';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Colors, FontSize } from '@/constants/theme';
 
-function TabIcon({ icon, label, focused }: { icon: string; label: string; focused: boolean }) {
+type IconName = React.ComponentProps<typeof MaterialCommunityIcons>['name'];
+
+function TabIcon({
+  name,
+  focused,
+}: {
+  name: IconName;
+  focused: boolean;
+}) {
   return (
     <View style={styles.tabItem}>
-      <Text style={[styles.tabIcon, focused && styles.tabIconActive]}>{icon}</Text>
-      <Text style={[styles.tabLabel, focused && styles.tabLabelActive]}>{label}</Text>
+      <MaterialCommunityIcons
+        name={name}
+        size={26}
+        color={focused ? Colors.primary : Colors.textMuted}
+      />
+      {focused && <View style={styles.activePill} />}
     </View>
   );
 }
@@ -24,13 +37,15 @@ export default function TabLayout() {
         headerShown: false,
         tabBarStyle: styles.tabBar,
         tabBarShowLabel: false,
+        tabBarActiveTintColor: Colors.primary,
+        tabBarInactiveTintColor: Colors.textMuted,
       }}
     >
       <Tabs.Screen
         name="index"
         options={{
           tabBarIcon: ({ focused }) => (
-            <TabIcon icon="🏠" label="ಮನೆ" focused={focused} />
+            <TabIcon name="home" focused={focused} />
           ),
         }}
       />
@@ -38,7 +53,7 @@ export default function TabLayout() {
         name="chat"
         options={{
           tabBarIcon: ({ focused }) => (
-            <TabIcon icon="💬" label="ಚಾಟ್" focused={focused} />
+            <TabIcon name="microphone" focused={focused} />
           ),
         }}
       />
@@ -46,7 +61,7 @@ export default function TabLayout() {
         name="diagnose"
         options={{
           tabBarIcon: ({ focused }) => (
-            <TabIcon icon="📸" label="ರೋಗ ಪತ್ತೆ" focused={focused} />
+            <TabIcon name="leaf" focused={focused} />
           ),
         }}
       />
@@ -54,7 +69,7 @@ export default function TabLayout() {
         name="history"
         options={{
           tabBarIcon: ({ focused }) => (
-            <TabIcon icon="📋" label="ಇತಿಹಾಸ" focused={focused} />
+            <TabIcon name="history" focused={focused} />
           ),
         }}
       />
@@ -62,7 +77,7 @@ export default function TabLayout() {
         name="settings"
         options={{
           tabBarIcon: ({ focused }) => (
-            <TabIcon icon="⚙️" label="ಸೆಟ್ಟಿಂಗ್ಸ್" focused={focused} />
+            <TabIcon name="cog-outline" focused={focused} />
           ),
         }}
       />
@@ -73,35 +88,27 @@ export default function TabLayout() {
 const styles = StyleSheet.create({
   tabBar: {
     backgroundColor: Colors.surface,
-    borderTopWidth: 1,
-    borderTopColor: Colors.border,
-    height: 68,
-    paddingTop: 6,
-    paddingBottom: 8,
-    elevation: 8,
+    borderTopWidth: 0,
+    height: Platform.OS === 'ios' ? 84 : 68,
+    paddingTop: 8,
+    paddingBottom: Platform.OS === 'ios' ? 24 : 10,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 16,
   },
   tabItem: {
     alignItems: 'center',
     justifyContent: 'center',
+    width: 48,
   },
-  tabIcon: {
-    fontSize: 20,
-    opacity: 0.5,
-  },
-  tabIconActive: {
-    opacity: 1,
-  },
-  tabLabel: {
-    fontSize: 10,
-    color: Colors.textMuted,
-    marginTop: 2,
-  },
-  tabLabelActive: {
-    color: Colors.primary,
-    fontWeight: '700',
+  activePill: {
+    position: 'absolute',
+    bottom: -8,
+    width: 20,
+    height: 3,
+    borderRadius: 2,
+    backgroundColor: Colors.primary,
   },
 });

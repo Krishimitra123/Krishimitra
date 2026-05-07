@@ -1,21 +1,46 @@
 /**
- * Chat Screen — VOICE-FIRST design.
- * Big mic button center stage. Minimal text. Auto-plays audio responses.
- * Farmers tap mic → speak → hear answer. Text is secondary.
+ * Chat Screen — Voice-first, premium design.
+ * Voice is primary. Text is secondary. Auto-plays every AI response.
  */
 
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity,
   ActivityIndicator, KeyboardAvoidingView, Platform, Alert, Animated,
+  Dimensions,
 } from 'react-native';
-import { NivettiHeader } from '@/components/NivettiHeader';
+import { LinearGradient } from 'expo-linear-gradient';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Colors, FontSize, Spacing, BorderRadius, Shadows } from '@/constants/theme';
 import { useSessionStore, Message } from '@/stores/useSessionStore';
 import { useAudioStore } from '@/stores/useAudioStore';
 import { useUserStore } from '@/stores/useUserStore';
 import { startRecording, stopRecordingAndGetBase64, playBase64Audio, speakText, stopPlayback } from '@/services/voiceService';
 import { sendVoiceQuery, sendTextQuery, ConversationTurn } from '@/services/queryService';
+
+const { width } = Dimensions.get('window');
+
+function WaveformBars({ active, color = Colors.primary }: { active: boolean; color?: string }) {
+  const bars = useRef(Array.from({ length: 5 }, () => new Animated.Value(0.3))).current;
+  useEffect(() => {
+    if (!active) { bars.forEach(b => b.setValue(0.3)); return; }
+    const loops = bars.map((bar, i) =>
+      Animated.loop(Animated.sequence([
+        Animated.timing(bar, { toValue: 1, duration: 280 + i * 70, useNativeDriver: true }),
+        Animated.timing(bar, { toValue: 0.3, duration: 280 + i * 70, useNativeDriver: true }),
+      ]))
+    );
+    const timers = loops.map((l, i) => setTimeout(() => l.start(), i * 55));
+    return () => { loops.forEach(l => l.stop()); timers.forEach(t => clearTimeout(t)); };
+  }, [active]);
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, height: 20 }}>
+      {bars.map((bar, i) => (
+        <Animated.View key={i} style={{ width: 3, height: 16, borderRadius: 2, backgroundColor: color, transform: [{ scaleY: bar }] }} />
+      ))}
+    </View>
+  );
+}
 
 export default function ChatScreen() {
   const [textInput, setTextInput] = useState('');
@@ -37,21 +62,16 @@ export default function ChatScreen() {
     }
   }, [currentSession?.messages.length]);
 
-  useEffect(() => {
-    if (!currentSession) startNewSession();
-  }, []);
+  useEffect(() => { if (!currentSession) startNewSession(); }, []);
 
-  // Recording timer + pulse
   useEffect(() => {
     if (audioStore.state === 'RECORDING') {
       setRecordingSeconds(0);
       recordingTimer.current = setInterval(() => setRecordingSeconds(s => s + 1), 1000);
-      const pulse = Animated.loop(
-        Animated.sequence([
-          Animated.timing(pulseAnim, { toValue: 0.3, duration: 600, useNativeDriver: true }),
-          Animated.timing(pulseAnim, { toValue: 1, duration: 600, useNativeDriver: true }),
-        ])
-      );
+      const pulse = Animated.loop(Animated.sequence([
+        Animated.timing(pulseAnim, { toValue: 1.2, duration: 500, useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 1, duration: 500, useNativeDriver: true }),
+      ]));
       pulse.start();
       return () => { pulse.stop(); pulseAnim.setValue(1); };
     } else {
@@ -68,70 +88,53 @@ export default function ChatScreen() {
     await stopPlayback(); audioStore.setState('IDLE');
   }, []);
 
-  // ── VOICE HANDLER — the primary interaction ─────────────────
   const handleMicPress = useCallback(async () => {
     try {
       if (audioStore.state === 'PLAYING') {
         await stopPlayback(); audioStore.setState('IDLE');
         await new Promise(r => setTimeout(r, 200));
       }
-
       if (audioStore.state === 'IDLE' || audioStore.state === 'ERROR') {
-        // Animate mic press
-        Animated.spring(scaleAnim, { toValue: 1.2, useNativeDriver: true }).start();
+        Animated.spring(scaleAnim, { toValue: 1.15, useNativeDriver: true }).start();
         audioStore.setState('RECORDING');
         await startRecording();
       } else if (audioStore.state === 'RECORDING') {
         Animated.spring(scaleAnim, { toValue: 1, useNativeDriver: true }).start();
         audioStore.setState('STT_PROCESSING');
-
         let audioResult: { base64: string; mimeType: string };
         try {
           audioResult = await stopRecordingAndGetBase64();
-        } catch (recErr: any) {
+        } catch {
           audioStore.setState('IDLE'); setLoading(false);
           Alert.alert('ದೋಷ', 'ಧ್ವನಿ ರೆಕಾರ್ಡ್ ಆಗಲಿಲ್ಲ. ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.');
           return;
         }
-
-        if (!audioResult.base64 || audioResult.base64.length < 100) {
-          audioStore.setState('IDLE');
-          Alert.alert('', 'ಹೆಚ್ಚು ಸಮಯ ಮಾತನಾಡಿ'); return;
-        }
-
         const userMsgId = Date.now().toString();
         addMessage({ id: userMsgId, role: 'user', text: '🎙️ ...', sources: [], timestamp: Date.now(), is_diagnosis: false });
-
         setLoading(true);
         try {
           const response = await sendVoiceQuery(audioResult.base64, audioResult.mimeType, conversationHistory);
           const transcript = response.transcript?.trim() || '🎙️ ಧ್ವನಿ';
           updateMessage(userMsgId, { text: transcript });
-
           addMessage({
             id: (Date.now() + 1).toString(), role: 'assistant',
             text: response.answer_text_kn, sources: response.sources || [],
             timestamp: Date.now(), is_diagnosis: false,
             audio_base64: response.audio_base64 || undefined,
           });
-
           setConversationHistory(prev => [
             ...prev,
             { role: 'user' as const, content: transcript },
             { role: 'assistant' as const, content: response.answer_text_kn },
           ].slice(-12));
-
-          // AUTO-PLAY the response audio
           if (response.audio_base64) {
-            try {
-              audioStore.setState('PLAYING');
-              await playBase64Audio(response.audio_base64);
-            } catch {} finally { audioStore.setState('IDLE'); }
+            try { audioStore.setState('PLAYING'); await playBase64Audio(response.audio_base64); }
+            catch {} finally { audioStore.setState('IDLE'); }
           } else {
             await speakText(response.answer_text_kn);
           }
         } catch (e: any) {
-          const errorMsg = e.response?.data?.detail || e.response?.data?.answer_text_kn || 'ಸೇವೆ ಲಭ್ಯವಿಲ್ಲ';
+          const errorMsg = e.response?.data?.detail || 'ಸೇವೆ ಲಭ್ಯವಿಲ್ಲ';
           addMessage({ id: (Date.now() + 1).toString(), role: 'assistant', text: errorMsg, sources: [], timestamp: Date.now(), is_diagnosis: false });
         }
         setLoading(false); audioStore.setState('IDLE');
@@ -141,12 +144,10 @@ export default function ChatScreen() {
     }
   }, [audioStore.state]);
 
-  // ── TEXT HANDLER ─────────────────────────────────────────────
   const handleTextSubmit = useCallback(async () => {
     if (!textInput.trim() || isLoading) return;
     await stopPlayback(); audioStore.setState('IDLE');
     const query = textInput.trim(); setTextInput('');
-
     addMessage({ id: Date.now().toString(), role: 'user', text: query, sources: [], timestamp: Date.now(), is_diagnosis: false });
     setLoading(true);
     try {
@@ -154,22 +155,14 @@ export default function ChatScreen() {
       addMessage({
         id: (Date.now() + 1).toString(), role: 'assistant',
         text: response.answer_text_kn, sources: response.sources || [],
-        timestamp: Date.now(), is_diagnosis: false,
-        audio_base64: response.audio_base64 || undefined,
+        timestamp: Date.now(), is_diagnosis: false, audio_base64: response.audio_base64 || undefined,
       });
-      setConversationHistory(prev => [
-        ...prev,
-        { role: 'user' as const, content: query },
-        { role: 'assistant' as const, content: response.answer_text_kn },
-      ].slice(-12));
-
+      setConversationHistory(prev => [...prev, { role: 'user' as const, content: query }, { role: 'assistant' as const, content: response.answer_text_kn }].slice(-12));
       if (response.audio_base64) {
         try { audioStore.setState('PLAYING'); await playBase64Audio(response.audio_base64); }
         catch {} finally { audioStore.setState('IDLE'); }
-      } else {
-        await speakText(response.answer_text_kn);
-      }
-    } catch (e: any) {
+      } else { await speakText(response.answer_text_kn); }
+    } catch {
       addMessage({ id: (Date.now() + 1).toString(), role: 'assistant', text: 'ಸೇವೆ ಲಭ್ಯವಿಲ್ಲ', sources: [], timestamp: Date.now(), is_diagnosis: false });
     }
     setLoading(false);
@@ -181,47 +174,59 @@ export default function ChatScreen() {
   }, []);
 
   const messages = currentSession?.messages || [];
-
-  // ── MINIMAL BUBBLE ─────────────────────────────────────────
-  const renderMessage = ({ item }: { item: Message }) => {
-    const isUser = item.role === 'user';
-    return (
-      <View style={[styles.bubble, isUser ? styles.userBubble : styles.aiBubble]}>
-        <Text style={[styles.bubbleText, isUser && styles.userBubbleText]} numberOfLines={isUser ? 2 : undefined}>
-          {item.text}
-        </Text>
-        {!isUser && item.audio_base64 && (
-          <TouchableOpacity onPress={() => handlePlayAudio(item.audio_base64!)} style={styles.replayBtn}>
-            <Text style={styles.replayTxt}>🔊 ಮತ್ತೆ ಕೇಳಿ</Text>
-          </TouchableOpacity>
-        )}
-      </View>
-    );
-  };
-
-  // ── EMPTY STATE — Voice First ──────────────────────────────
-  const renderEmpty = () => (
-    <View style={styles.emptyContainer}>
-      <Text style={styles.emptyIcon}>🌾</Text>
-      <Text style={styles.emptyGreeting}>ನಮಸ್ಕಾರ {farmerName}!</Text>
-      <Text style={styles.emptyHint}>🎙️ ಮೈಕ್ ಒತ್ತಿ ಮಾತನಾಡಿ</Text>
-    </View>
-  );
-
   const isRecording = audioStore.state === 'RECORDING';
   const isProcessing = audioStore.state === 'STT_PROCESSING';
   const isPlayingAudio = audioStore.state === 'PLAYING';
 
+  const renderMessage = ({ item }: { item: Message }) => {
+    const isUser = item.role === 'user';
+    return (
+      <View style={[styles.bubbleWrapper, isUser ? styles.bubbleRight : styles.bubbleLeft]}>
+        {!isUser && (
+          <View style={styles.aiAvatar}>
+            <MaterialCommunityIcons name="robot" size={16} color={Colors.primary} />
+          </View>
+        )}
+        <View style={[styles.bubble, isUser ? styles.userBubble : styles.aiBubble]}>
+          <Text style={[styles.bubbleText, isUser && styles.userBubbleText]}>
+            {item.text}
+          </Text>
+          {!isUser && item.audio_base64 && (
+            <TouchableOpacity onPress={() => handlePlayAudio(item.audio_base64!)} style={styles.replayBtn}>
+              <MaterialCommunityIcons name="volume-high" size={14} color={Colors.primary} />
+              <Text style={styles.replayTxt}>ಮತ್ತೆ ಕೇಳಿ</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      </View>
+    );
+  };
+
+  const renderEmpty = () => (
+    <View style={styles.emptyContainer}>
+      <View style={styles.emptyIconCircle}>
+        <MaterialCommunityIcons name="sprout" size={48} color={Colors.primary} />
+      </View>
+      <Text style={styles.emptyGreeting}>ನಮಸ್ಕಾರ {farmerName}!</Text>
+      <Text style={styles.emptyHint}>ಮೈಕ್ ಒತ್ತಿ ಮಾತನಾಡಿ</Text>
+    </View>
+  );
+
   return (
     <View style={styles.container}>
-      <NivettiHeader
-        title="🌾 KrishiMitra"
-        rightAction={
+      {/* Header */}
+      <LinearGradient colors={['#1B5E20', '#2E7D32']} style={styles.header}>
+        <View style={styles.headerRow}>
+          <View style={styles.headerLeft}>
+            <MaterialCommunityIcons name="sprout" size={22} color="#fff" />
+            <Text style={styles.headerTitle}>ಕೃಷಿ ಮಿತ್ರ</Text>
+          </View>
           <TouchableOpacity onPress={handleNewChat} style={styles.newChatBtn}>
-            <Text style={styles.newChatText}>+ ಹೊಸದು</Text>
+            <MaterialCommunityIcons name="plus" size={16} color="#fff" />
+            <Text style={styles.newChatText}>ಹೊಸದು</Text>
           </TouchableOpacity>
-        }
-      />
+        </View>
+      </LinearGradient>
 
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.flex}>
         <FlatList
@@ -233,26 +238,29 @@ export default function ChatScreen() {
         />
 
         {isLoading && (
-          <View style={styles.loadingRow}>
-            <ActivityIndicator size="small" color={Colors.primary} />
-            <Text style={styles.loadingText}>ಯೋಚಿಸುತ್ತಿದೆ...</Text>
+          <View style={styles.typingRow}>
+            <View style={styles.typingDots}>
+              <WaveformBars active />
+              <Text style={styles.typingText}>ಯೋಚಿಸುತ್ತಿದೆ...</Text>
+            </View>
           </View>
         )}
 
-        {/* Stop Playback */}
         {isPlayingAudio && (
-          <TouchableOpacity style={styles.stopBar} onPress={handleStopPlayback}>
-            <Text style={styles.stopTxt}>⏹ ನಿಲ್ಲಿಸಿ</Text>
+          <TouchableOpacity style={styles.playingBar} onPress={handleStopPlayback}>
+            <WaveformBars active color="#fff" />
+            <Text style={styles.playingBarText}>ನಿಲ್ಲಿಸಲು ಒತ್ತಿ</Text>
+            <MaterialCommunityIcons name="stop" size={18} color="#fff" />
           </TouchableOpacity>
         )}
 
-        {/* Recording Indicator */}
         {(isRecording || isProcessing) && (
           <View style={styles.recordingBar}>
             {isRecording ? (
               <View style={styles.recordingRow}>
-                <Animated.View style={[styles.recordingDot, { opacity: pulseAnim }]} />
+                <View style={styles.recDot} />
                 <Text style={styles.recordingTime}>{Math.floor(recordingSeconds / 60)}:{(recordingSeconds % 60).toString().padStart(2, '0')}</Text>
+                <WaveformBars active color={Colors.error} />
                 <Text style={styles.recordingLabel}>ಕೇಳುತ್ತಿದೆ...</Text>
               </View>
             ) : (
@@ -264,40 +272,51 @@ export default function ChatScreen() {
           </View>
         )}
 
-        {/* INPUT BAR — Big Mic + optional text */}
-        <View style={[styles.inputBar, Shadows.md]}>
-          {/* Toggle text input */}
-          <TouchableOpacity onPress={() => setShowTextInput(!showTextInput)} style={styles.kbdBtn}>
-            <Text style={styles.kbdIcon}>{showTextInput ? '🎙️' : '⌨️'}</Text>
+        {/* Input bar */}
+        <View style={styles.inputBar}>
+          <TouchableOpacity onPress={() => setShowTextInput(!showTextInput)} style={styles.toggleBtn}>
+            <MaterialCommunityIcons
+              name={showTextInput ? 'microphone' : 'keyboard'}
+              size={22}
+              color={Colors.textSecondary}
+            />
           </TouchableOpacity>
 
           {showTextInput ? (
             <>
               <TextInput
-                style={styles.textInput} placeholder="ಟೈಪ್ ಮಾಡಿ..."
-                placeholderTextColor={Colors.textMuted} value={textInput}
-                onChangeText={setTextInput} onSubmitEditing={handleTextSubmit}
+                style={styles.textInput}
+                placeholder="ಟೈಪ್ ಮಾಡಿ..."
+                placeholderTextColor={Colors.textMuted}
+                value={textInput}
+                onChangeText={setTextInput}
+                onSubmitEditing={handleTextSubmit}
                 returnKeyType="send"
               />
-              <TouchableOpacity onPress={handleTextSubmit} disabled={!textInput.trim() || isLoading}
-                style={[styles.sendBtn, (!textInput.trim() || isLoading) && styles.sendBtnOff]}>
-                <Text style={styles.sendTxt}>→</Text>
+              <TouchableOpacity
+                onPress={handleTextSubmit}
+                disabled={!textInput.trim() || isLoading}
+                style={[styles.sendBtn, (!textInput.trim() || isLoading) && styles.sendBtnOff]}
+              >
+                <MaterialCommunityIcons name="send" size={20} color="#fff" />
               </TouchableOpacity>
             </>
           ) : (
             <View style={styles.micCenter}>
-              <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
+              <Animated.View style={{ transform: [{ scale: Animated.multiply(pulseAnim, scaleAnim) }] }}>
                 <TouchableOpacity
                   onPress={handleMicPress}
                   style={[styles.bigMic, isRecording && styles.bigMicRec]}
-                  activeOpacity={0.7}
+                  activeOpacity={0.8}
                 >
-                  <Text style={styles.bigMicIcon}>{isRecording ? '⏹' : '🎙️'}</Text>
+                  <MaterialCommunityIcons
+                    name={isRecording ? 'stop' : 'microphone'}
+                    size={30}
+                    color="#fff"
+                  />
                 </TouchableOpacity>
               </Animated.View>
-              <Text style={styles.micHint}>
-                {isRecording ? 'ಮತ್ತೊಮ್ಮೆ ಒತ್ತಿ ನಿಲ್ಲಿಸಿ' : 'ಒತ್ತಿ ಮಾತನಾಡಿ'}
-              </Text>
+              <Text style={styles.micHint}>{isRecording ? 'ನಿಲ್ಲಿಸಲು ಒತ್ತಿ' : 'ಒತ್ತಿ ಮಾತನಾಡಿ'}</Text>
             </View>
           )}
         </View>
@@ -309,47 +328,53 @@ export default function ChatScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
   flex: { flex: 1 },
-  newChatBtn: { paddingHorizontal: Spacing.md, paddingVertical: Spacing.xs, backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: BorderRadius.full },
-  newChatText: { fontSize: FontSize.sm, color: Colors.textOnPrimary, fontWeight: '700' },
-  messageList: { paddingVertical: Spacing.md, paddingHorizontal: Spacing.sm },
+  header: { paddingTop: 52, paddingBottom: Spacing.md, paddingHorizontal: Spacing.lg },
+  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
+  headerTitle: { fontSize: FontSize.xl, fontWeight: '800', color: '#fff' },
+  newChatBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: Spacing.md, paddingVertical: 6, backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: BorderRadius.full },
+  newChatText: { fontSize: FontSize.sm, color: '#fff', fontWeight: '700' },
+
+  messageList: { paddingVertical: Spacing.md, paddingHorizontal: Spacing.sm, paddingBottom: Spacing.lg },
   emptyList: { flex: 1 },
-  emptyContainer: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  emptyIcon: { fontSize: 64, marginBottom: Spacing.md },
+  emptyContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 80 },
+  emptyIconCircle: { width: 96, height: 96, borderRadius: 48, backgroundColor: Colors.primarySoft, alignItems: 'center', justifyContent: 'center', marginBottom: Spacing.lg },
   emptyGreeting: { fontSize: FontSize.xxl, fontWeight: '800', color: Colors.primary, marginBottom: Spacing.sm },
-  emptyHint: { fontSize: FontSize.lg, color: Colors.textMuted },
-  // Bubbles — compact
-  bubble: { marginHorizontal: Spacing.sm, marginVertical: 3, paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm, borderRadius: BorderRadius.lg, maxWidth: '85%' as any },
-  userBubble: { backgroundColor: Colors.userBubble, alignSelf: 'flex-end' },
-  aiBubble: { backgroundColor: Colors.aiBubble, alignSelf: 'flex-start', borderWidth: 1, borderColor: Colors.primary + '20' },
+  emptyHint: { fontSize: FontSize.lg, color: Colors.textMuted, fontWeight: '500' },
+
+  bubbleWrapper: { flexDirection: 'row', alignItems: 'flex-end', marginVertical: 4, paddingHorizontal: Spacing.sm },
+  bubbleRight: { justifyContent: 'flex-end' },
+  bubbleLeft: { justifyContent: 'flex-start' },
+  aiAvatar: { width: 28, height: 28, borderRadius: 14, backgroundColor: Colors.primarySoft, alignItems: 'center', justifyContent: 'center', marginRight: 6, marginBottom: 2 },
+  bubble: { maxWidth: '80%', paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm, borderRadius: BorderRadius.lg },
+  userBubble: { backgroundColor: Colors.userBubble, borderBottomRightRadius: 4 },
+  aiBubble: { backgroundColor: Colors.surface, borderBottomLeftRadius: 4, borderWidth: 1, borderColor: Colors.primary + '18', ...Shadows.sm },
   bubbleText: { fontSize: FontSize.md, color: Colors.textPrimary, lineHeight: 24 },
   userBubbleText: { color: Colors.textPrimary },
-  replayBtn: { marginTop: Spacing.xs, alignSelf: 'flex-start', backgroundColor: Colors.primarySoft, paddingVertical: 4, paddingHorizontal: Spacing.sm, borderRadius: BorderRadius.full },
-  replayTxt: { fontSize: FontSize.sm, color: Colors.primary, fontWeight: '600' },
-  // Loading
-  loadingRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, paddingHorizontal: Spacing.md, paddingBottom: Spacing.sm },
-  loadingText: { fontSize: FontSize.sm, color: Colors.textMuted },
-  // Stop
-  stopBar: { paddingVertical: Spacing.sm, alignItems: 'center', backgroundColor: '#FFF3E0', borderTopWidth: 1, borderTopColor: '#FFB74D' },
-  stopTxt: { fontSize: FontSize.md, fontWeight: '700', color: '#E65100' },
-  // Recording
-  recordingBar: { paddingVertical: Spacing.sm, paddingHorizontal: Spacing.md, backgroundColor: '#FFF3E0', borderTopWidth: 1, borderTopColor: '#FFB74D' },
+  replayBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 6, backgroundColor: Colors.primarySoft, paddingVertical: 4, paddingHorizontal: Spacing.sm, borderRadius: BorderRadius.full, alignSelf: 'flex-start' },
+  replayTxt: { fontSize: FontSize.xs, color: Colors.primary, fontWeight: '700' },
+
+  typingRow: { paddingHorizontal: Spacing.md, paddingBottom: Spacing.sm },
+  typingDots: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, backgroundColor: Colors.primarySoft, paddingVertical: 8, paddingHorizontal: Spacing.md, borderRadius: BorderRadius.full, alignSelf: 'flex-start' },
+  typingText: { fontSize: FontSize.sm, color: Colors.primary, fontWeight: '600' },
+
+  playingBar: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, paddingVertical: Spacing.sm, paddingHorizontal: Spacing.md, backgroundColor: Colors.primary, justifyContent: 'center' },
+  playingBarText: { fontSize: FontSize.md, color: '#fff', fontWeight: '700' },
+
+  recordingBar: { paddingVertical: Spacing.sm, paddingHorizontal: Spacing.md, backgroundColor: '#FFF8F0', borderTopWidth: 1, borderTopColor: Colors.accent + '30' },
   recordingRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
-  recordingDot: { width: 12, height: 12, borderRadius: 6, backgroundColor: '#F44336' },
-  recordingTime: { fontSize: FontSize.lg, fontWeight: '700', color: '#D84315', fontVariant: ['tabular-nums'] },
-  recordingLabel: { fontSize: FontSize.md, color: '#E65100', fontWeight: '600' },
+  recDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: Colors.error },
+  recordingTime: { fontSize: FontSize.lg, fontWeight: '800', color: Colors.error, fontVariant: ['tabular-nums'] },
+  recordingLabel: { fontSize: FontSize.md, color: Colors.error, fontWeight: '600' },
   processingLabel: { fontSize: FontSize.md, color: Colors.primary, fontWeight: '600' },
-  // Input Bar
-  inputBar: { flexDirection: 'row', alignItems: 'center', padding: Spacing.sm, paddingBottom: Platform.OS === 'ios' ? Spacing.lg : Spacing.sm, backgroundColor: Colors.surface, borderTopWidth: 1, borderTopColor: Colors.border, gap: Spacing.sm },
-  kbdBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: Colors.background, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: Colors.border },
-  kbdIcon: { fontSize: 18 },
+
+  inputBar: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: Spacing.sm, paddingVertical: Spacing.sm, paddingBottom: Platform.OS === 'ios' ? Spacing.xl : Spacing.sm, backgroundColor: Colors.surface, borderTopWidth: 1, borderTopColor: Colors.border, gap: Spacing.sm, ...Shadows.md },
+  toggleBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: Colors.background, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: Colors.border },
   textInput: { flex: 1, fontSize: FontSize.md, color: Colors.textPrimary, backgroundColor: Colors.background, borderRadius: BorderRadius.full, paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm, borderWidth: 1, borderColor: Colors.border },
-  sendBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: Colors.primary, alignItems: 'center', justifyContent: 'center' },
+  sendBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: Colors.primary, alignItems: 'center', justifyContent: 'center' },
   sendBtnOff: { backgroundColor: Colors.disabled },
-  sendTxt: { fontSize: FontSize.lg, color: Colors.textOnPrimary, fontWeight: '700' },
-  // Big Mic
   micCenter: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  bigMic: { width: 64, height: 64, borderRadius: 32, backgroundColor: Colors.primary, alignItems: 'center', justifyContent: 'center', elevation: 6, shadowColor: Colors.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8 },
-  bigMicRec: { backgroundColor: '#F44336' },
-  bigMicIcon: { fontSize: 28 },
+  bigMic: { width: 68, height: 68, borderRadius: 34, backgroundColor: Colors.primary, alignItems: 'center', justifyContent: 'center', shadowColor: Colors.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.4, shadowRadius: 10, elevation: 8 },
+  bigMicRec: { backgroundColor: Colors.error, shadowColor: Colors.error },
   micHint: { fontSize: FontSize.xs, color: Colors.textMuted, marginTop: 4 },
 });

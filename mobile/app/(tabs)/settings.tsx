@@ -1,75 +1,38 @@
 /**
- * Settings Screen — Profile editing, multi-language TTS, logout.
- * Supports all Sarvam TTS languages.
+ * Settings Screen — Clean, professional. No emoji UI.
  */
 
 import React, { useState, useEffect } from 'react';
 import {
-  View, Text, StyleSheet, TextInput, TouchableOpacity,
-  ScrollView, Alert, Platform,
+  View, Text, StyleSheet, TouchableOpacity,
+  ScrollView, Alert,
 } from 'react-native';
-import { NivettiHeader } from '@/components/NivettiHeader';
+import { LinearGradient } from 'expo-linear-gradient';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Colors, FontSize, Spacing, BorderRadius, Shadows } from '@/constants/theme';
 import { useUserStore } from '@/stores/useUserStore';
-import { DISTRICTS } from '@/constants/districts';
-import { CROPS } from '@/constants/crops';
 
 const LANGUAGES = [
-  { code: 'kn', label: 'ಕನ್ನಡ', flag: '🇮🇳' },
-  { code: 'en', label: 'English', flag: '🇬🇧' },
-  { code: 'hi', label: 'हिंदी', flag: '🇮🇳' },
-  { code: 'ta', label: 'தமிழ்', flag: '🇮🇳' },
-  { code: 'te', label: 'తెలుగు', flag: '🇮🇳' },
-  { code: 'ml', label: 'മലയാളം', flag: '🇮🇳' },
-  { code: 'mr', label: 'मराठी', flag: '🇮🇳' },
-  { code: 'bn', label: 'বাংলা', flag: '🇮🇳' },
-  { code: 'gu', label: 'ગુજરાતી', flag: '🇮🇳' },
-  { code: 'pa', label: 'ਪੰਜਾਬੀ', flag: '🇮🇳' },
-  { code: 'od', label: 'ଓଡ଼ିଆ', flag: '🇮🇳' },
+  { code: 'kn', label: 'ಕನ್ನಡ', sub: 'Kannada' },
+  { code: 'en', label: 'English', sub: 'English' },
+  { code: 'hi', label: 'हिंदी', sub: 'Hindi' },
+  { code: 'ta', label: 'தமிழ்', sub: 'Tamil' },
+  { code: 'te', label: 'తెలుగు', sub: 'Telugu' },
+  { code: 'ml', label: 'മലയാളം', sub: 'Malayalam' },
+  { code: 'mr', label: 'मराठी', sub: 'Marathi' },
+  { code: 'bn', label: 'বাংলা', sub: 'Bengali' },
+  { code: 'gu', label: 'ગુજરાતી', sub: 'Gujarati' },
+  { code: 'pa', label: 'ਪੰਜਾਬੀ', sub: 'Punjabi' },
+  { code: 'od', label: 'ଓଡ଼ିଆ', sub: 'Odia' },
 ];
 
 export default function SettingsScreen() {
   const store = useUserStore();
-
-  const [name, setName] = useState(store.farmer_name);
-  const [selectedDistrict, setSelectedDistrict] = useState(store.district);
-  const [selectedCrops, setSelectedCrops] = useState<string[]>(store.crops);
   const [ttsLanguage, setTtsLanguage] = useState(store.tts_language || 'kn');
-  const [districtSearch, setDistrictSearch] = useState('');
-  const [cropSearch, setCropSearch] = useState('');
-  const [editMode, setEditMode] = useState(false);
 
   useEffect(() => {
-    setName(store.farmer_name);
-    setSelectedDistrict(store.district);
-    setSelectedCrops(store.crops);
     setTtsLanguage(store.tts_language || 'kn');
-  }, [store.farmer_name, store.district, store.crops, store.tts_language]);
-
-  const filteredDistricts = DISTRICTS.filter(
-    (d) =>
-      d.name_en.toLowerCase().includes(districtSearch.toLowerCase()) ||
-      d.name_kn.includes(districtSearch)
-  );
-
-  const filteredCrops = CROPS.filter(
-    (c) =>
-      c.name_en.toLowerCase().includes(cropSearch.toLowerCase()) ||
-      c.name_kn.includes(cropSearch)
-  );
-
-  const handleSave = () => {
-    if (!name.trim()) { Alert.alert('ದೋಷ', 'ಹೆಸರು ಅಗತ್ಯ'); return; }
-    if (!selectedDistrict) { Alert.alert('ದೋಷ', 'ಜಿಲ್ಲೆ ಆಯ್ಕೆ ಮಾಡಿ'); return; }
-    store.setProfile({
-      farmer_name: name.trim(),
-      district: selectedDistrict,
-      primary_crop: selectedCrops[0] || '',
-      crops: selectedCrops,
-    });
-    setEditMode(false);
-    Alert.alert('✅', 'ಉಳಿಸಲಾಗಿದೆ');
-  };
+  }, [store.tts_language]);
 
   const handleLanguageSelect = (code: string) => {
     setTtsLanguage(code);
@@ -77,7 +40,7 @@ export default function SettingsScreen() {
   };
 
   const handleLogout = () => {
-    Alert.alert('ಲಾಗ್ಔಟ್', 'ಖಚಿತವಾಗಿ?', [
+    Alert.alert('ಲಾಗ್ ಔಟ್', 'ಖಚಿತಪಡಿಸಿ?', [
       { text: 'ಬೇಡ', style: 'cancel' },
       { text: 'ಹೌದು', style: 'destructive', onPress: () => store.reset() },
     ]);
@@ -85,111 +48,84 @@ export default function SettingsScreen() {
 
   return (
     <View style={styles.container}>
-      <NivettiHeader title="⚙️ ಸೆಟ್ಟಿಂಗ್ಸ್" />
+      {/* Header */}
+      <LinearGradient colors={['#1B5E20', '#2E7D32']} style={styles.header}>
+        <View style={styles.headerRow}>
+          <MaterialCommunityIcons name="cog" size={22} color="#fff" />
+          <Text style={styles.headerTitle}>ಸೆಟ್ಟಿಂಗ್ಸ್</Text>
+        </View>
+      </LinearGradient>
+
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
 
-        {/* Profile */}
-        <View style={[styles.card, Shadows.sm]}>
-          <View style={styles.cardHeader}>
-            <Text style={styles.cardTitle}>👤 ಪ್ರೊಫೈಲ್</Text>
-            {!editMode && (
-              <TouchableOpacity onPress={() => setEditMode(true)}>
-                <Text style={styles.editBtn}>✏️ ಬದಲಾಯಿಸಿ</Text>
-              </TouchableOpacity>
-            )}
+        {/* Profile Card */}
+        <View style={styles.profileCard}>
+          <View style={styles.profileAvatar}>
+            <MaterialCommunityIcons name="account-circle" size={52} color={Colors.primary} />
           </View>
-
-          {editMode ? (
-            <>
-              <Text style={styles.label}>ಹೆಸರು</Text>
-              <TextInput style={styles.input} value={name} onChangeText={setName} placeholder="ನಿಮ್ಮ ಹೆಸರು" placeholderTextColor={Colors.textMuted} />
-
-              <Text style={styles.label}>ಜಿಲ್ಲೆ</Text>
-              <TextInput style={styles.input} value={districtSearch} onChangeText={setDistrictSearch} placeholder="ಜಿಲ್ಲೆ ಹುಡುಕಿ..." placeholderTextColor={Colors.textMuted} />
-              <View style={styles.chipGrid}>
-                {filteredDistricts.slice(0, 10).map((d) => (
-                  <TouchableOpacity key={d.name_en} style={[styles.chip, selectedDistrict === d.name_en && styles.chipSel]} onPress={() => { setSelectedDistrict(d.name_en); setDistrictSearch(''); }}>
-                    <Text style={[styles.chipTxt, selectedDistrict === d.name_en && styles.chipTxtSel]}>{d.name_kn}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-              {selectedDistrict ? <Text style={styles.badge}>✅ {selectedDistrict}</Text> : null}
-
-              <Text style={[styles.label, { marginTop: Spacing.md }]}>ಬೆಳೆಗಳು</Text>
-              <TextInput style={styles.input} value={cropSearch} onChangeText={setCropSearch} placeholder="ಬೆಳೆ ಹುಡುಕಿ..." placeholderTextColor={Colors.textMuted} />
-              <View style={styles.chipGrid}>
-                {filteredCrops.slice(0, 12).map((c) => {
-                  const sel = selectedCrops.includes(c.name_en);
-                  return (
-                    <TouchableOpacity key={c.name_en} style={[styles.chip, sel && styles.chipSel]} onPress={() => {
-                      sel ? setSelectedCrops(selectedCrops.filter(cr => cr !== c.name_en)) : setSelectedCrops([...selectedCrops, c.name_en]);
-                      setCropSearch('');
-                    }}>
-                      <Text style={[styles.chipTxt, sel && styles.chipTxtSel]}>{sel ? '✓ ' : ''}{c.icon} {c.name_kn}</Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-
-              <View style={styles.btnRow}>
-                <TouchableOpacity style={styles.cancelBtn} onPress={() => { setEditMode(false); setName(store.farmer_name); setSelectedDistrict(store.district); setSelectedCrops(store.crops); }}>
-                  <Text style={styles.cancelTxt}>← ರದ್ದು</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.saveBtn} onPress={handleSave}>
-                  <Text style={styles.saveTxt}>💾 ಉಳಿಸಿ</Text>
-                </TouchableOpacity>
-              </View>
-            </>
-          ) : (
-            <View style={styles.infoList}>
-              <InfoRow label="ಹೆಸರು" value={store.farmer_name || '—'} />
-              <InfoRow label="ಫೋನ್" value={store.phone ? `+91 ${store.phone}` : '—'} />
-              <InfoRow label="ಜಿಲ್ಲೆ" value={store.district || '—'} />
-              <InfoRow label="ಬೆಳೆಗಳು" value={store.crops.join(', ') || '—'} />
-            </View>
-          )}
+          <View style={{ flex: 1 }}>
+            <Text style={styles.profileName}>{store.farmer_name || '—'}</Text>
+            <Text style={styles.profilePhone}>{store.phone ? `+91 ${store.phone}` : '—'}</Text>
+            <Text style={styles.profileMeta}>{store.district || ''}{store.crops.length ? ` · ${store.crops[0]}` : ''}</Text>
+          </View>
         </View>
 
         {/* Language Selection */}
-        <View style={[styles.card, Shadows.sm]}>
-          <Text style={styles.cardTitle}>🔊 ಧ್ವನಿ ಭಾಷೆ</Text>
-          <Text style={styles.langHint}>AI ಉತ್ತರ ಯಾವ ಭಾಷೆಯಲ್ಲಿ ಕೇಳಬೇಕು?</Text>
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <MaterialCommunityIcons name="volume-high" size={20} color={Colors.primary} />
+            <Text style={styles.sectionTitle}>ಧ್ವನಿ ಭಾಷೆ</Text>
+          </View>
+          <Text style={styles.sectionHint}>AI ಯಾವ ಭಾಷೆಯಲ್ಲಿ ಮಾತನಾಡಬೇಕು?</Text>
           <View style={styles.langGrid}>
-            {LANGUAGES.map((lang) => (
-              <TouchableOpacity
-                key={lang.code}
-                style={[styles.langBtn, ttsLanguage === lang.code && styles.langBtnActive]}
-                onPress={() => handleLanguageSelect(lang.code)}
-              >
-                <Text style={styles.langFlag}>{lang.flag}</Text>
-                <Text style={[styles.langLabel, ttsLanguage === lang.code && styles.langLabelActive]}>
-                  {lang.label}
-                </Text>
-                {ttsLanguage === lang.code && <Text style={styles.langCheck}>✓</Text>}
-              </TouchableOpacity>
-            ))}
+            {LANGUAGES.map((lang) => {
+              const active = ttsLanguage === lang.code;
+              return (
+                <TouchableOpacity
+                  key={lang.code}
+                  style={[styles.langBtn, active && styles.langBtnActive]}
+                  onPress={() => handleLanguageSelect(lang.code)}
+                  activeOpacity={0.75}
+                >
+                  <Text style={[styles.langLabel, active && styles.langLabelActive]}>{lang.label}</Text>
+                  <Text style={[styles.langSub, active && styles.langSubActive]}>{lang.sub}</Text>
+                  {active && (
+                    <View style={styles.langCheck}>
+                      <MaterialCommunityIcons name="check" size={14} color={Colors.primary} />
+                    </View>
+                  )}
+                </TouchableOpacity>
+              );
+            })}
           </View>
         </View>
 
         {/* App Info */}
-        <View style={[styles.card, Shadows.sm]}>
-          <Text style={styles.cardTitle}>ℹ️ ಅಪ್ಲಿಕೇಶನ್</Text>
-          <InfoRow label="ಆವೃತ್ತಿ" value="v2.0.0" />
-          <InfoRow label="AI" value="Gemini + Mistral + Sarvam" />
-          <InfoRow label="ನಿರ್ಮಾಣ" value="Nivetti Systems" />
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <MaterialCommunityIcons name="information-outline" size={20} color={Colors.primary} />
+            <Text style={styles.sectionTitle}>ಅಪ್ಲಿಕೇಶನ್</Text>
+          </View>
+          <InfoRow icon="tag-outline" label="ಆವೃತ್ತಿ" value="v2.0.0" />
+          <InfoRow icon="robot-outline" label="AI" value="Gemini + Sarvam" />
+          <InfoRow icon="office-building" label="ನಿರ್ಮಾಣ" value="Nivetti Systems" />
         </View>
 
-        <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
-          <Text style={styles.logoutTxt}>🚪 ಲಾಗ್ಔಟ್</Text>
+        {/* Logout */}
+        <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout} activeOpacity={0.8}>
+          <MaterialCommunityIcons name="logout" size={20} color={Colors.error} />
+          <Text style={styles.logoutTxt}>ಲಾಗ್ ಔಟ್</Text>
         </TouchableOpacity>
+
       </ScrollView>
     </View>
   );
 }
 
-function InfoRow({ label, value }: { label: string; value: string }) {
+function InfoRow({ icon, label, value }: { icon: string; label: string; value: string }) {
   return (
     <View style={styles.infoRow}>
+      <MaterialCommunityIcons name={icon as any} size={16} color={Colors.textMuted} />
       <Text style={styles.infoLabel}>{label}</Text>
       <Text style={styles.infoValue}>{value}</Text>
     </View>
@@ -198,36 +134,57 @@ function InfoRow({ label, value }: { label: string; value: string }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
-  scroll: { padding: Spacing.md, paddingBottom: Spacing.xxl },
-  card: { backgroundColor: Colors.surface, borderRadius: BorderRadius.lg, padding: Spacing.md, marginBottom: Spacing.md, borderWidth: 1, borderColor: Colors.border },
-  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: Spacing.md },
-  cardTitle: { fontSize: FontSize.lg, fontWeight: '700', color: Colors.textPrimary },
-  editBtn: { fontSize: FontSize.md, color: Colors.primary, fontWeight: '600' },
-  label: { fontSize: FontSize.md, fontWeight: '600', color: Colors.textSecondary, marginBottom: Spacing.xs, marginTop: Spacing.sm },
-  input: { backgroundColor: Colors.background, borderRadius: BorderRadius.md, padding: Spacing.md, fontSize: FontSize.md, color: Colors.textPrimary, borderWidth: 1, borderColor: Colors.border, marginBottom: Spacing.sm },
-  chipGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.xs },
-  chip: { backgroundColor: Colors.background, borderRadius: BorderRadius.full, paddingVertical: Spacing.xs, paddingHorizontal: Spacing.md, borderWidth: 1, borderColor: Colors.border },
-  chipSel: { backgroundColor: Colors.primary, borderColor: Colors.primary },
-  chipTxt: { fontSize: FontSize.sm, color: Colors.textPrimary },
-  chipTxtSel: { color: Colors.textOnPrimary, fontWeight: '700' },
-  badge: { fontSize: FontSize.sm, color: Colors.primary, fontWeight: '700', marginTop: Spacing.xs },
-  btnRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: Spacing.lg, gap: Spacing.md },
-  cancelBtn: { flex: 1, paddingVertical: Spacing.md, alignItems: 'center', borderRadius: BorderRadius.md, borderWidth: 1, borderColor: Colors.border },
-  cancelTxt: { fontSize: FontSize.md, color: Colors.textSecondary, fontWeight: '600' },
-  saveBtn: { flex: 1, paddingVertical: Spacing.md, alignItems: 'center', borderRadius: BorderRadius.md, backgroundColor: Colors.primary },
-  saveTxt: { fontSize: FontSize.md, color: Colors.textOnPrimary, fontWeight: '700' },
-  infoList: { gap: Spacing.sm },
-  infoRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: Spacing.xs },
-  infoLabel: { fontSize: FontSize.md, color: Colors.textMuted },
-  infoValue: { fontSize: FontSize.md, color: Colors.textPrimary, fontWeight: '600', flexShrink: 1, textAlign: 'right' },
-  langHint: { fontSize: FontSize.sm, color: Colors.textMuted, marginTop: Spacing.xs, marginBottom: Spacing.md },
+  header: { paddingTop: 52, paddingBottom: Spacing.md, paddingHorizontal: Spacing.lg },
+  headerRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
+  headerTitle: { fontSize: FontSize.xl, fontWeight: '800', color: '#fff' },
+
+  scroll: { padding: Spacing.md, paddingBottom: 100 },
+
+  profileCard: {
+    flexDirection: 'row', alignItems: 'center', gap: Spacing.md,
+    backgroundColor: Colors.surface, borderRadius: BorderRadius.lg,
+    padding: Spacing.md, marginBottom: Spacing.md,
+    borderWidth: 1, borderColor: Colors.border, ...Shadows.sm,
+  },
+  profileAvatar: { alignItems: 'center', justifyContent: 'center' },
+  profileName: { fontSize: FontSize.xl, fontWeight: '800', color: Colors.textPrimary },
+  profilePhone: { fontSize: FontSize.md, color: Colors.textSecondary, marginTop: 2 },
+  profileMeta: { fontSize: FontSize.sm, color: Colors.textMuted, marginTop: 2 },
+
+  section: {
+    backgroundColor: Colors.surface, borderRadius: BorderRadius.lg,
+    padding: Spacing.md, marginBottom: Spacing.md,
+    borderWidth: 1, borderColor: Colors.border, ...Shadows.sm,
+  },
+  sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, marginBottom: Spacing.xs },
+  sectionTitle: { fontSize: FontSize.lg, fontWeight: '700', color: Colors.textPrimary },
+  sectionHint: { fontSize: FontSize.sm, color: Colors.textMuted, marginBottom: Spacing.md },
+
   langGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
-  langBtn: { flexDirection: 'row', alignItems: 'center', paddingVertical: Spacing.sm, paddingHorizontal: Spacing.md, borderRadius: BorderRadius.md, borderWidth: 1.5, borderColor: Colors.border, backgroundColor: Colors.background, gap: Spacing.xs, minWidth: '45%' as any },
+  langBtn: {
+    paddingVertical: Spacing.sm, paddingHorizontal: Spacing.md,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1.5, borderColor: Colors.border,
+    backgroundColor: Colors.background, minWidth: '45%' as any,
+    position: 'relative',
+  },
   langBtnActive: { borderColor: Colors.primary, backgroundColor: Colors.primarySoft },
-  langFlag: { fontSize: 16 },
-  langLabel: { fontSize: FontSize.md, color: Colors.textPrimary, fontWeight: '500' },
-  langLabelActive: { color: Colors.primary, fontWeight: '700' },
-  langCheck: { fontSize: FontSize.md, color: Colors.primary, fontWeight: '800', marginLeft: 'auto' as any },
-  logoutBtn: { marginTop: Spacing.md, paddingVertical: Spacing.md, alignItems: 'center', borderRadius: BorderRadius.md, backgroundColor: '#FFF5F5', borderWidth: 1, borderColor: Colors.error + '30' },
+  langLabel: { fontSize: FontSize.md, color: Colors.textPrimary, fontWeight: '600' },
+  langLabelActive: { color: Colors.primary, fontWeight: '800' },
+  langSub: { fontSize: FontSize.xs, color: Colors.textMuted, marginTop: 2 },
+  langSubActive: { color: Colors.primary },
+  langCheck: { position: 'absolute', top: 6, right: 8 },
+
+  infoRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, paddingVertical: Spacing.sm, borderTopWidth: 1, borderTopColor: Colors.divider },
+  infoLabel: { fontSize: FontSize.md, color: Colors.textMuted, flex: 1 },
+  infoValue: { fontSize: FontSize.md, color: Colors.textPrimary, fontWeight: '600' },
+
+  logoutBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: Spacing.sm, paddingVertical: Spacing.md,
+    backgroundColor: '#FFF5F5', borderRadius: BorderRadius.lg,
+    borderWidth: 1, borderColor: Colors.error + '25',
+    marginTop: Spacing.sm,
+  },
   logoutTxt: { fontSize: FontSize.lg, color: Colors.error, fontWeight: '700' },
 });
