@@ -84,7 +84,7 @@ export default function DiagnoseScreen() {
       Animated.timing(diseaseOpacity, { toValue: 0, duration: 800, useNativeDriver: true }).start(({ finished }) => {
         if (finished) setDiseaseOverlay(null);
       });
-    }, 5000);
+    }, 12000);
     return () => clearTimeout(hideTimer);
   }, [diseaseOverlay]);
 
@@ -160,6 +160,7 @@ export default function DiagnoseScreen() {
         text: response.answer_text_kn, sources: response.sources || [],
         timestamp: Date.now(), is_diagnosis: true, audio_base64: response.audio_base64 || undefined,
       });
+      setDiseaseOverlay(response.answer_text_kn);
       await playDiagnosisAudio(response.audio_base64);
     } catch (error: any) {
       Alert.alert('ದೋಷ', error?.response?.data?.detail || error?.message || 'ಮತ್ತೊಮ್ಮೆ ಪ್ರಯತ್ನಿಸಿ');
@@ -186,13 +187,18 @@ export default function DiagnoseScreen() {
   }, [result, canAskFollowUp, resetDiagnosis]);
 
   const handlePrimaryPress = useCallback(async () => {
-    if (overlayMode === 'analyzing' || overlayMode === 'processing' || overlayMode === 'speaking') return;
+    if (overlayMode === 'analyzing' || overlayMode === 'processing') return;
+    if (overlayMode === 'speaking') {
+      await stopPlayback();
+      audioStore.setState('IDLE');
+      return;
+    }
     if (canAskFollowUp) { await handleFollowUpQuestion(); return; }
     await captureAndDiagnose();
-  }, [canAskFollowUp, captureAndDiagnose, handleFollowUpQuestion, overlayMode]);
+  }, [canAskFollowUp, captureAndDiagnose, handleFollowUpQuestion, overlayMode, audioStore]);
 
-  const primaryButtonDisabled = overlayMode === 'analyzing' || overlayMode === 'processing' || overlayMode === 'speaking';
-  const micIcon = overlayMode === 'recording' ? 'stop' : canAskFollowUp ? 'microphone' : 'camera';
+  const primaryButtonDisabled = overlayMode === 'analyzing' || overlayMode === 'processing';
+  const micIcon = overlayMode === 'recording' ? 'stop' : overlayMode === 'speaking' ? 'stop' : canAskFollowUp ? 'microphone' : 'camera';
 
   return (
     <View style={styles.container}>

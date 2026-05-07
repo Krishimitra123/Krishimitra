@@ -115,28 +115,41 @@ def _cache_key(b64: str, text: str = '') -> str:
     return hashlib.md5((b64 + text).encode()).hexdigest()
 
 
-def _compress_image(b64: str, mime: str) -> tuple[str, str]:
+def _compress_and_crop(b64: str, mime: str) -> list[tuple[str, str]]:
     """
-    If image base64 is > 300KB, resize to max 1024x1024 and re-encode at quality 60.
-    Returns (new_b64, new_mime). Falls back to original if PIL not available.
+    Returns [(full_b64, mime), (crop_b64, mime)] for multi-crop ensemble.
     """
-    SIZE_LIMIT = 300_000  # 300KB base64 chars
-    if len(b64) <= SIZE_LIMIT or not HAS_PIL:
-        return b64, mime
+    if not HAS_PIL:
+        return [(b64, mime)]
 
     try:
         img_bytes = base64.b64decode(b64)
         img = PILImage.open(io.BytesIO(img_bytes)).convert('RGB')
-        # Resize to fit within 1024x1024
-        img.thumbnail((1024, 1024), PILImage.LANCZOS)
-        buf = io.BytesIO()
-        img.save(buf, format='JPEG', quality=60, optimize=True)
-        new_b64 = base64.b64encode(buf.getvalue()).decode()
-        print(f'[M4] Compressed image: {len(b64)} -> {len(new_b64)} chars')
-        return new_b64, 'image/jpeg'
+        
+        # 1. Full image thumbnail
+        full_img = img.copy()
+        full_img.thumbnail((1024, 1024), PILImage.LANCZOS)
+        buf_full = io.BytesIO()
+        full_img.save(buf_full, format='JPEG', quality=60, optimize=True)
+        b64_full = base64.b64encode(buf_full.getvalue()).decode()
+        
+        # 2. Center crop (zoom in on the middle 60%)
+        w, h = img.size
+        min_dim = min(w, h)
+        crop_size = int(min_dim * 0.6)
+        left = (w - crop_size) // 2
+        top = (h - crop_size) // 2
+        crop_img = img.crop((left, top, left + crop_size, top + crop_size))
+        crop_img.thumbnail((512, 512), PILImage.LANCZOS)
+        buf_crop = io.BytesIO()
+        crop_img.save(buf_crop, format='JPEG', quality=60, optimize=True)
+        b64_crop = base64.b64encode(buf_crop.getvalue()).decode()
+        
+        print(f'[M4] Multi-crop ensemble created: Full {len(b64_full)} chars, Crop {len(b64_crop)} chars')
+        return [(b64_full, 'image/jpeg'), (b64_crop, 'image/jpeg')]
     except Exception as e:
-        print(f'[M4] Compression failed (using original): {e}')
-        return b64, mime
+        print(f'[M4] Compression/Crop failed (using original): {e}')
+        return [(b64, mime)]
 
 
 def _fallback() -> DiagnosisFinding:
@@ -244,25 +257,24 @@ async def _gemini(b64: str, mime: str, prompt: str) -> DiagnosisFinding | None:
         print('[M4] GEMINI_API_KEY not set — skipping Gemini')
         return None
 
-    # Compress large images before sending
-    b64, mime = _compress_image(b64, mime)
-    print(f'[M4] Sending to Gemini Flash: {len(b64)} chars, mime={mime}')
-
+    # Compress and create center crop
+    images = _compress_and_crop(b64, mime)
+    
     url = GEMINI_URL_TEMPLATE.format(key=key)
+
+    parts = []
+    for img_b64, img_mime in images:
+        parts.append({
+            'inline_data': {
+                'mime_type': img_mime,
+                'data': img_b64,
+            }
+        })
+    parts.append({'text': prompt})
 
     payload = {
         'contents': [{
-            'parts': [
-                {
-                    'inline_data': {
-                        'mime_type': mime,
-                        'data': b64,
-                    }
-                },
-                {
-                    'text': prompt,
-                },
-            ]
+            'parts': parts
         }],
         'generationConfig': {
             'temperature': 0.0,
@@ -303,8 +315,9 @@ async def _pixtral(b64: str, mime: str, prompt: str) -> DiagnosisFinding | None:
         print('[M4] ERROR: MISTRAL_API_KEY not set!')
         return None
 
-    # Compress large images before sending
-    b64, mime = _compress_image(b64, mime)
+    # Compress large images before sending (Pixtral only gets the full resized image)
+    images = _compress_and_crop(b64, mime)
+    b64, mime = images[0]
     print(f'[M4] Sending to Pixtral (fallback): {len(b64)} chars, mime={mime}')
 
     try:
