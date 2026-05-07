@@ -56,12 +56,12 @@ function WaveformIndicator({ active, color = '#fff' }: { active: boolean; color?
 
 export default function HomeScreen() {
   const router = useRouter();
-  const { farmer_name, district, primary_crop } = useUserStore();
+  const { farmer_name, district, crops, primary_crop } = useUserStore();
   const { startNewSession, addMessage, currentSession } = useSessionStore();
   const audioStore = useAudioStore();
 
   const [weather, setWeather] = useState<WeatherResponse | null>(null);
-  const [market, setMarket] = useState<MarketResponse | null>(null);
+  const [marketData, setMarketData] = useState<MarketResponse[]>([]);
   const [widgetLoading, setWidgetLoading] = useState(true);
   const [quickLoading, setQuickLoading] = useState<string | null>(null);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
@@ -82,18 +82,25 @@ export default function HomeScreen() {
     let cancelled = false;
     async function loadWidgets() {
       setWidgetLoading(true);
-      const [w, m] = await Promise.all([
-        getWeather(district).catch(() => null),
-        getMarketPrices(district, primary_crop || undefined).catch(() => null),
-      ]);
+      
+      // Fetch weather
+      const w = await getWeather(district).catch(() => null);
       if (cancelled) return;
       if (w) setWeather(w as WeatherResponse);
-      if (m) setMarket(m as MarketResponse);
+
+      // Fetch market data for up to 3 crops
+      const cropsToFetch = crops?.length ? crops.slice(0, 3) : [primary_crop].filter(Boolean);
+      const mPromises = cropsToFetch.map(c => getMarketPrices(district, c).catch(() => null));
+      const mResults = await Promise.all(mPromises);
+      
+      if (cancelled) return;
+      setMarketData(mResults.filter(Boolean) as MarketResponse[]);
       setWidgetLoading(false);
     }
     loadWidgets();
     return () => { cancelled = true; };
-  }, [district, primary_crop]);
+  }, [district, crops, primary_crop]);
+
 
   useEffect(() => {
     if (audioStore.state === 'RECORDING') {

@@ -118,34 +118,50 @@ async def get_weather(
         f'&forecast_days=7'
     )
 
-    try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            resp = await client.get(url)
+    # Retry logic
+    max_retries = 2
+    for attempt in range(max_retries):
+        try:
+            async with httpx.AsyncClient(timeout=15.0) as client:
+                resp = await client.get(url)
 
-        if resp.status_code != 200:
-            raise HTTPException(status_code=502, detail=f'Open-Meteo error: {resp.status_code}')
+            if resp.status_code == 200:
+                data = resp.json()
+                result = {
+                    'district': district_name,
+                    'latitude': lat_val,
+                    'longitude': lon_val,
+                    'current': data.get('current', {}),
+                    'current_units': data.get('current_units', {}),
+                    'daily': data.get('daily', {}),
+                    'daily_units': data.get('daily_units', {}),
+                    'source': 'Open-Meteo (free, no API key)',
+                }
+                _set_cache(cache_key, result)
+                print(f'[Weather] Fetched for {district_name}: {data.get("current", {}).get("temperature_2m")}°C')
+                return result
+            
+            print(f'[Weather] Attempt {attempt+1} failed: HTTP {resp.status_code}')
+            if attempt == max_retries - 1:
+                break
+        except (httpx.TimeoutException, httpx.RequestError) as e:
+            print(f'[Weather] Attempt {attempt+1} error: {e}')
+            if attempt == max_retries - 1:
+                break
+        await asyncio.sleep(1)
 
-        data = resp.json()
-        result = {
-            'district': district_name,
-            'latitude': lat_val,
-            'longitude': lon_val,
-            'current': data.get('current', {}),
-            'current_units': data.get('current_units', {}),
-            'daily': data.get('daily', {}),
-            'daily_units': data.get('daily_units', {}),
-            'source': 'Open-Meteo (free, no API key)',
-        }
-        _set_cache(cache_key, result)
-        print(f'[Weather] Fetched for {district_name}: {data.get("current", {}).get("temperature_2m")}°C')
-        return result
+    # Fallback response instead of 504
+    return {
+        'district': district_name,
+        'latitude': lat_val,
+        'longitude': lon_val,
+        'current': {'temperature_2m': 25, 'relative_humidity_2m': 60, 'weather_code': 0},
+        'current_units': {'temperature_2m': '°C', 'relative_humidity_2m': '%'},
+        'daily': {},
+        'source': 'Fallback (Service Unavailable)',
+        'error': 'Weather service is currently slow or unavailable'
+    }
 
-    except httpx.TimeoutException:
-        raise HTTPException(status_code=504, detail='Weather API timeout')
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f'Weather fetch failed: {str(e)}')
 
 
 @router.get('/agriculture')
