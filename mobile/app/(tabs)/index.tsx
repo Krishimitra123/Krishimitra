@@ -310,7 +310,7 @@ export default function HomeScreen() {
                   <View style={styles.widgetRow}>
                     <MaterialCommunityIcons name="weather-sunny" size={32} color={Colors.accent} />
                     <View style={{ marginLeft: Spacing.md, flex: 1 }}>
-                      <Text style={styles.widgetTitle}>ಹವಾಮಾನ</Text>
+                      <Text style={styles.widgetTitle}>ಹವಾಮಾನ / Weather</Text>
                       <Text style={styles.widgetValue}>{Math.round(weather.current.temperature_2m)}°C — {weather.district}</Text>
                     </View>
                     <View style={{ alignItems: 'flex-end' }}>
@@ -318,20 +318,27 @@ export default function HomeScreen() {
                       <Text style={styles.widgetSub}>💨 {Math.round(weather.current.wind_speed_10m)}km/h</Text>
                     </View>
                   </View>
+                  {weather.error && (
+                    <Text style={{ fontSize: 10, color: Colors.error, marginTop: 4 }}>{weather.error}</Text>
+                  )}
                 </View>
               );
             })()}
 
-            {market?.records?.length ? (
+            {marketData.length > 0 ? (
               <View style={styles.widgetCard}>
                 <View style={styles.widgetRow}>
                   <MaterialCommunityIcons name="chart-line" size={32} color={Colors.accent} />
                   <View style={{ marginLeft: Spacing.md, flex: 1 }}>
-                    <Text style={styles.widgetTitle}>ಮಾರುಕಟ್ಟೆ ಬೆಲೆ</Text>
-                    {market.records.slice(0, 2).map((p, i) => (
-                      <View key={i} style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 2 }}>
-                        <Text style={styles.widgetValue} numberOfLines={1}>{p.commodity_kn || p.commodity}</Text>
-                        <Text style={styles.widgetPrice}>₹{formatPrice(p.modal_price)}</Text>
+                    <Text style={styles.widgetTitle}>ಮಾರುಕಟ್ಟೆ ಬೆಲೆ / Market</Text>
+                    {marketData.map((m, mi) => (
+                      <View key={mi}>
+                        {m.records?.slice(0, 1).map((p, i) => (
+                          <View key={i} style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 }}>
+                            <Text style={styles.widgetValue} numberOfLines={1}>{p.commodity_kn || p.commodity}</Text>
+                            <Text style={styles.widgetPrice}>₹{formatPrice(p.modal_price)}</Text>
+                          </View>
+                        ))}
                       </View>
                     ))}
                   </View>
@@ -340,6 +347,7 @@ export default function HomeScreen() {
             ) : null}
           </View>
         )}
+
 
         <Text style={styles.footerText}>Nivetti Systems</Text>
       </ScrollView>

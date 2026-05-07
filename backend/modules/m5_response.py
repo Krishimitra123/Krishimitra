@@ -118,8 +118,9 @@ async def _call_mistral(system: str, user_message: str, history: list | None = N
             json={
                 'model': model,
                 'messages': messages,
-                'temperature': 0.2,
+                'temperature': 0.0,
                 'max_tokens': 400,
+
             }
         )
 
