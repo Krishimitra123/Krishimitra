@@ -5,7 +5,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity,
-  ScrollView, Alert,
+  ScrollView, Alert, TextInput,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -28,15 +28,31 @@ const LANGUAGES = [
 
 export default function SettingsScreen() {
   const store = useUserStore();
-  const [ttsLanguage, setTtsLanguage] = useState(store.tts_language || 'kn');
+  const langCode = (store.tts_language || 'kn').split('-')[0]; // normalise 'kn-IN' → 'kn'
+  const [ttsLanguage, setTtsLanguage] = useState(langCode);
+  const [newCrop, setNewCrop] = useState('');
 
   useEffect(() => {
-    setTtsLanguage(store.tts_language || 'kn');
+    setTtsLanguage((store.tts_language || 'kn').split('-')[0]);
   }, [store.tts_language]);
 
   const handleLanguageSelect = (code: string) => {
     setTtsLanguage(code);
-    store.setProfile({ tts_language: code as any });
+    const fullCode = LANGUAGES.find(l => l.code === code)?.sarvam ?? code;
+    store.setProfile({ tts_language: fullCode, preferred_language: fullCode });
+  };
+
+  const addCrop = () => {
+    const c = newCrop.trim();
+    if (!c) return;
+    const updated = [...(store.crops || []), c];
+    store.setProfile({ crops: updated, primary_crop: updated[0] });
+    setNewCrop('');
+  };
+
+  const removeCrop = (idx: number) => {
+    const updated = (store.crops || []).filter((_, i) => i !== idx);
+    store.setProfile({ crops: updated, primary_crop: updated[0] ?? '' });
   };
 
   const handleLogout = () => {
@@ -66,7 +82,16 @@ export default function SettingsScreen() {
           <View style={{ flex: 1 }}>
             <Text style={styles.profileName}>{store.farmer_name || '—'}</Text>
             <Text style={styles.profilePhone}>{store.phone ? `+91 ${store.phone}` : '—'}</Text>
-            <Text style={styles.profileMeta}>{store.district || ''}{store.crops.length ? ` · ${store.crops[0]}` : ''}</Text>
+            <Text style={styles.profileMeta}>{store.district || 'ಜಿಲ್ಲೆ ಇಲ್ಲ'}</Text>
+            {store.crops?.length > 0 && (
+              <View style={styles.cropRow}>
+                {store.crops.map((c, i) => (
+                  <View key={i} style={styles.cropTag}>
+                    <Text style={styles.cropTagTxt}>{c}</Text>
+                  </View>
+                ))}
+              </View>
+            )}
           </View>
         </View>
 
@@ -97,6 +122,38 @@ export default function SettingsScreen() {
                 </TouchableOpacity>
               );
             })}
+          </View>
+        </View>
+
+        {/* Crops Section */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <MaterialCommunityIcons name="sprout" size={20} color={Colors.primary} />
+            <Text style={styles.sectionTitle}>ಬೆಳೆಗಳು / Crops</Text>
+          </View>
+          <View style={styles.cropEditRow}>
+            {(store.crops || []).map((c, i) => (
+              <View key={i} style={styles.cropEditTag}>
+                <Text style={styles.cropEditTxt}>{c}</Text>
+                <TouchableOpacity onPress={() => removeCrop(i)}>
+                  <MaterialCommunityIcons name="close-circle" size={16} color={Colors.error} />
+                </TouchableOpacity>
+              </View>
+            ))}
+          </View>
+          <View style={styles.addCropRow}>
+            <TextInput
+              style={styles.cropInput}
+              value={newCrop}
+              onChangeText={setNewCrop}
+              placeholder="Add crop..."
+              placeholderTextColor={Colors.textMuted}
+              onSubmitEditing={addCrop}
+              returnKeyType="done"
+            />
+            <TouchableOpacity style={styles.addCropBtn} onPress={addCrop}>
+              <MaterialCommunityIcons name="plus" size={20} color="#fff" />
+            </TouchableOpacity>
           </View>
         </View>
 

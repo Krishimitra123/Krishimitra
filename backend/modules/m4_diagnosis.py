@@ -2,6 +2,7 @@
 Module M4 — Crop Diagnosis (Gemini primary, Pixtral-12b fallback)
 Key fix: image_url must be {"url": "data:..."} not a bare string.
 Hard 35s overall asyncio timeout. Image result cached by MD5.
+NON-PLANT images now correctly rejected (no hallucinated diseases).
 """
 
 import asyncio
@@ -31,42 +32,72 @@ CHEMICAL_TERMS = [
     'cypermethrin', 'glyphosate', 'endosulfan', 'ammonium sulphate',
 ]
 
-DIAGNOSIS_PROMPT = """You are an expert Indian crop pathologist for organic farming in Karnataka.
-Analyze this plant/crop image carefully for any disease, pest, or health issue.
+DIAGNOSIS_PROMPT = """You are an expert Indian crop pathologist for organic farming.
 
-CRITICAL: ALL text values in the JSON MUST be written in KANNADA (ಕನ್ನಡ) script. 
-The JSON field names stay in English, but ALL VALUES must be in Kannada.
+=== STEP 1: IS THIS A PLANT IMAGE? ===
+Before analyzing anything, carefully examine whether the image contains a plant.
+If the image does NOT clearly show a plant, leaf, stem, root, flower, fruit, or any crop part,
+you MUST immediately return this exact JSON and NOTHING ELSE:
+{
+  "plant_health_status": "ಅಸ್ಪಷ್ಟ",
+  "disease_name": "Not a plant image",
+  "disease_name_kn": "ಸಸ್ಯ ಕಾಣಿಸಲಿಲ್ಲ",
+  "confidence_pct": 0,
+  "visual_symptoms": ["ಚಿತ್ರದಲ್ಲಿ ಸಸ್ಯ ಕಾಣಿಸುತ್ತಿಲ್ಲ"],
+  "probable_cause": "ಸಸ್ಯದ ಫೋಟೋ ತೆಗೆಯಿರಿ",
+  "organic_treatments": ["ನಿಮ್ಮ ಬೆಳೆಯ ಎಲೆ ಅಥವಾ ಸಸ್ಯದ ಸ್ಪಷ್ಟ ಫೋಟೋ ತೆಗೆಯಿರಿ"],
+  "prevention_measures": ["ಬೆಳಕಿನಲ್ಲಿ ಸಸ್ಯದ ಹತ್ತಿರ ಫೋಟೋ ತೆಗೆಯಿರಿ"],
+  "needs_retake": true
+}
 
-Reply ONLY with valid JSON (no markdown fences, no extra text):
+This rule applies to ALL of these: human faces, people, animals (cows, dogs, birds),
+vehicles (cars, bikes, tractors), buildings, food items, indoor objects, documents,
+sky-only, bare soil without plants, or any non-agricultural subject.
+
+=== STEP 2: ANALYZE THE PLANT ===
+Only if a plant IS visible, analyze it carefully and reply with this JSON format:
 {
   "plant_health_status": "ರೋಗಗ್ರಸ್ತ",
-  "disease_name": "Powdery Mildew",
-  "disease_name_kn": "ಕಣಕಾಲು ರೋಗ",
-  "confidence_pct": 80,
-  "visual_symptoms": ["ಎಲೆಗಳ ಮೇಲೆ ಬಿಳಿ ಪುಡಿ ಕಂಡುಬರುತ್ತಿದೆ", "ಎಲೆಗಳು ಹಳದಿ ಬಣ್ಣಕ್ಕೆ ತಿರುಗುತ್ತಿವೆ"],
-  "probable_cause": "ಅಧಿಕ ತೇವಾಂಶ ಮತ್ತು ಕಳಪೆ ಗಾಳಿ ಸಂಚಾರದಿಂದ ಶಿಲೀಂಧ್ರ ಸೋಂಕು",
+  "disease_name": "Leaf Blight",
+  "disease_name_kn": "ಎಲೆ ಒಣಗು ರೋಗ",
+  "confidence_pct": 72,
+  "visual_symptoms": ["ಎಲೆಗಳ ತುದಿ ಒಣಗಿದೆ", "ಕಂದು ಬಣ್ಣದ ಚುಕ್ಕೆಗಳು ಕಾಣಿಸುತ್ತಿವೆ"],
+  "probable_cause": "ಅಧಿಕ ತೇವಾಂಶ ಮತ್ತು ಬ್ಯಾಕ್ಟೀರಿಯಾ ಸೋಂಕು",
   "organic_treatments": [
     "ಪ್ರತಿ 10 ದಿನಕ್ಕೊಮ್ಮೆ ಪಂಚಗವ್ಯ 3% ದ್ರಾವಣ ಸಿಂಪಡಿಸಿ",
-    "ಬೇವಿನ ಎಣ್ಣೆ 5 ಮಿಲಿ ಪ್ರತಿ ಲೀಟರ್ ನೀರಿಗೆ ಬೆರೆಸಿ ಸಿಂಪಡಿಸಿ",
-    "ಟ್ರೈಕೋಡರ್ಮಾ ವಿರಿಡೆ ಮಣ್ಣಿಗೆ ಮತ್ತು ಎಲೆಗಳಿಗೆ ಸಿಂಪಡಿಸಿ"
+    "ಬೇವಿನ ಎಣ್ಣೆ 5 ಮಿಲಿ ಪ್ರತಿ ಲೀಟರ್ ನೀರಿಗೆ ಬೆರೆಸಿ ಸಿಂಪಡಿಸಿ"
   ],
   "prevention_measures": [
-    "ಸಸ್ಯಗಳ ನಡುವೆ ಸರಿಯಾದ ಅಂತರ ಕಾಯ್ದುಕೊಳ್ಳಿ",
-    "ಪ್ರತಿ 15 ದಿನಕ್ಕೊಮ್ಮೆ ಜೀವಾಮೃತ ಹಾಕಿ ಸಸ್ಯ ರೋಗ ನಿರೋಧಕ ಶಕ್ತಿ ಹೆಚ್ಚಿಸಿ"
+    "ಸಸ್ಯಗಳ ನಡುವೆ ಸರಿಯಾದ ಅಂತರ ಕಾಯ್ದುಕೊಳ್ಳಿ"
   ],
   "needs_retake": false
 }
 
-RULES:
-- ALL values (visual_symptoms, probable_cause, organic_treatments, prevention_measures) MUST be in KANNADA
-- plant_health_status must be one of: "ಆರೋಗ್ಯಕರ", "ರೋಗಗ್ರಸ್ತ", "ಅಸ್ಪಷ್ಟ"
-- disease_name can be in English (scientific name), disease_name_kn MUST be Kannada
-- organic_treatments ಕೇವಲ ಜೈವಿಕ: ಜೀವಾಮೃತ, ಬೇವಿನ ಎಣ್ಣೆ, ಪಂಚಗವ್ಯ, ಟ್ರೈಕೋಡರ್ಮಾ, ಬೀಜಾಮೃತ
-- NEVER suggest chemicals: urea, DAP, NPK, chlorpyrifos, glyphosate
-- If image is blurry: needs_retake=true, confidence_pct=0
-- If healthy: plant_health_status="ಆರೋಗ್ಯಕರ", disease_name_kn="ಆರೋಗ್ಯಕರ ಸಸ್ಯ"
-- Identify the specific disease if possible, do not say unable to identify without trying"""
+=== STRICT RULES ===
 
+RULE 1 — CONFIDENCE HONESTY (MOST IMPORTANT):
+- Set confidence_pct > 65 ONLY if you clearly see specific disease symptoms on a plant
+- Set confidence_pct 40-64 if you see a plant but symptoms are mild or ambiguous
+- If confidence_pct < 40, you MUST set needs_retake=true
+- NEVER guess a disease when you cannot clearly see symptoms
+- Do NOT default to any single disease (especially NOT Powdery Mildew / ಕಣಕಾಲು ರೋಗ) unless you can see white powder on leaves
+
+RULE 2 — LANGUAGE:
+- ALL values must be in KANNADA (ಕನ್ನಡ) script
+- plant_health_status must be exactly one of: "ಆರೋಗ್ಯಕರ" OR "ರೋಗಗ್ರಸ್ತ" OR "ಅಸ್ಪಷ್ಟ"
+- disease_name may be an English scientific name, but disease_name_kn MUST be in Kannada
+
+RULE 3 — ORGANIC TREATMENTS ONLY:
+- Only suggest organic inputs: ಜೀವಾಮೃತ, ಬೇವಿನ ಎಣ್ಣೆ, ಪಂಚಗವ್ಯ, ಟ್ರೈಕೋಡರ್ಮಾ, ಬೀಜಾಮೃತ
+- NEVER suggest: urea, DAP, NPK, chlorpyrifos, glyphosate, or any chemical pesticide
+
+RULE 4 — BLURRY OR DARK IMAGES:
+- If the image is too blurry, too dark, or out of focus to diagnose: needs_retake=true, confidence_pct=0
+
+RULE 5 — HEALTHY PLANTS:
+- If plant is visibly healthy with no disease symptoms: plant_health_status="ಆರೋಗ್ಯಕರ", disease_name_kn="ಆರೋಗ್ಯಕರ ಸಸ್ಯ"
+
+Reply ONLY with valid JSON. No markdown fences. No extra text before or after."""
 
 
 def _cache_key(b64: str, text: str = '') -> str:
@@ -143,7 +174,7 @@ def _build(data: dict, source: str) -> DiagnosisFinding:
         prevention_measures=data.get('prevention_measures', []),
         needs_retake=bool(data.get('needs_retake', False)),
         sources=[source, 'ICAR Crop Protection Guidelines', 'Palekar ZBNF'],
-        is_reliable=conf >= 45 and bool(data.get('disease_name')),
+        is_reliable=conf >= 45 and bool(data.get('disease_name')) and not data.get('needs_retake', False),
     )
 
 
@@ -175,7 +206,7 @@ async def _gemini(b64: str, mime: str, prompt: str) -> DiagnosisFinding | None:
             ]
         }],
         'generationConfig': {
-            'temperature': 0.1,
+            'temperature': 0.0,
             'maxOutputTokens': 1500,
         },
     }
@@ -188,10 +219,12 @@ async def _gemini(b64: str, mime: str, prompt: str) -> DiagnosisFinding | None:
         if r.status_code == 200:
             data = r.json()
             text = data['candidates'][0]['content']['parts'][0]['text'].strip()
-            print(f'[M4] Gemini raw (first 200): {text[:200]}')
+            print(f'[M4] Gemini raw (first 300): {text[:300]}')
             d = _parse(text)
             if d:
-                print(f'[M4] Gemini OK: {d.get("disease_name")} ({d.get("confidence_pct")}%)')
+                needs_retake = d.get('needs_retake', False)
+                conf = d.get('confidence_pct', 0)
+                print(f'[M4] Gemini OK: {d.get("disease_name")} ({conf}%) needs_retake={needs_retake}')
                 return _build(d, 'Gemini 2.0 Flash Vision')
             print(f'[M4] Gemini JSON parse failed: {text[:300]}')
         else:
@@ -222,11 +255,10 @@ async def _pixtral(b64: str, mime: str, prompt: str) -> DiagnosisFinding | None:
                 json={
                     'model': 'pixtral-12b-2409',
                     'messages': [{'role': 'user', 'content': [
-                        # FIXED: image_url must be {"url": "data:..."} not a bare string
                         {'type': 'image_url', 'image_url': {'url': f'data:{mime};base64,{b64}'}},
                         {'type': 'text', 'text': prompt},
                     ]}],
-                    'temperature': 0.1,
+                    'temperature': 0.0,
                     'max_tokens': 1000,
                 })
 
@@ -247,7 +279,6 @@ async def _pixtral(b64: str, mime: str, prompt: str) -> DiagnosisFinding | None:
     except Exception as e:
         print(f'[M4] Pixtral error: {e}')
     return None
-
 
 
 async def diagnose(request: DiagnosisRequest) -> DiagnosisFinding:

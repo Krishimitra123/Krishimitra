@@ -48,6 +48,38 @@ function getPreferredLanguage(): string {
   }
 }
 
+export interface TranscribeResponse {
+  transcript: string;
+  language: string;
+  success: boolean;
+}
+
+/**
+ * Lightweight STT-only transcription — used by onboarding.
+ * Does NOT run Mistral or TTS. No 422 risk.
+ * Respects user's selected language.
+ */
+export async function transcribeAudio(
+  audioBase64: string,
+  mimeType: string = 'audio/mp4',
+  languageCode: string = 'kn-IN',
+): Promise<TranscribeResponse> {
+  if (!audioBase64 || audioBase64.length < 100) {
+    return { transcript: '', language: languageCode, success: false };
+  }
+  try {
+    const res = await apiClient.post('/api/transcribe', {
+      audio_base64: audioBase64,
+      audio_mime: mimeType,
+      language_code: languageCode,
+    }, { timeout: 30000 });
+    return res.data;
+  } catch (err: any) {
+    console.error('[QueryService] Transcribe failed:', err?.message);
+    return { transcript: '', language: languageCode, success: false };
+  }
+}
+
 /**
  * Send a voice query (base64 M4A/WAV audio).
  * Pass last N conversation turns for follow-up support.

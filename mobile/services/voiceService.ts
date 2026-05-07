@@ -1,11 +1,13 @@
 /**
  * Voice Service — Recording and TTS playback.
- * FIX: Forces audio through SPEAKER (not earpiece) for loud playback.
- * Uses expo-av Audio module compatible with Expo Go SDK 54.
+ * FIXES:
+ * - Uses DoNotMix (not DuckOthers) so recording mode never ducks our own TTS
+ * - Keeps playback mode active until recording actually starts
+ * - Volume set to maximum (1.0) on every play
  */
 
 import { Audio, InterruptionModeIOS, InterruptionModeAndroid } from 'expo-av';
-import * as FileSystem from 'expo-file-system/legacy';  // Use legacy API to avoid deprecation warning
+import * as FileSystem from 'expo-file-system/legacy';
 import * as Speech from 'expo-speech';
 
 // ── Recording state ───────────────────────────────────────────────
@@ -18,30 +20,33 @@ let _activeSound: Audio.Sound | null = null;
 let _playbackResolve: (() => void) | null = null;
 
 /**
- * Set audio mode for PLAYBACK — forces speaker output (loud).
+ * PLAYBACK MODE — speaker output, max volume, does NOT duck our own audio.
+ * Using DoNotMix ensures the full OS audio volume goes to speaker.
  */
 async function _setPlaybackMode(): Promise<void> {
   await Audio.setAudioModeAsync({
     allowsRecordingIOS: false,
     playsInSilentModeIOS: true,
     staysActiveInBackground: false,
-    interruptionModeIOS: InterruptionModeIOS.DuckOthers,
-    interruptionModeAndroid: InterruptionModeAndroid.DuckOthers,
-    shouldDuckAndroid: true,
-    playThroughEarpieceAndroid: false,  // Force SPEAKER, not earpiece
+    interruptionModeIOS: InterruptionModeIOS.DoNotMix,
+    interruptionModeAndroid: InterruptionModeAndroid.DoNotMix,
+    shouldDuckAndroid: false,
+    playThroughEarpieceAndroid: false,
   });
 }
 
 /**
- * Set audio mode for RECORDING.
+ * RECORDING MODE — set right before recording starts.
+ * We keep the mode as playback as long as possible
+ * to avoid volume dips from unnecessary mode switches.
  */
 async function _setRecordingMode(): Promise<void> {
   await Audio.setAudioModeAsync({
     allowsRecordingIOS: true,
     playsInSilentModeIOS: true,
-    interruptionModeIOS: InterruptionModeIOS.DuckOthers,
-    interruptionModeAndroid: InterruptionModeAndroid.DuckOthers,
-    shouldDuckAndroid: true,
+    interruptionModeIOS: InterruptionModeIOS.DoNotMix,
+    interruptionModeAndroid: InterruptionModeAndroid.DoNotMix,
+    shouldDuckAndroid: false,
     playThroughEarpieceAndroid: false,
   });
 }
@@ -54,6 +59,7 @@ export async function startRecording(): Promise<void> {
   _isStarting = true;
 
   try {
+    // Stop any audio playing first
     await stopPlayback();
 
     if (_recording) {
@@ -64,6 +70,7 @@ export async function startRecording(): Promise<void> {
     const { granted } = await Audio.requestPermissionsAsync();
     if (!granted) throw new Error('Microphone permission denied');
 
+    // Switch to recording mode RIGHT before recording — minimises time in this mode
     await _setRecordingMode();
 
     console.log('[Voice] Starting recording...');
@@ -98,7 +105,7 @@ export async function stopRecordingAndGetBase64(): Promise<{ base64: string; mim
     if (!uri) throw new Error('Recording URI is null');
     console.log('[Voice] Saved to:', uri);
 
-    // IMMEDIATELY switch to playback mode after recording
+    // Immediately restore playback mode after recording stops
     await _setPlaybackMode();
 
     const ext = uri.split('.').pop()?.toLowerCase() ?? 'wav';
@@ -142,7 +149,7 @@ export function isPlaying(): boolean {
 
 /**
  * Play TTS audio LOUD through the speaker.
- * Forces playback mode before every play to ensure speaker output.
+ * Always forces DoNotMix playback mode before playing.
  */
 export async function playBase64Audio(base64Audio: string): Promise<void> {
   if (!base64Audio || base64Audio.length < 100) {
@@ -161,10 +168,10 @@ export async function playBase64Audio(base64Audio: string): Promise<void> {
     encoding: 'base64',
   });
 
-  // CRITICAL: Force speaker mode BEFORE creating sound
+  // CRITICAL: Force speaker + DoNotMix BEFORE creating sound
   await _setPlaybackMode();
 
-  console.log('[Voice] Playing TTS audio through SPEAKER...');
+  console.log('[Voice] Playing TTS audio through SPEAKER (DoNotMix)...');
 
   try {
     const { sound } = await Audio.Sound.createAsync(
@@ -182,7 +189,7 @@ export async function playBase64Audio(base64Audio: string): Promise<void> {
         _playbackResolve = null;
         try { await sound.unloadAsync(); } catch {}
         try { await FileSystem.deleteAsync(fileUri, { idempotent: true }); } catch {}
-        try { await _setRecordingMode(); } catch {}
+        // Stay in playback mode — don't switch to recording unnecessarily
       };
 
       const TIMEOUT = setTimeout(async () => {
@@ -212,15 +219,17 @@ export async function speakText(text: string, language: string = 'kn-IN'): Promi
   if (!cleanText) return;
 
   await stopPlayback();
+  // Ensure we're in speaker mode before expo-speech speaks
+  await _setPlaybackMode();
 
   await new Promise<void>((resolve) => {
     Speech.speak(cleanText, {
       language,
-      rate: 0.95,
+      rate: 0.9,
       pitch: 1.0,
       onDone: resolve,
       onStopped: resolve,
-      onError: (err) => resolve(),
+      onError: () => resolve(),
     });
   });
 }

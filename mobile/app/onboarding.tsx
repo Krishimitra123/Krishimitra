@@ -1,524 +1,317 @@
 /**
- * Voice Onboarding — KrishiMitra
- * AI-driven voice conversation flow. No forms, no reading required.
- *
- * Flow:
- *   LANGUAGE → farmer taps language button (each plays audio sample)
- *   NAME     → AI asks name, farmer speaks
- *   LOCATION → AI asks district/village, farmer speaks
- *   CROP     → AI asks crop, farmer speaks
- *   DONE     → AI welcomes farmer, navigates to tabs
+ * Onboarding — Voice-first, all 11 languages.
+ * Steps: Language → Name → Location → Crops → Home
+ * Uses /api/transcribe (not /api/query) — no 422 errors.
  */
-
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity,
-  Animated, ActivityIndicator, SafeAreaView, Dimensions,
+  View, Text, StyleSheet, TouchableOpacity, ScrollView,
+  Animated, ActivityIndicator, Alert,
 } from 'react-native';
-import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { Colors, FontSize, Spacing, BorderRadius, Shadows } from '@/constants/theme';
+import { router } from 'expo-router';
 import { useUserStore } from '@/stores/useUserStore';
-import { DISTRICTS } from '@/constants/districts';
-import { CROPS } from '@/constants/crops';
-import {
-  startRecording, stopRecordingAndGetBase64,
-  speakText, stopPlayback,
-} from '@/services/voiceService';
-import { sendVoiceQuery } from '@/services/queryService';
+import { transcribeAudio } from '@/services/queryService';
+import { startRecording, stopRecordingAndGetBase64, playBase64Audio } from '@/services/voiceService';
+import { apiClient } from '@/services/api';
+import { Colors, Spacing, FontSize, BorderRadius, Shadows } from '@/constants/theme';
 
-const { width, height } = Dimensions.get('window');
-
-type OnboardingStep = 'LANGUAGE' | 'NAME' | 'LOCATION' | 'CROP' | 'DONE';
-
-// ── Language config ───────────────────────────────────────────────
+// ── Language definitions ───────────────────────────────────────────
 const LANGUAGES = [
-  {
-    code: 'kn',
-    sttCode: 'kn-IN',
-    label: 'ಕನ್ನಡ',
-    sublabel: 'Kannada',
-    greeting: 'ನಮಸ್ಕಾರ! ನಾನು ಕೃಷಿ ಮಿತ್ರ. ನಿಮ್ಮ ಭಾಷೆ ಕನ್ನಡ ಆಗಿದೆ.',
-    nameQ: 'ನಿಮ್ಮ ಹೆಸರು ಏನು?',
-    locationQ: 'ನೀವು ಯಾವ ಜಿಲ್ಲೆಯಲ್ಲಿ ಇದ್ದೀರಿ?',
-    cropQ: 'ನೀವು ಯಾವ ಬೆಳೆ ಬೆಳೆಯುತ್ತೀರಿ?',
-    welcomeQ: (name: string) => `ಸ್ವಾಗತ ${name}! ಕೃಷಿ ಮಿತ್ರ ಸಿದ್ಧ.`,
-    color: '#1B5E20',
-  },
-  {
-    code: 'hi',
-    sttCode: 'hi-IN',
-    label: 'हिंदी',
-    sublabel: 'Hindi',
-    greeting: 'नमस्कार! मैं कृषि मित्र हूँ। आपकी भाषा हिंदी है।',
-    nameQ: 'आपका नाम क्या है?',
-    locationQ: 'आप किस जिले में रहते हैं?',
-    cropQ: 'आप कौन सी फसल उगाते हैं?',
-    welcomeQ: (name: string) => `स्वागत ${name}! कृषि मित्र तैयार है।`,
-    color: '#FF6F00',
-  },
-  {
-    code: 'ta',
-    sttCode: 'ta-IN',
-    label: 'தமிழ்',
-    sublabel: 'Tamil',
-    greeting: 'வணக்கம்! நான் கிருஷி மித்ரா. உங்கள் மொழி தமிழ்.',
-    nameQ: 'உங்கள் பெயர் என்ன?',
-    locationQ: 'நீங்கள் எந்த மாவட்டத்தில் இருக்கிறீர்கள்?',
-    cropQ: 'நீங்கள் என்ன பயிர் பயிரிடுகிறீர்கள்?',
-    welcomeQ: (name: string) => `வரவேற்கிறோம் ${name}! கிருஷி மித்ரா தயார்.`,
-    color: '#1565C0',
-  },
-  {
-    code: 'te',
-    sttCode: 'te-IN',
-    label: 'తెలుగు',
-    sublabel: 'Telugu',
-    greeting: 'నమస్కారం! నేను కృషి మిత్ర. మీ భాష తెలుగు.',
-    nameQ: 'మీ పేరు ఏమిటి?',
-    locationQ: 'మీరు ఏ జిల్లాలో ఉన్నారు?',
-    cropQ: 'మీరు ఏ పంట పండిస్తారు?',
-    welcomeQ: (name: string) => `స్వాగతం ${name}! కృషి మిత్ర సిద్ధంగా ఉంది.`,
-    color: '#4A148C',
-  },
+  { code: 'kn', label: 'ಕನ್ನಡ',    sub: 'Kannada',   sarvam: 'kn-IN' },
+  { code: 'hi', label: 'हिंदी',     sub: 'Hindi',     sarvam: 'hi-IN' },
+  { code: 'ta', label: 'தமிழ்',    sub: 'Tamil',     sarvam: 'ta-IN' },
+  { code: 'te', label: 'తెలుగు',   sub: 'Telugu',    sarvam: 'te-IN' },
+  { code: 'ml', label: 'മലയാളം',   sub: 'Malayalam', sarvam: 'ml-IN' },
+  { code: 'mr', label: 'मराठी',    sub: 'Marathi',   sarvam: 'mr-IN' },
+  { code: 'bn', label: 'বাংলা',    sub: 'Bengali',   sarvam: 'bn-IN' },
+  { code: 'gu', label: 'ગુજરાતી',  sub: 'Gujarati',  sarvam: 'gu-IN' },
+  { code: 'pa', label: 'ਪੰਜਾਬੀ',   sub: 'Punjabi',   sarvam: 'pa-IN' },
+  { code: 'od', label: 'ଓଡ଼ିଆ',    sub: 'Odia',      sarvam: 'or-IN' },
+  { code: 'en', label: 'English',   sub: 'English',   sarvam: 'en-IN' },
 ];
 
-// ── Parsers ────────────────────────────────────────────────────────
-function parseNameFromTranscript(transcript: string): string {
-  // Remove common filler words and extract name
-  const cleaned = transcript
-    .replace(/my name is|i am|mera naam|naam|nanna hesaru|nanu|nasaru|ನನ್ನ ಹೆಸರು|ನಾನು/gi, '')
-    .replace(/[^\u0C00-\u0C7F\u0900-\u097F\u0B80-\u0BFF\u0C00-\u0C7F\u0B00-\u0B7F\u0A80-\u0AFF\u0A00-\u0A7F\u0080-\u00FF\w\s]/g, '')
-    .trim();
-  const words = cleaned.split(/\s+/).filter(w => w.length > 1);
-  return words[0] || transcript.trim().split(' ')[0] || 'Farmer';
-}
+// ── Localised prompts for each language ───────────────────────────
+const P: Record<string, { name: string; loc: string; crop: string; welcome: string; tapMic: string }> = {
+  kn: { name: 'ನಿಮ್ಮ ಹೆಸರು ಏನು?', loc: 'ನೀವು ಯಾವ ಜಿಲ್ಲೆಯಲ್ಲಿ ಇದ್ದೀರಿ?', crop: 'ನೀವು ಯಾವ ಬೆಳೆ ಬೆಳೆಯುತ್ತೀರಿ?', welcome: 'ಸ್ವಾಗತ', tapMic: 'ಮೈಕ್ ಒತ್ತಿ ಮಾತನಾಡಿ' },
+  hi: { name: 'आपका नाम क्या है?', loc: 'आप किस जिले में रहते हैं?', crop: 'आप कौन सी फसल उगाते हैं?', welcome: 'स्वागत है', tapMic: 'माइक दबाकर बोलें' },
+  ta: { name: 'உங்கள் பெயர் என்ன?', loc: 'நீங்கள் எந்த மாவட்டத்தில்?', crop: 'என்ன பயிர் வளர்க்கிறீர்கள்?', welcome: 'வரவேற்கிறோம்', tapMic: 'மைக்கை அழுத்தி பேசுங்கள்' },
+  te: { name: 'మీ పేరు ఏమిటి?', loc: 'మీరు ఏ జిల్లాలో ఉన్నారు?', crop: 'మీరు ఏ పంటలు పండిస్తున్నారు?', welcome: 'స్వాగతం', tapMic: 'మైక్ నొక్కి మాట్లాడండి' },
+  ml: { name: 'നിങ്ങളുടെ പേര്?', loc: 'ഏത് ജില്ലയിൽ ഉണ്ട്?', crop: 'ഏത് വിള കൃഷി ചെയ്യുന്നു?', welcome: 'സ്വാഗതം', tapMic: 'മൈക്ക് അമർത്തി സംസാരിക്കൂ' },
+  mr: { name: 'तुमचे नाव काय?', loc: 'कोणत्या जिल्ह्यात राहता?', crop: 'कोणते पीक घेता?', welcome: 'स्वागत', tapMic: 'मायक दाबून बोला' },
+  bn: { name: 'আপনার নাম কি?', loc: 'আপনি কোন জেলায় থাকেন?', crop: 'কি ফসল চাষ করেন?', welcome: 'স্বাগতম', tapMic: 'মাইক চাপুন এবং বলুন' },
+  gu: { name: 'તમારું નામ શું છે?', loc: 'તમે કયા જિલ્લામાં?', crop: 'કઈ ખેતી કરો?', welcome: 'સ્વાગત', tapMic: 'માઇક દબાવી બોલો' },
+  pa: { name: 'ਤੁਹਾਡਾ ਨਾਂ ਕੀ ਹੈ?', loc: 'ਕਿਸ ਜ਼ਿਲ੍ਹੇ ਵਿੱਚ ਹੋ?', crop: 'ਕਿਹੜੀ ਫ਼ਸਲ ਉਗਾਉਂਦੇ ਹੋ?', welcome: 'ਜੀ ਆਇਆਂ', tapMic: 'ਮਾਈਕ ਦਬਾਓ ਅਤੇ ਬੋਲੋ' },
+  od: { name: 'ଆପଣଙ୍କ ନାମ?', loc: 'କେଉଁ ଜିଲ୍ଲାରେ ଅଛନ୍ତି?', crop: 'କ\'ଣ ଚାଷ କରୁଛନ୍ତି?', welcome: 'ସ୍ୱାଗତ', tapMic: 'ମାଇକ୍ ଦବାଇ କୁହନ୍ତୁ' },
+  en: { name: 'What is your name?', loc: 'Which district are you from?', crop: 'What crops do you grow?', welcome: 'Welcome', tapMic: 'Tap mic and speak' },
+};
 
-function parseDistrictFromTranscript(transcript: string): string {
-  const t = transcript.toLowerCase();
-  // Try exact match first
-  for (const d of DISTRICTS) {
-    if (t.includes(d.name_en.toLowerCase())) return d.name_en;
-    if (d.name_kn && t.includes(d.name_kn)) return d.name_en;
-  }
-  // Fuzzy: partial match (first 5 chars)
-  for (const d of DISTRICTS) {
-    const key = d.name_en.toLowerCase().slice(0, 5);
-    if (t.includes(key)) return d.name_en;
-  }
-  return transcript.trim().split(/\s+/).slice(-1)[0] || 'Karnataka';
-}
+type Step = 'lang' | 'name' | 'loc' | 'crop' | 'done';
 
-function parseCropFromTranscript(transcript: string): string {
-  const t = transcript.toLowerCase();
-  for (const c of CROPS) {
-    if (t.includes(c.name_en.toLowerCase())) return c.name_en;
-    if (c.name_kn && t.includes(c.name_kn)) return c.name_en;
-  }
-  return transcript.trim().split(/\s+/).slice(-1)[0] || 'Paddy';
-}
-
-// ── Waveform component ─────────────────────────────────────────────
-function VoiceWaveform({ active }: { active: boolean }) {
-  const bars = useRef(Array.from({ length: 7 }, () => new Animated.Value(0.3))).current;
-
-  useEffect(() => {
-    if (!active) {
-      bars.forEach(b => b.setValue(0.3));
-      return;
-    }
-    const loops = bars.map((bar, i) =>
-      Animated.loop(
-        Animated.sequence([
-          Animated.timing(bar, { toValue: 1, duration: 350 + i * 60, useNativeDriver: true }),
-          Animated.timing(bar, { toValue: 0.3, duration: 350 + i * 60, useNativeDriver: true }),
-        ])
-      )
-    );
-    const timers = loops.map((loop, i) => setTimeout(() => loop.start(), i * 70));
-    return () => { loops.forEach(l => l.stop()); timers.forEach(t => clearTimeout(t)); };
-  }, [active]);
-
-  return (
-    <View style={waveStyles.container}>
-      {bars.map((bar, i) => (
-        <Animated.View
-          key={i}
-          style={[waveStyles.bar, { transform: [{ scaleY: bar }] }]}
-        />
-      ))}
-    </View>
-  );
-}
-
-const waveStyles = StyleSheet.create({
-  container: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    gap: 5, height: 56,
-  },
-  bar: {
-    width: 6, height: 40, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.8)',
-  },
-});
-
-// ── Progress dots ──────────────────────────────────────────────────
-const STEPS: OnboardingStep[] = ['LANGUAGE', 'NAME', 'LOCATION', 'CROP'];
-
-function ProgressDots({ current }: { current: OnboardingStep }) {
-  const idx = STEPS.indexOf(current);
-  return (
-    <View style={dotStyles.row}>
-      {STEPS.map((_, i) => (
-        <View
-          key={i}
-          style={[dotStyles.dot, i <= idx && dotStyles.dotActive]}
-        />
-      ))}
-    </View>
-  );
-}
-
-const dotStyles = StyleSheet.create({
-  row: { flexDirection: 'row', gap: 8, justifyContent: 'center' },
-  dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.3)' },
-  dotActive: { backgroundColor: '#fff', width: 20 },
-});
-
-// ── Main Component ─────────────────────────────────────────────────
 export default function OnboardingScreen() {
-  const router = useRouter();
-  const { setProfile, setLanguage, completeOnboarding } = useUserStore();
-
-  const [step, setStep] = useState<OnboardingStep>('LANGUAGE');
-  const [selectedLang, setSelectedLang] = useState(LANGUAGES[0]);
-  const [isAISpeaking, setIsAISpeaking] = useState(false);
-  const [isRecording, setIsRecording] = useState(false);
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [statusText, setStatusText] = useState('ಭಾಷೆ ಆಯ್ಕೆ ಮಾಡಿ');
-  const [collectedName, setCollectedName] = useState('');
-  const [collectedDistrict, setCollectedDistrict] = useState('');
-
+  const store = useUserStore();
+  const [step, setStep] = useState<Step>('lang');
+  const [langCode, setLangCode] = useState('kn');
+  const [sarvam, setSarvam] = useState('kn-IN');
+  const [status, setStatus] = useState('');
+  const [recording, setRecording] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [name, setName] = useState('');
+  const [loc, setLoc] = useState('');
+  const [crop, setCrop] = useState('');
   const pulseAnim = useRef(new Animated.Value(1)).current;
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(40)).current;
 
-  // Fade in on step change
-  useEffect(() => {
-    fadeAnim.setValue(0);
-    slideAnim.setValue(40);
-    Animated.parallel([
-      Animated.timing(fadeAnim, { toValue: 1, duration: 400, useNativeDriver: true }),
-      Animated.timing(slideAnim, { toValue: 0, duration: 400, useNativeDriver: true }),
-    ]).start();
-  }, [step]);
+  const prompt = P[langCode] ?? P['kn'];
 
-  // Pulse when speaking
+  // Pulse animation while recording
   useEffect(() => {
-    if (isAISpeaking || isRecording) {
-      const loop = Animated.loop(
-        Animated.sequence([
-          Animated.timing(pulseAnim, { toValue: 1.12, duration: 600, useNativeDriver: true }),
-          Animated.timing(pulseAnim, { toValue: 1, duration: 600, useNativeDriver: true }),
-        ])
-      );
-      loop.start();
-      return () => { loop.stop(); pulseAnim.setValue(1); };
+    if (recording) {
+      Animated.loop(Animated.sequence([
+        Animated.timing(pulseAnim, { toValue: 1.25, duration: 600, useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 1.0, duration: 600, useNativeDriver: true }),
+      ])).start();
+    } else {
+      pulseAnim.stopAnimation();
+      Animated.timing(pulseAnim, { toValue: 1.0, duration: 200, useNativeDriver: true }).start();
     }
-  }, [isAISpeaking, isRecording]);
+  }, [recording]);
 
-  // AI speak helper
-  const aiSpeak = useCallback(async (text: string, langCode: string) => {
-    setIsAISpeaking(true);
+  // Speak a question via Sarvam TTS
+  async function speakQuestion(text: string) {
     try {
-      await speakText(text, `${langCode}-IN`);
-    } catch (e) {
-      console.error('[Onboarding] AI speak error:', e);
+      setBusy(true);
+      setStatus('🔊');
+      const res = await apiClient.post('/api/query', {
+        text_query: text,
+        tts_language: sarvam,
+        preferred_language: sarvam,
+        conversation_history: [],
+      }, { timeout: 30000 });
+      if (res.data?.audio_base64) {
+        await playBase64Audio(res.data.audio_base64);
+      }
+    } catch {
+      // Fallback: show text only
     } finally {
-      setIsAISpeaking(false);
+      setBusy(false);
+      setStatus(prompt.tapMic);
     }
-  }, []);
+  }
 
-  // Handle language selection
-  const handleLanguageSelect = useCallback(async (lang: typeof LANGUAGES[0]) => {
-    setSelectedLang(lang);
-    setLanguage(lang.code);
-    setStatusText(lang.greeting);
-    await aiSpeak(lang.greeting, lang.code);
-    await new Promise(r => setTimeout(r, 400));
-    setStep('NAME');
-    setTimeout(() => askQuestion('NAME', lang), 500);
-  }, []);
+  // After language is selected, speak the name question
+  async function onSelectLanguage(code: string, sv: string) {
+    setLangCode(code);
+    setSarvam(sv);
+    store.setLanguage(sv);
+    setStep('name');
+    await speakQuestion(P[code]?.name ?? P['kn'].name);
+  }
 
-  // Ask question for a step
-  const askQuestion = useCallback(async (s: OnboardingStep, lang: typeof LANGUAGES[0]) => {
-    let question = '';
-    if (s === 'NAME') { question = lang.nameQ; setStatusText(lang.nameQ); }
-    else if (s === 'LOCATION') { question = lang.locationQ; setStatusText(lang.locationQ); }
-    else if (s === 'CROP') { question = lang.cropQ; setStatusText(lang.cropQ); }
-    if (question) await aiSpeak(question, lang.code);
-  }, []);
-
-  // Record farmer's response
-  const handleMicPress = useCallback(async () => {
-    if (isAISpeaking || isProcessing) return;
-
-    if (!isRecording) {
+  // Record and transcribe
+  async function handleRecord() {
+    if (recording) {
+      // Stop recording
       try {
-        setIsRecording(true);
-        setStatusText('ಮಾತನಾಡಿ...');
+        setRecording(false);
+        setBusy(true);
+        setStatus('...');
+        const audio = await stopRecordingAndGetBase64();
+        const result = await transcribeAudio(audio.base64, audio.mimeType, sarvam);
+        const transcript = result.transcript.trim();
+        if (!transcript) {
+          setStatus(prompt.tapMic);
+          return;
+        }
+        await processTranscript(transcript);
+      } catch (e: any) {
+        setStatus(prompt.tapMic);
+        Alert.alert('Error', e.message);
+      } finally {
+        setBusy(false);
+      }
+    } else {
+      // Start recording
+      try {
         await startRecording();
-      } catch (e) {
-        setIsRecording(false);
-        setStatusText('ಮೈಕ್ ಅನುಮತಿ ಬೇಕು');
+        setRecording(true);
+        setStatus('🎙️ ...');
+      } catch (e: any) {
+        Alert.alert('Permission Denied', 'Please allow microphone access.');
       }
-      return;
     }
+  }
 
-    // Stop recording and process
-    setIsRecording(false);
-    setIsProcessing(true);
-    setStatusText('ಯೋಚಿಸುತ್ತಿದೆ...');
-
-    try {
-      const audio = await stopRecordingAndGetBase64();
-      const response = await sendVoiceQuery(audio.base64, audio.mimeType);
-      const transcript = response.transcript || '';
-
-      if (step === 'NAME') {
-        const name = parseNameFromTranscript(transcript);
-        setCollectedName(name);
-        setProfile({ farmer_name: name });
-        setStatusText(selectedLang.locationQ);
-        setIsProcessing(false);
-        setStep('LOCATION');
-        setTimeout(() => askQuestion('LOCATION', selectedLang), 500);
-
-      } else if (step === 'LOCATION') {
-        const district = parseDistrictFromTranscript(transcript);
-        setCollectedDistrict(district);
-        setProfile({ district });
-        setStatusText(selectedLang.cropQ);
-        setIsProcessing(false);
-        setStep('CROP');
-        setTimeout(() => askQuestion('CROP', selectedLang), 500);
-
-      } else if (step === 'CROP') {
-        const crop = parseCropFromTranscript(transcript);
-        setProfile({ primary_crop: crop, crops: [crop] });
-        setIsProcessing(false);
-        setStep('DONE');
-        const welcome = selectedLang.welcomeQ(collectedName);
-        setStatusText(welcome);
-        await aiSpeak(welcome, selectedLang.code);
-        await new Promise(r => setTimeout(r, 600));
-        completeOnboarding();
-        router.replace('/(tabs)');
-      }
-    } catch (e: any) {
-      console.error('[Onboarding] Voice processing error:', e);
-      setIsProcessing(false);
-      setStatusText('ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ');
+  async function processTranscript(transcript: string) {
+    if (step === 'name') {
+      const n = transcript.split(' ').slice(0, 4).join(' ');
+      setName(n);
+      store.setProfile({ farmer_name: n });
+      setStep('loc');
+      await speakQuestion(prompt.loc);
+    } else if (step === 'loc') {
+      setLoc(transcript);
+      store.setProfile({ district: transcript });
+      setStep('crop');
+      await speakQuestion(prompt.crop);
+    } else if (step === 'crop') {
+      // Support multiple crops separated by common words
+      const crops = transcript
+        .split(/,|and|ಮತ್ತು|और|மற்றும்|మరియు|ഒപ്പം|आणि|এবং|અને|ਅਤੇ|ଓ/)
+        .map(c => c.trim())
+        .filter(Boolean);
+      setCrop(crops[0] ?? transcript);
+      store.setProfile({ crops, primary_crop: crops[0] ?? transcript });
+      store.completeOnboarding();
+      setStep('done');
+      setTimeout(() => router.replace('/(tabs)/'), 1500);
     }
-  }, [isRecording, isAISpeaking, isProcessing, step, selectedLang, collectedName]);
+  }
 
-  // Skip step
-  const handleSkip = useCallback(async () => {
-    await stopPlayback();
-    if (step === 'NAME') {
-      setCollectedName('Farmer');
-      setProfile({ farmer_name: 'Farmer' });
-      setStep('LOCATION');
-      setTimeout(() => askQuestion('LOCATION', selectedLang), 300);
-    } else if (step === 'LOCATION') {
-      setCollectedDistrict('Bengaluru');
-      setProfile({ district: 'Bengaluru' });
-      setStep('CROP');
-      setTimeout(() => askQuestion('CROP', selectedLang), 300);
-    } else if (step === 'CROP') {
-      setProfile({ primary_crop: 'Paddy', crops: ['Paddy'] });
-      completeOnboarding();
-      router.replace('/(tabs)');
-    }
-  }, [step, selectedLang]);
-
-  // ── Language selection screen ──────────────────────────────────
-  if (step === 'LANGUAGE') {
+  // ── RENDER ─────────────────────────────────────────────────────
+  if (step === 'lang') {
     return (
-      <LinearGradient
-        colors={['#1B5E20', '#2E7D32', '#388E3C']}
-        style={styles.fullScreen}
-      >
-        <SafeAreaView style={styles.safeArea}>
-          <Animated.View style={[styles.center, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
-            {/* Logo */}
-            <View style={styles.logoCircle}>
-              <MaterialCommunityIcons name="sprout" size={52} color="#fff" />
-            </View>
-            <Text style={styles.appName}>ಕೃಷಿ ಮಿತ್ರ</Text>
-            <Text style={styles.appSubname}>KrishiMitra</Text>
-            <Text style={styles.langPrompt}>ನಿಮ್ಮ ಭಾಷೆ ಆಯ್ಕೆ ಮಾಡಿ</Text>
-            <Text style={styles.langPromptSub}>Choose your language</Text>
-
-            {/* Language buttons */}
-            <View style={styles.langGrid}>
-              {LANGUAGES.map((lang) => (
-                <TouchableOpacity
-                  key={lang.code}
-                  style={[styles.langButton, { borderColor: lang.color }]}
-                  onPress={() => handleLanguageSelect(lang)}
-                  activeOpacity={0.8}
-                >
-                  <Text style={styles.langButtonText}>{lang.label}</Text>
-                  <Text style={styles.langButtonSub}>{lang.sublabel}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-
-            <Text style={styles.poweredBy}>Nivetti Systems</Text>
-          </Animated.View>
-        </SafeAreaView>
+      <LinearGradient colors={['#1B5E20', '#2E7D32', '#388E3C']} style={styles.root}>
+        <View style={styles.langHeader}>
+          <MaterialCommunityIcons name="sprout" size={32} color="#fff" />
+          <Text style={styles.langTitle}>KrishiMitra</Text>
+          <Text style={styles.langSub}>Select your language / ನಿಮ್ಮ ಭಾಷೆ ಆಯ್ಕೆ ಮಾಡಿ</Text>
+        </View>
+        <ScrollView contentContainerStyle={styles.langGrid} showsVerticalScrollIndicator={false}>
+          {LANGUAGES.map(l => (
+            <TouchableOpacity
+              key={l.code}
+              style={styles.langCard}
+              onPress={() => onSelectLanguage(l.code, l.sarvam)}
+              activeOpacity={0.75}
+            >
+              <Text style={styles.langCardLabel}>{l.label}</Text>
+              <Text style={styles.langCardSub}>{l.sub}</Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
       </LinearGradient>
     );
   }
 
-  // ── Voice conversation steps ───────────────────────────────────
-  const micReady = !isAISpeaking && !isProcessing;
-  const micColor = isRecording ? Colors.error : Colors.primary;
+  if (step === 'done') {
+    return (
+      <LinearGradient colors={['#1B5E20', '#2E7D32']} style={[styles.root, styles.center]}>
+        <MaterialCommunityIcons name="check-circle" size={80} color="#fff" />
+        <Text style={styles.doneText}>{prompt.welcome}!</Text>
+      </LinearGradient>
+    );
+  }
+
+  const stepIcon = step === 'name' ? 'account' : step === 'loc' ? 'map-marker' : 'sprout';
+  const question = step === 'name' ? prompt.name : step === 'loc' ? prompt.loc : prompt.crop;
+  const stepNum = step === 'name' ? 1 : step === 'loc' ? 2 : 3;
 
   return (
-    <LinearGradient
-      colors={['#1B5E20', '#2E7D32', '#43A047']}
-      style={styles.fullScreen}
-    >
-      <SafeAreaView style={styles.safeArea}>
-        <Animated.View style={[styles.voiceCenter, { opacity: fadeAnim }]}>
+    <LinearGradient colors={['#1B5E20', '#2E7D32', '#388E3C']} style={[styles.root, styles.center]}>
+      {/* Step indicator */}
+      <View style={styles.stepRow}>
+        {[1, 2, 3].map(n => (
+          <View key={n} style={[styles.stepDot, n === stepNum && styles.stepDotActive]} />
+        ))}
+      </View>
 
-          {/* Progress */}
-          <ProgressDots current={step} />
+      {/* Icon */}
+      <View style={styles.iconCircle}>
+        <MaterialCommunityIcons name={stepIcon as any} size={40} color="#fff" />
+      </View>
 
-          {/* AI Speaking indicator */}
-          <View style={styles.aiSection}>
-            {isAISpeaking ? (
-              <>
-                <View style={styles.aiOrb}>
-                  <MaterialCommunityIcons name="robot" size={36} color="#fff" />
-                </View>
-                <VoiceWaveform active />
-              </>
-            ) : (
-              <View style={[styles.aiOrb, styles.aiOrbIdle]}>
-                <MaterialCommunityIcons name="robot" size={36} color="rgba(255,255,255,0.5)" />
-              </View>
-            )}
-          </View>
+      {/* Question */}
+      <Text style={styles.question}>{question}</Text>
 
-          {/* Status text */}
-          <View style={styles.statusBox}>
-            <Text style={styles.statusText}>{statusText}</Text>
-          </View>
+      {/* Transcript preview */}
+      {(step === 'name' && name) && <Text style={styles.preview}>{name}</Text>}
+      {(step === 'loc' && loc) && <Text style={styles.preview}>{loc}</Text>}
+      {(step === 'crop' && crop) && <Text style={styles.preview}>{crop}</Text>}
 
-          {/* Big Mic */}
-          <Animated.View style={{ transform: [{ scale: pulseAnim }], marginTop: Spacing.xl }}>
-            <TouchableOpacity
-              style={[
-                styles.bigMic,
-                isRecording && styles.bigMicRecording,
-                !micReady && styles.bigMicDisabled,
-              ]}
-              onPress={handleMicPress}
-              activeOpacity={0.8}
-              disabled={isAISpeaking}
-            >
-              {isProcessing ? (
-                <ActivityIndicator size="large" color="#fff" />
-              ) : (
-                <MaterialCommunityIcons
-                  name={isRecording ? 'stop' : 'microphone'}
-                  size={48}
-                  color="#fff"
-                />
-              )}
-            </TouchableOpacity>
-          </Animated.View>
+      {/* Status */}
+      <Text style={styles.statusText}>{busy ? '...' : status || prompt.tapMic}</Text>
 
-          <Text style={styles.micHint}>
-            {isAISpeaking ? 'ಕೇಳಿ...' : isRecording ? 'ಮಾತನಾಡಿ — ನಿಲ್ಲಿಸಲು ಒತ್ತಿ' : isProcessing ? 'ಯೋಚಿಸುತ್ತಿದೆ...' : 'ಒತ್ತಿ ಮಾತನಾಡಿ'}
-          </Text>
-
-          {/* Skip button */}
-          {!isAISpeaking && !isProcessing && step !== 'DONE' && (
-            <TouchableOpacity style={styles.skipBtn} onPress={handleSkip}>
-              <Text style={styles.skipText}>ಬಿಡಿ →</Text>
-            </TouchableOpacity>
-          )}
-
+      {/* Mic button */}
+      <TouchableOpacity
+        onPress={handleRecord}
+        disabled={busy}
+        activeOpacity={0.8}
+      >
+        <Animated.View style={[
+          styles.micBtn,
+          recording && styles.micBtnActive,
+          { transform: [{ scale: pulseAnim }] },
+        ]}>
+          {busy
+            ? <ActivityIndicator size="large" color="#fff" />
+            : <MaterialCommunityIcons
+                name={recording ? 'stop' : 'microphone'}
+                size={44}
+                color="#fff"
+              />
+          }
         </Animated.View>
-      </SafeAreaView>
+      </TouchableOpacity>
+
+      <Text style={styles.hint}>
+        {recording ? '🔴 Recording...' : prompt.tapMic}
+      </Text>
     </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
-  fullScreen: { flex: 1 },
-  safeArea: { flex: 1 },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: Spacing.xl },
-  logoCircle: {
-    width: 96, height: 96, borderRadius: 48,
+  root: { flex: 1 },
+  center: { alignItems: 'center', justifyContent: 'center', paddingHorizontal: Spacing.xl },
+
+  langHeader: { alignItems: 'center', paddingTop: 60, paddingBottom: Spacing.lg },
+  langTitle: { fontSize: 28, fontWeight: '900', color: '#fff', marginTop: Spacing.sm },
+  langSub: { fontSize: 14, color: 'rgba(255,255,255,0.75)', marginTop: 4, textAlign: 'center' },
+
+  langGrid: {
+    flexDirection: 'row', flexWrap: 'wrap',
+    justifyContent: 'center', gap: 12,
+    paddingHorizontal: Spacing.lg, paddingBottom: 40,
+  },
+  langCard: {
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderRadius: BorderRadius.lg, borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.3)',
+    paddingVertical: 14, paddingHorizontal: 18,
+    minWidth: '40%', alignItems: 'center',
+  },
+  langCardLabel: { fontSize: 20, color: '#fff', fontWeight: '700' },
+  langCardSub: { fontSize: 12, color: 'rgba(255,255,255,0.7)', marginTop: 2 },
+
+  stepRow: { flexDirection: 'row', gap: 8, marginBottom: Spacing.xl },
+  stepDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.35)' },
+  stepDotActive: { backgroundColor: '#fff', width: 24 },
+
+  iconCircle: {
+    width: 90, height: 90, borderRadius: 45,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    alignItems: 'center', justifyContent: 'center',
+    marginBottom: Spacing.lg,
+    borderWidth: 2, borderColor: 'rgba(255,255,255,0.3)',
+  },
+
+  question: { fontSize: 24, fontWeight: '800', color: '#fff', textAlign: 'center', lineHeight: 34, marginBottom: Spacing.sm },
+  preview: { fontSize: 18, color: '#A5D6A7', fontWeight: '600', textAlign: 'center', marginBottom: Spacing.sm },
+  statusText: { fontSize: 14, color: 'rgba(255,255,255,0.7)', marginBottom: Spacing.xl },
+
+  micBtn: {
+    width: 110, height: 110, borderRadius: 55,
     backgroundColor: 'rgba(255,255,255,0.2)',
     alignItems: 'center', justifyContent: 'center',
-    marginBottom: Spacing.md,
-    borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)',
-  },
-  appName: { fontSize: 36, fontWeight: '900', color: '#fff', letterSpacing: 1 },
-  appSubname: { fontSize: FontSize.lg, color: 'rgba(255,255,255,0.7)', fontWeight: '600', marginTop: 2 },
-  langPrompt: { fontSize: FontSize.xl, color: '#fff', fontWeight: '700', marginTop: Spacing.xl, textAlign: 'center' },
-  langPromptSub: { fontSize: FontSize.md, color: 'rgba(255,255,255,0.6)', marginTop: 4, marginBottom: Spacing.xl },
-  langGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.md, justifyContent: 'center', width: '100%' },
-  langButton: {
-    width: (width - 80) / 2,
-    paddingVertical: Spacing.lg,
-    borderRadius: BorderRadius.lg,
-    alignItems: 'center', justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    borderWidth: 1.5,
-  },
-  langButtonText: { fontSize: FontSize.xxl, fontWeight: '800', color: '#fff' },
-  langButtonSub: { fontSize: FontSize.sm, color: 'rgba(255,255,255,0.7)', marginTop: 4 },
-  poweredBy: { fontSize: FontSize.xs, color: 'rgba(255,255,255,0.35)', marginTop: Spacing.xxl, fontStyle: 'italic' },
-
-  // Voice screen
-  voiceCenter: { flex: 1, alignItems: 'center', justifyContent: 'space-around', paddingHorizontal: Spacing.xl, paddingVertical: Spacing.xxl },
-  aiSection: { alignItems: 'center', gap: Spacing.md, minHeight: 120, justifyContent: 'center' },
-  aiOrb: {
-    width: 80, height: 80, borderRadius: 40,
-    backgroundColor: 'rgba(255,255,255,0.25)',
-    alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1, borderColor: 'rgba(255,255,255,0.4)',
-  },
-  aiOrbIdle: { backgroundColor: 'rgba(255,255,255,0.08)', borderColor: 'rgba(255,255,255,0.15)' },
-  statusBox: {
-    backgroundColor: 'rgba(0,0,0,0.25)',
-    borderRadius: BorderRadius.lg,
-    paddingVertical: Spacing.md, paddingHorizontal: Spacing.lg,
-    maxWidth: width - 60,
-  },
-  statusText: { fontSize: FontSize.xl, color: '#fff', fontWeight: '700', textAlign: 'center', lineHeight: 32 },
-  bigMic: {
-    width: 120, height: 120, borderRadius: 60,
-    backgroundColor: Colors.primary,
-    alignItems: 'center', justifyContent: 'center',
-    ...Shadows.lg,
     borderWidth: 3, borderColor: 'rgba(255,255,255,0.5)',
+    ...Shadows.md,
   },
-  bigMicRecording: { backgroundColor: Colors.error },
-  bigMicDisabled: { backgroundColor: 'rgba(255,255,255,0.2)' },
-  micHint: { fontSize: FontSize.md, color: 'rgba(255,255,255,0.8)', marginTop: Spacing.md, fontWeight: '500' },
-  skipBtn: {
-    paddingVertical: Spacing.sm, paddingHorizontal: Spacing.xl,
-    borderRadius: BorderRadius.full,
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)',
+  micBtnActive: {
+    backgroundColor: 'rgba(244,67,54,0.7)',
+    borderColor: '#EF9A9A',
   },
-  skipText: { fontSize: FontSize.md, color: 'rgba(255,255,255,0.8)', fontWeight: '600' },
+
+  hint: { fontSize: 13, color: 'rgba(255,255,255,0.6)', marginTop: Spacing.lg },
+  doneText: { fontSize: 32, fontWeight: '900', color: '#fff', marginTop: Spacing.lg },
 });

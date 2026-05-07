@@ -122,7 +122,7 @@ def _convert_audio_to_wav(audio_bytes: bytes, mime_type: str) -> bytes:
                 pass
 
 
-async def audio_to_transcript(audio_base64: str, api_key: str, mime_type: str = 'audio/mp4') -> dict:
+async def audio_to_transcript(audio_base64: str, api_key: str, mime_type: str = 'audio/mp4', language_code: str = 'kn-IN') -> dict:
     """
     Decode base64 audio → convert to WAV via ffmpeg → send to Sarvam saarika:v2.5.
     Hard 20s timeout (belt-and-suspenders: httpx 20s + asyncio.wait_for 18s).
@@ -134,7 +134,8 @@ async def audio_to_transcript(audio_base64: str, api_key: str, mime_type: str = 
         None, _convert_audio_to_wav, raw_bytes, mime_type
     )
 
-    print(f'[M1-STT] Sending {len(wav_bytes)} bytes as audio.wav to Sarvam...')
+    sarvam_lang = _normalize_language_code(language_code)
+    print(f'[M1-STT] Sending {len(wav_bytes)} bytes as audio.wav to Sarvam (lang={sarvam_lang})...')
 
     try:
         async with httpx.AsyncClient(timeout=15.0) as client:
@@ -142,7 +143,7 @@ async def audio_to_transcript(audio_base64: str, api_key: str, mime_type: str = 
                 client.post(
                     'https://api.sarvam.ai/speech-to-text',
                     headers={'api-subscription-key': api_key},
-                    data={'language_code': 'kn-IN', 'model': 'saarika:v2.5'},
+                    data={'language_code': sarvam_lang, 'model': 'saarika:v2.5'},
                     files={'file': ('audio.wav', wav_bytes, 'audio/wav')},
                 ),
                 timeout=14.0,
@@ -154,8 +155,8 @@ async def audio_to_transcript(audio_base64: str, api_key: str, mime_type: str = 
         raise ValueError(f'STT {resp.status_code}: {resp.text[:200]}')
 
     transcript = (resp.json().get('transcript') or '').strip()
-    print(f'[M1-STT] Transcript: "{transcript}"')
-    return {'transcript': transcript, 'language': 'kn-IN', 'confidence': 1.0}
+    print(f'[M1-STT] Transcript ({sarvam_lang}): "{transcript}"')
+    return {'transcript': transcript, 'language': sarvam_lang, 'confidence': 1.0}
 
 
 async def text_to_audio(text: str, api_key: str, language_code: str = 'kn-IN') -> str:

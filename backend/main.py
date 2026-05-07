@@ -18,6 +18,7 @@ load_dotenv(BASE_DIR / '.env')
 from routers import query, diagnose, admin
 from routers import weather, soil, market
 from routers import auth
+from routers import transcribe
 
 app = FastAPI(
     title='KrishiMitra API',
@@ -42,6 +43,7 @@ app.include_router(weather.router)
 app.include_router(soil.router)
 app.include_router(market.router)
 app.include_router(auth.router)
+app.include_router(transcribe.router)
 
 @app.get('/health')
 async def health_check():

@@ -179,6 +179,12 @@ export default function DiagnoseScreen() {
     audioStore.setState('IDLE');
   }, [audioStore]);
 
+  const handleCameraZoneTap = useCallback(() => {
+    if (result && canAskFollowUp) {
+      resetDiagnosis();
+    }
+  }, [result, canAskFollowUp, resetDiagnosis]);
+
   const handlePrimaryPress = useCallback(async () => {
     if (overlayMode === 'analyzing' || overlayMode === 'processing' || overlayMode === 'speaking') return;
     if (canAskFollowUp) { await handleFollowUpQuestion(); return; }
@@ -191,7 +197,11 @@ export default function DiagnoseScreen() {
   return (
     <View style={styles.container}>
       {/* Camera / Image zone */}
-      <View style={styles.cameraZone}>
+      <TouchableOpacity 
+        style={styles.cameraZone}
+        onPress={handleCameraZoneTap}
+        activeOpacity={canAskFollowUp ? 0.8 : 1}
+      >
         {imageUri ? (
           <Image source={{ uri: imageUri }} style={styles.previewImage} />
         ) : (
@@ -237,16 +247,33 @@ export default function DiagnoseScreen() {
           </Animated.View>
         )}
 
-        {/* Retake button — always visible after image captured */}
-        {imageUri && overlayMode !== 'analyzing' && overlayMode !== 'processing' && (
+        {/* Retake/Reset button — visible when diagnosis complete or during speaking */}
+        {imageUri && result && canAskFollowUp && (overlayMode === 'idle' || overlayMode === 'speaking') && (
           <TouchableOpacity style={styles.retakeButton} onPress={resetDiagnosis} activeOpacity={0.85}>
             <MaterialCommunityIcons name="camera-retake" size={20} color="#fff" />
           </TouchableOpacity>
         )}
-      </View>
+
+        {/* Tap zone hint for follow-up mode */}
+        {result && canAskFollowUp && (
+          <View style={styles.tapHintOverlay}>
+            <Text style={styles.tapHintText}>📸 ಹೊಸ ಫೋಟೋ ತೆಗೆಯಲು ಕ್ಲಿಕ ಮಾಡಿ</Text>
+          </View>
+        )}
+      </TouchableOpacity>
 
       {/* Bottom bar */}
       <LinearGradient colors={[Colors.surface, Colors.background]} style={styles.bottomBar}>
+        {result && canAskFollowUp && (
+          <TouchableOpacity
+            style={styles.newPhotoBtn}
+            onPress={resetDiagnosis}
+            activeOpacity={0.8}
+          >
+            <MaterialCommunityIcons name="camera-retake" size={20} color="#fff" />
+            <Text style={styles.newPhotoBtnText}>ಹೊಸ ಫೋಟೋ</Text>
+          </TouchableOpacity>
+        )}
         {result && canAskFollowUp && (
           <Text style={styles.followUpHint}>ಪ್ರಶ್ನೆ ಕೇಳಲು ಮೈಕ್ ಒತ್ತಿ</Text>
         )}
@@ -316,9 +343,35 @@ const styles = StyleSheet.create({
     borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.4)',
   },
 
+  tapHintOverlay: {
+    position: 'absolute', bottom: Spacing.lg * 2, left: Spacing.md, right: Spacing.md,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    borderRadius: BorderRadius.md,
+    paddingVertical: Spacing.md, paddingHorizontal: Spacing.md,
+    alignItems: 'center',
+    borderWidth: 1, borderColor: 'rgba(76,175,80,0.5)',
+  },
+  tapHintText: { color: 'rgba(255,255,255,0.85)', fontSize: FontSize.sm, fontWeight: '600', textAlign: 'center' },
+
   bottomBar: {
     flex: 0.22, alignItems: 'center', justifyContent: 'center',
     paddingVertical: Spacing.lg, gap: Spacing.sm,
+  },
+  newPhotoBtn: {
+    flexDirection: 'row',
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.md,
+    backgroundColor: 'rgba(46,125,50,0.8)',
+    borderRadius: BorderRadius.lg,
+    alignItems: 'center',
+    gap: Spacing.sm,
+    borderWidth: 1,
+    borderColor: 'rgba(76,175,80,0.5)',
+  },
+  newPhotoBtnText: {
+    color: '#fff',
+    fontSize: FontSize.sm,
+    fontWeight: '700',
   },
   followUpHint: { fontSize: FontSize.sm, color: Colors.textMuted, fontWeight: '500' },
   primaryButton: {
