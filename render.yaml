@@ -1,0 +1,36 @@
+services:
+  - type: web
+    name: krishimitra-api
+    runtime: python
+    region: singapore
+    plan: free
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn main:app --workers 1 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT --timeout 120
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: SARVAM_API_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: MISTRAL_API_KEY
+        sync: false
+      - key: MISTRAL_MODEL
+        value: mistral-small-latest
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_KEY
+        sync: false
+      - key: EMBEDDING_MODEL_NAME
+        value: sentence-transformers/paraphrase-multilingual-mpnet-base-v2
+      - key: RAG_SIMILARITY_THRESHOLD
+        value: "0.30"
+      - key: RAG_TOP_K
+        value: "5"
+      - key: MAX_RESPONSE_WORDS
+        value: "150"
+      - key: FAST2SMS_API_KEY
+        sync: false
+      - key: ENVIRONMENT
+        value: production
