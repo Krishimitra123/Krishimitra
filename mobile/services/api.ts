@@ -26,12 +26,13 @@ apiClient.interceptors.request.use((config) => {
       const user = useUserStore.getState();
       if (!config.data) config.data = {};
       const preferredLanguage = user.preferred_language || user.tts_language || 'kn-IN';
+      const agroZone = typeof user.agro_zone === 'number' ? user.agro_zone : undefined;
       config.data.user_context = {
         farmer_name:  user.farmer_name  || 'ರೈತ',
         district:     user.district     || 'Bengaluru Rural',
         primary_crop: user.primary_crop || 'Ragi',
-        agro_zone:    user.agro_zone    || 'Southern Dry Zone',
         preferred_language: preferredLanguage,
+        ...(agroZone !== undefined ? { agro_zone: agroZone } : {}),
       };
       // Keep legacy and new language fields in sync for all endpoints.
       if (!config.data.tts_language) {
@@ -54,11 +55,29 @@ apiClient.interceptors.response.use(
     if (__DEV__) {
       if (error?.response) {
         // Server responded with error status
-        console.error('[API Error]', {
-          status: error.response.status,
-          message: error.message,
-          data: error.response.data,
-        });
+        const url = String(error?.config?.url || '');
+        const status = error.response.status;
+        if (status === 504 && url.includes('/api/weather')) {
+          console.warn('[API Warning] Weather request timed out, falling back to cached or empty state.');
+        } else if (status === 404 && (url.includes('/api/weather') || url.includes('/api/market'))) {
+          console.warn('[API Warning]', {
+            status,
+            message: error.message,
+            data: error.response.data,
+          });
+        } else if (status === 404 && typeof error.response.data?.detail === 'string' && error.response.data.detail.toLowerCase().includes('district')) {
+          console.warn('[API Warning]', {
+            status,
+            message: error.message,
+            data: error.response.data,
+          });
+        } else {
+          console.error('[API Error]', {
+            status,
+            message: error.message,
+            data: error.response.data,
+          });
+        }
       } else if (error?.request) {
         // Request was made but no response received (network issue)
         console.error('[API NetworkError] No response from server:', {

@@ -32,6 +32,15 @@ CHEMICAL_TERMS = [
     'cypermethrin', 'glyphosate', 'endosulfan', 'ammonium sulphate',
 ]
 
+PLANT_CONTEXT_TERMS = [
+    'leaf', 'leaves', 'stem', 'root', 'fruit', 'flower', 'crop', 'plant',
+    'ಎಲೆ', 'ಕಾಂಡ', 'ಬೇರು', 'ಹಣ್ಣು', 'ಹೂ', 'ಬೆಳೆ', 'ಸಸ್ಯ',
+]
+
+POWDERY_MILDEW_TERMS = [
+    'powdery mildew', 'ಕಣಕಾಲು', 'white powder', 'powder', 'fuzzy white', 'white fungal',
+]
+
 DIAGNOSIS_PROMPT = """You are an expert Indian crop pathologist for organic farming.
 
 === STEP 1: IS THIS A PLANT IMAGE? ===
@@ -101,7 +110,9 @@ Reply ONLY with valid JSON. No markdown fences. No extra text before or after.""
 
 
 def _cache_key(b64: str, text: str = '') -> str:
-    return hashlib.md5((b64[:300] + text).encode()).hexdigest()
+    # Use the full base64 payload to avoid accidental collisions when images share prefixes.
+    # Include optional text and mime to ensure uniqueness across requests.
+    return hashlib.md5((b64 + text).encode()).hexdigest()
 
 
 def _compress_image(b64: str, mime: str) -> tuple[str, str]:
@@ -176,6 +187,54 @@ def _build(data: dict, source: str) -> DiagnosisFinding:
         sources=[source, 'ICAR Crop Protection Guidelines', 'Palekar ZBNF'],
         is_reliable=conf >= 45 and bool(data.get('disease_name')) and not data.get('needs_retake', False),
     )
+
+
+def _looks_like_plant_context(finding: DiagnosisFinding) -> bool:
+    haystack = ' '.join([
+        finding.disease_name or '',
+        finding.disease_name_kn or '',
+        finding.probable_cause or '',
+        ' '.join(finding.visual_symptoms or []),
+    ]).lower()
+    return any(term in haystack for term in PLANT_CONTEXT_TERMS)
+
+
+def _needs_hallucination_guard(finding: DiagnosisFinding) -> bool:
+    if finding.needs_retake:
+        return True
+
+    confidence = float(finding.confidence_pct or 0)
+    if confidence < 70:
+        return True
+
+    disease_blob = f"{finding.disease_name or ''} {finding.disease_name_kn or ''}".lower()
+    symptoms_blob = ' '.join(finding.visual_symptoms or []).lower()
+
+    if any(term in disease_blob for term in POWDERY_MILDEW_TERMS):
+        if not any(term in symptoms_blob for term in ['white', 'powder', 'fuzzy', 'fungal', 'fungus', 'mycelium']):
+            return True
+
+    if not _looks_like_plant_context(finding):
+        return True
+
+    return False
+
+
+def _force_retake(finding: DiagnosisFinding, message: str) -> DiagnosisFinding:
+    print(f'[M4] {message}')
+    finding.plant_health_status = 'ಅಸ್ಪಷ್ಟ'
+    finding.disease_name = 'Not a plant image'
+    finding.disease_name_kn = 'ಸಸ್ಯ ಕಾಣಿಸಲಿಲ್ಲ'
+    finding.confidence_pct = 0.0
+    finding.visual_symptoms = ['ಚಿತ್ರದಲ್ಲಿ ಸಸ್ಯ ಸ್ಪಷ್ಟವಾಗಿ ಕಾಣುತ್ತಿಲ್ಲ']
+    finding.probable_cause = 'ಸಸ್ಯದ ಫೋಟೋ ತೆಗೆಯಿರಿ'
+    finding.organic_treatments = ['ನಿಮ್ಮ ಬೆಳೆಯ ಎಲೆ ಅಥವಾ ಸಸ್ಯದ ಸ್ಪಷ್ಟ ಫೋಟೋ ತೆಗೆಯಿರಿ']
+    finding.prevention_measures = ['ಬೆಳಕಿನಲ್ಲಿ ಸಸ್ಯದ ಹತ್ತಿರ ಫೋಟೋ ತೆಗೆಯಿರಿ']
+    finding.needs_retake = True
+    finding.is_reliable = False
+    finding.summary_kn = None
+    finding.audio_base64 = None
+    return finding
 
 
 async def _gemini(b64: str, mime: str, prompt: str) -> DiagnosisFinding | None:
@@ -320,6 +379,9 @@ async def diagnose(request: DiagnosisRequest) -> DiagnosisFinding:
     except asyncio.TimeoutError:
         print('[M4] 30s hard timeout hit')
         result = _fallback()
+
+    if _needs_hallucination_guard(result):
+        result = _force_retake(result, 'Hallucination guard triggered — forcing retake')
 
     if result.is_reliable:
         _cache[ck] = result

@@ -11,6 +11,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Colors, FontSize, Spacing, BorderRadius, Shadows } from '@/constants/theme';
 import { useUserStore } from '@/stores/useUserStore';
+import { CROPS } from '@/constants/crops';
 
 const LANGUAGES = [
   { code: 'kn', label: 'ಕನ್ನಡ', sub: 'Kannada' },
@@ -45,9 +46,14 @@ export default function SettingsScreen() {
   const addCrop = () => {
     const c = newCrop.trim();
     if (!c) return;
-    const updated = [...(store.crops || []), c];
+    const updated = Array.from(new Set([...(store.crops || []), c]));
     store.setProfile({ crops: updated, primary_crop: updated[0] });
     setNewCrop('');
+  };
+
+  const quickAddCrop = (cropName: string) => {
+    const updated = Array.from(new Set([...(store.crops || []), cropName]));
+    store.setProfile({ crops: updated, primary_crop: updated[0] || cropName });
   };
 
   const removeCrop = (idx: number) => {
@@ -87,11 +93,18 @@ export default function SettingsScreen() {
               <View style={styles.cropRow}>
                 {store.crops.map((c, i) => (
                   <View key={i} style={styles.cropTag}>
-                    <Text style={styles.cropTagTxt}>{c}</Text>
+                    <Text style={styles.cropTagTxt}>{formatCropLabel(c)}</Text>
                   </View>
                 ))}
               </View>
             )}
+            {!store.crops?.length && store.primary_crop ? (
+              <View style={styles.cropRow}>
+                <View style={styles.cropTag}>
+                  <Text style={styles.cropTagTxt}>{formatCropLabel(store.primary_crop)}</Text>
+                </View>
+              </View>
+            ) : null}
           </View>
         </View>
 
@@ -131,16 +144,25 @@ export default function SettingsScreen() {
             <MaterialCommunityIcons name="sprout" size={20} color={Colors.primary} />
             <Text style={styles.sectionTitle}>ಬೆಳೆಗಳು / Crops</Text>
           </View>
+          <Text style={styles.sectionHint}>ಒತ್ತಿ ಸೇರಿಸಿ ಅಥವಾ ತೆಗೆದುಹಾಕಿ</Text>
           <View style={styles.cropEditRow}>
             {(store.crops || []).map((c, i) => (
               <View key={i} style={styles.cropEditTag}>
-                <Text style={styles.cropEditTxt}>{c}</Text>
+                <Text style={styles.cropEditTxt}>{formatCropLabel(c)}</Text>
                 <TouchableOpacity onPress={() => removeCrop(i)}>
                   <MaterialCommunityIcons name="close-circle" size={16} color={Colors.error} />
                 </TouchableOpacity>
               </View>
             ))}
           </View>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.quickCropRow}>
+            {CROPS.map((crop) => (
+              <TouchableOpacity key={crop.name_en} style={styles.quickCropBtn} onPress={() => quickAddCrop(crop.name_en)} activeOpacity={0.8}>
+                <Text style={styles.quickCropIcon}>{crop.icon}</Text>
+                <Text style={styles.quickCropText}>{crop.name_kn}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
           <View style={styles.addCropRow}>
             <TextInput
               style={styles.cropInput}
@@ -189,6 +211,11 @@ function InfoRow({ icon, label, value }: { icon: string; label: string; value: s
   );
 }
 
+function formatCropLabel(crop: string): string {
+  const match = CROPS.find((item) => item.name_en.toLowerCase() === crop.toLowerCase() || item.name_kn === crop);
+  return match ? `${match.icon} ${match.name_kn}` : crop;
+}
+
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
   header: { paddingTop: 52, paddingBottom: Spacing.md, paddingHorizontal: Spacing.lg },
@@ -231,6 +258,38 @@ const styles = StyleSheet.create({
   langSub: { fontSize: FontSize.xs, color: Colors.textMuted, marginTop: 2 },
   langSubActive: { color: Colors.primary },
   langCheck: { position: 'absolute', top: 6, right: 8 },
+
+  cropRow: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm, marginTop: Spacing.sm },
+  cropTag: {
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: BorderRadius.md,
+    backgroundColor: Colors.primarySoft,
+    borderWidth: 1,
+    borderColor: Colors.primary + '25',
+  },
+  cropTagTxt: { fontSize: FontSize.sm, color: Colors.primary, fontWeight: '700' },
+  cropEditRow: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm, marginBottom: Spacing.sm },
+  cropEditTag: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    paddingVertical: 8, paddingHorizontal: 10,
+    backgroundColor: Colors.primarySoft, borderRadius: BorderRadius.md,
+  },
+  cropEditTxt: { fontSize: FontSize.sm, color: Colors.primary, fontWeight: '700' },
+  quickCropRow: { gap: Spacing.sm, paddingVertical: Spacing.sm, paddingBottom: Spacing.md },
+  quickCropBtn: {
+    width: 92,
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: 8,
+    borderRadius: BorderRadius.md,
+    backgroundColor: Colors.background,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: Colors.border,
+    marginRight: Spacing.sm,
+  },
+  quickCropIcon: { fontSize: 22, marginBottom: 4 },
+  quickCropText: { fontSize: 11, color: Colors.textPrimary, fontWeight: '700', textAlign: 'center' },
 
   infoRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, paddingVertical: Spacing.sm, borderTopWidth: 1, borderTopColor: Colors.divider },
   infoLabel: { fontSize: FontSize.md, color: Colors.textMuted, flex: 1 },

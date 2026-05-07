@@ -13,8 +13,8 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useUserStore } from '@/stores/useUserStore';
 import { transcribeAudio } from '@/services/queryService';
-import { startRecording, stopRecordingAndGetBase64, playBase64Audio } from '@/services/voiceService';
-import { apiClient } from '@/services/api';
+import { startRecording, stopRecordingAndGetBase64, speakText } from '@/services/voiceService';
+import { DISTRICTS } from '@/constants/districts';
 import { Colors, Spacing, FontSize, BorderRadius, Shadows } from '@/constants/theme';
 
 // ── Language definitions ───────────────────────────────────────────
@@ -33,21 +33,38 @@ const LANGUAGES = [
 ];
 
 // ── Localised prompts for each language ───────────────────────────
-const P: Record<string, { name: string; loc: string; crop: string; welcome: string; tapMic: string }> = {
-  kn: { name: 'ನಿಮ್ಮ ಹೆಸರು ಏನು?', loc: 'ನೀವು ಯಾವ ಜಿಲ್ಲೆಯಲ್ಲಿ ಇದ್ದೀರಿ?', crop: 'ನೀವು ಯಾವ ಬೆಳೆ ಬೆಳೆಯುತ್ತೀರಿ?', welcome: 'ಸ್ವಾಗತ', tapMic: 'ಮೈಕ್ ಒತ್ತಿ ಮಾತನಾಡಿ' },
-  hi: { name: 'आपका नाम क्या है?', loc: 'आप किस जिले में रहते हैं?', crop: 'आप कौन सी फसल उगाते हैं?', welcome: 'स्वागत है', tapMic: 'माइक दबाकर बोलें' },
-  ta: { name: 'உங்கள் பெயர் என்ன?', loc: 'நீங்கள் எந்த மாவட்டத்தில்?', crop: 'என்ன பயிர் வளர்க்கிறீர்கள்?', welcome: 'வரவேற்கிறோம்', tapMic: 'மைக்கை அழுத்தி பேசுங்கள்' },
-  te: { name: 'మీ పేరు ఏమిటి?', loc: 'మీరు ఏ జిల్లాలో ఉన్నారు?', crop: 'మీరు ఏ పంటలు పండిస్తున్నారు?', welcome: 'స్వాగతం', tapMic: 'మైక్ నొక్కి మాట్లాడండి' },
-  ml: { name: 'നിങ്ങളുടെ പേര്?', loc: 'ഏത് ജില്ലയിൽ ഉണ്ട്?', crop: 'ഏത് വിള കൃഷി ചെയ്യുന്നു?', welcome: 'സ്വാഗതം', tapMic: 'മൈക്ക് അമർത്തി സംസാരിക്കൂ' },
-  mr: { name: 'तुमचे नाव काय?', loc: 'कोणत्या जिल्ह्यात राहता?', crop: 'कोणते पीक घेता?', welcome: 'स्वागत', tapMic: 'मायक दाबून बोला' },
-  bn: { name: 'আপনার নাম কি?', loc: 'আপনি কোন জেলায় থাকেন?', crop: 'কি ফসল চাষ করেন?', welcome: 'স্বাগতম', tapMic: 'মাইক চাপুন এবং বলুন' },
-  gu: { name: 'તમારું નામ શું છે?', loc: 'તમે કયા જિલ્લામાં?', crop: 'કઈ ખેતી કરો?', welcome: 'સ્વાગત', tapMic: 'માઇક દબાવી બોલો' },
-  pa: { name: 'ਤੁਹਾਡਾ ਨਾਂ ਕੀ ਹੈ?', loc: 'ਕਿਸ ਜ਼ਿਲ੍ਹੇ ਵਿੱਚ ਹੋ?', crop: 'ਕਿਹੜੀ ਫ਼ਸਲ ਉਗਾਉਂਦੇ ਹੋ?', welcome: 'ਜੀ ਆਇਆਂ', tapMic: 'ਮਾਈਕ ਦਬਾਓ ਅਤੇ ਬੋਲੋ' },
-  od: { name: 'ଆପଣଙ୍କ ନାମ?', loc: 'କେଉଁ ଜିଲ୍ଲାରେ ଅଛନ୍ତି?', crop: 'କ\'ଣ ଚାଷ କରୁଛନ୍ତି?', welcome: 'ସ୍ୱାଗତ', tapMic: 'ମାଇକ୍ ଦବାଇ କୁହନ୍ତୁ' },
-  en: { name: 'What is your name?', loc: 'Which district are you from?', crop: 'What crops do you grow?', welcome: 'Welcome', tapMic: 'Tap mic and speak' },
+const P: Record<string, { name: string; loc: string; mode: string; crop: string; welcome: string; tapMic: string; single: string; multiple: string; done: string }> = {
+  kn: { name: 'ನಿಮ್ಮ ಹೆಸರು ಏನು?', loc: 'ದಯವಿಟ್ಟು ನಿಮ್ಮ ಜಿಲ್ಲೆ ಹೇಳಿ', mode: 'ನೀವು ಒಂದೇ ಬೆಳೆ ಬೆಳೆಯುತ್ತೀರಾ ಅಥವಾ ಹಲವು ಬೆಳೆಗಳಾ?', crop: 'ಈಗ ನಿಮ್ಮ ಬೆಳೆಗಳನ್ನು ಹೇಳಿ', welcome: 'ಸ್ವಾಗತ', tapMic: 'ಮೈಕ್ ಒತ್ತಿ ಮಾತನಾಡಿ', single: 'ಒಂದೇ ಬೆಳೆ', multiple: 'ಹಲವು ಬೆಳೆಗಳು', done: 'ಮುಗಿದಿತು' },
+  hi: { name: 'आपका नाम क्या है?', loc: 'कृपया अपना जिला बताइए', mode: 'क्या आप एक फसल उगाते हैं या कई?', crop: 'अब अपनी फसलें बताइए', welcome: 'स्वागत है', tapMic: 'माइक दबाकर बोलें', single: 'एक फसल', multiple: 'कई फसलें', done: 'हो गया' },
+  ta: { name: 'உங்கள் பெயர் என்ன?', loc: 'தயவுசெய்து உங்கள் மாவட்டத்தை சொல்லுங்கள்', mode: 'ஒரே பயிரா அல்லது பல பயிர்களா?', crop: 'இப்போது உங்கள் பயிர்களைச் சொல்லுங்கள்', welcome: 'வரவேற்கிறோம்', tapMic: 'மைக்கை அழுத்தி பேசுங்கள்', single: 'ஒரே பயிர்', multiple: 'பல பயிர்கள்', done: 'முடிந்தது' },
+  te: { name: 'మీ పేరు ఏమిటి?', loc: 'దయచేసి మీ జిల్లాను చెప్పండి', mode: 'ఒకే పంటా లేదా అనేక పంటలనా?', crop: 'ఇప్పుడు మీ పంటలను చెప్పండి', welcome: 'స్వాగతం', tapMic: 'మైక్ నొక్కి మాట్లాడండి', single: 'ఒకే పంట', multiple: 'అనేక పంటలు', done: 'పూర్తి' },
+  ml: { name: 'നിങ്ങളുടെ പേര്?', loc: 'ദയവായി നിങ്ങളുടെ ജില്ല പറയൂ', mode: 'ഒറ്റ വിളയോ പല വിളകളോ?', crop: 'ഇപ്പോൾ നിങ്ങളുടെ വിളകൾ പറയൂ', welcome: 'സ്വാഗതം', tapMic: 'മൈക്ക് അമർത്തി സംസാരിക്കൂ', single: 'ഒറ്റ വിള', multiple: 'പല വിളകൾ', done: 'തീർന്നു' },
+  mr: { name: 'तुमचे नाव काय?', loc: 'कृपया तुमचा जिल्हा सांगा', mode: 'एक पीक की अनेक पीके?', crop: 'आता तुमची पिके सांगा', welcome: 'स्वागत', tapMic: 'मायक दाबून बोला', single: 'एक पीक', multiple: 'अनेक पीके', done: 'झाले' },
+  bn: { name: 'আপনার নাম কি?', loc: 'দয়া করে আপনার জেলা বলুন', mode: 'একটি ফসল নাকি অনেক ফসল?', crop: 'এখন আপনার ফসলগুলো বলুন', welcome: 'স্বাগতম', tapMic: 'মাইক চাপুন এবং বলুন', single: 'একটি ফসল', multiple: 'একাধিক ফসল', done: 'শেষ' },
+  gu: { name: 'તમારું નામ શું છે?', loc: 'કૃપા કરીને તમારો જિલ્લો કહો', mode: 'એક પાક કે ઘણા પાક?', crop: 'હવે તમારા પાકો કહો', welcome: 'સ્વાગત', tapMic: 'માઇક દબાવી બોલો', single: 'એક પાક', multiple: 'ઘણા પાક', done: 'પૂર્ણ' },
+  pa: { name: 'ਤੁਹਾਡਾ ਨਾਂ ਕੀ ਹੈ?', loc: 'ਕਿਰਪਾ ਕਰਕੇ ਆਪਣਾ ਜ਼ਿਲ੍ਹਾ ਦੱਸੋ', mode: 'ਇੱਕ ਫ਼ਸਲ ਜਾਂ ਕਈ ਫ਼ਸਲਾਂ?', crop: 'ਹੁਣ ਆਪਣੀਆਂ ਫ਼ਸਲਾਂ ਦੱਸੋ', welcome: 'ਜੀ ਆਇਆਂ', tapMic: 'ਮਾਈਕ ਦਬਾਓ ਅਤੇ ਬੋਲੋ', single: 'ਇੱਕ ਫ਼ਸਲ', multiple: 'ਕਈ ਫ਼ਸਲਾਂ', done: 'ਮੁਕ ਗਿਆ' },
+  od: { name: 'ଆପଣଙ୍କ ନାମ?', loc: 'ଦୟାକରି ଆପଣଙ୍କ ଜିଲ୍ଲା କୁହନ୍ତୁ', mode: 'ଗୋଟିଏ ଚାଷ କି ଅନେକ ଚାଷ?', crop: 'ଏବେ ଆପଣଙ୍କ ଚାଷ କୁହନ୍ତୁ', welcome: 'ସ୍ୱାଗତ', tapMic: 'ମାଇକ୍ ଦବାଇ କୁହନ୍ତୁ', single: 'ଗୋଟିଏ ଚାଷ', multiple: 'ଅନେକ ଚାଷ', done: 'ସମାପ୍ତ' },
+  en: { name: 'What is your name?', loc: 'Please say your district', mode: 'Do you grow one crop or many crops?', crop: 'Now say your crops', welcome: 'Welcome', tapMic: 'Tap mic and speak', single: 'One crop', multiple: 'Many crops', done: 'Done' },
 };
 
-type Step = 'lang' | 'name' | 'loc' | 'crop' | 'done';
+type Step = 'lang' | 'name' | 'loc' | 'mode' | 'crop' | 'done';
+type CropMode = 'single' | 'multiple';
+
+function resolveDistrict(raw: string): string {
+  const value = raw.trim();
+  if (!value) return '';
+
+  const lower = value.toLowerCase();
+  const exact = DISTRICTS.find((district) =>
+    district.name_en.toLowerCase() === lower || district.name_kn === value
+  );
+  if (exact) return exact.name_en;
+
+  const partial = DISTRICTS.find((district) =>
+    lower.includes(district.name_en.toLowerCase()) || value.includes(district.name_kn)
+  );
+  return partial ? partial.name_en : value;
+}
 
 export default function OnboardingScreen() {
   const store = useUserStore();
@@ -59,7 +76,8 @@ export default function OnboardingScreen() {
   const [busy, setBusy] = useState(false);
   const [name, setName] = useState('');
   const [loc, setLoc] = useState('');
-  const [crop, setCrop] = useState('');
+  const [cropMode, setCropMode] = useState<CropMode>('single');
+  const [cropText, setCropText] = useState('');
   const pulseAnim = useRef(new Animated.Value(1)).current;
 
   const prompt = P[langCode] ?? P['kn'];
@@ -82,15 +100,7 @@ export default function OnboardingScreen() {
     try {
       setBusy(true);
       setStatus('🔊');
-      const res = await apiClient.post('/api/query', {
-        text_query: text,
-        tts_language: sarvam,
-        preferred_language: sarvam,
-        conversation_history: [],
-      }, { timeout: 30000 });
-      if (res.data?.audio_base64) {
-        await playBase64Audio(res.data.audio_base64);
-      }
+      await speakText(text, sarvam);
     } catch {
       // Fallback: show text only
     } finally {
@@ -106,6 +116,12 @@ export default function OnboardingScreen() {
     store.setLanguage(sv);
     setStep('name');
     await speakQuestion(P[code]?.name ?? P['kn'].name);
+  }
+
+  function finishOnboarding() {
+    store.completeOnboarding();
+    setStep('done');
+    setTimeout(() => router.replace('/(tabs)/'), 1500);
   }
 
   // Record and transcribe
@@ -143,6 +159,12 @@ export default function OnboardingScreen() {
   }
 
   async function processTranscript(transcript: string) {
+    const t = transcript.trim();
+    // Speak back what we heard so the user gets immediate confirmation
+    try {
+      await speakText(t, sarvam);
+    } catch {}
+
     if (step === 'name') {
       const n = transcript.split(' ').slice(0, 4).join(' ');
       setName(n);
@@ -150,21 +172,32 @@ export default function OnboardingScreen() {
       setStep('loc');
       await speakQuestion(prompt.loc);
     } else if (step === 'loc') {
-      setLoc(transcript);
-      store.setProfile({ district: transcript });
+      const district = resolveDistrict(transcript);
+      setLoc(district);
+      store.setProfile({ district });
+      setStep('mode');
+      await speakQuestion(prompt.mode);
+    } else if (step === 'mode') {
+      const lower = transcript.toLowerCase();
+      const multipleHints = ['many', 'multiple', 'ಹಲವು', 'ಬಹು', 'aneka', 'anek', 'ഒട്ടേറെ', 'অনেক', 'ઘણા', 'అనేక'];
+      setCropMode(multipleHints.some((hint) => lower.includes(hint)) ? 'multiple' : 'single');
+      setCropText('');
       setStep('crop');
       await speakQuestion(prompt.crop);
     } else if (step === 'crop') {
-      // Support multiple crops separated by common words
-      const crops = transcript
+      const fallback = transcript
         .split(/,|and|ಮತ್ತು|और|மற்றும்|మరియు|ഒപ്പം|आणि|এবং|અને|ਅਤੇ|ଓ/)
-        .map(c => c.trim())
+        .map((c) => c.trim())
         .filter(Boolean);
-      setCrop(crops[0] ?? transcript);
-      store.setProfile({ crops, primary_crop: crops[0] ?? transcript });
-      store.completeOnboarding();
-      setStep('done');
-      setTimeout(() => router.replace('/(tabs)/'), 1500);
+      const chosen = fallback.length > 0 ? fallback : [transcript.trim()];
+      if (cropMode === 'single') {
+        store.setProfile({ crops: [chosen[0] ?? transcript], primary_crop: chosen[0] ?? transcript });
+        finishOnboarding();
+        return;
+      }
+      const cleaned = Array.from(new Set(chosen.filter(Boolean)));
+      setCropText(cleaned.join(', '));
+      store.setProfile({ crops: cleaned, primary_crop: cleaned[0] ?? transcript });
     }
   }
 
@@ -203,9 +236,9 @@ export default function OnboardingScreen() {
     );
   }
 
-  const stepIcon = step === 'name' ? 'account' : step === 'loc' ? 'map-marker' : 'sprout';
-  const question = step === 'name' ? prompt.name : step === 'loc' ? prompt.loc : prompt.crop;
-  const stepNum = step === 'name' ? 1 : step === 'loc' ? 2 : 3;
+  const stepIcon = step === 'name' ? 'account' : step === 'loc' ? 'map-marker' : step === 'mode' ? 'shape' : 'sprout';
+  const question = step === 'name' ? prompt.name : step === 'loc' ? prompt.loc : step === 'mode' ? prompt.mode : prompt.crop;
+  const stepNum = step === 'name' ? 1 : step === 'loc' ? 2 : step === 'mode' ? 3 : 4;
 
   return (
     <LinearGradient colors={['#1B5E20', '#2E7D32', '#388E3C']} style={[styles.root, styles.center]}>
@@ -227,7 +260,23 @@ export default function OnboardingScreen() {
       {/* Transcript preview */}
       {(step === 'name' && name) && <Text style={styles.preview}>{name}</Text>}
       {(step === 'loc' && loc) && <Text style={styles.preview}>{loc}</Text>}
-      {(step === 'crop' && crop) && <Text style={styles.preview}>{crop}</Text>}
+      {(step === 'mode') && (
+        <View style={styles.modeRow}>
+          <TouchableOpacity style={[styles.modeBtn, cropMode === 'single' && styles.modeBtnActive]} onPress={() => setCropMode('single')}>
+            <Text style={[styles.modeText, cropMode === 'single' && styles.modeTextActive]}>{prompt.single}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.modeBtn, cropMode === 'multiple' && styles.modeBtnActive]} onPress={() => setCropMode('multiple')}>
+            <Text style={[styles.modeText, cropMode === 'multiple' && styles.modeTextActive]}>{prompt.multiple}</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+      {step === 'crop' && <Text style={styles.preview}>{cropText || prompt.crop}</Text>}
+
+      {step === 'crop' && cropMode === 'multiple' && (
+        <TouchableOpacity style={styles.doneBtn} onPress={finishOnboarding} activeOpacity={0.8}>
+          <Text style={styles.doneBtnText}>{prompt.done}</Text>
+        </TouchableOpacity>
+      )}
 
       {/* Status */}
       <Text style={styles.statusText}>{busy ? '...' : status || prompt.tapMic}</Text>
@@ -283,6 +332,29 @@ const styles = StyleSheet.create({
   },
   langCardLabel: { fontSize: 20, color: '#fff', fontWeight: '700' },
   langCardSub: { fontSize: 12, color: 'rgba(255,255,255,0.7)', marginTop: 2 },
+  modeRow: { flexDirection: 'row', gap: Spacing.sm, marginBottom: Spacing.sm, flexWrap: 'wrap', justifyContent: 'center' },
+  modeBtn: {
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.md,
+    borderRadius: BorderRadius.md,
+    backgroundColor: 'rgba(255,255,255,0.14)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.25)',
+  },
+  modeBtnActive: { backgroundColor: 'rgba(255,255,255,0.24)', borderColor: '#fff' },
+  modeText: { color: 'rgba(255,255,255,0.8)', fontWeight: '700' },
+  modeTextActive: { color: '#fff' },
+
+  doneBtn: {
+    marginBottom: Spacing.sm,
+    backgroundColor: 'rgba(255,255,255,0.16)',
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.lg,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.35)',
+  },
+  doneBtnText: { color: '#fff', fontWeight: '800' },
 
   stepRow: { flexDirection: 'row', gap: 8, marginBottom: Spacing.xl },
   stepDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.35)' },
