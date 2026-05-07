@@ -36,6 +36,15 @@ app.add_middleware(
     allow_headers=['*'],
 )
 
+@app.get('/')
+async def root():
+    """GET / — Welcome message and health check link."""
+    return {
+        'message': 'Welcome to KrishiMitra API',
+        'health': '/health',
+        'status': 'online'
+    }
+
 # Register routers
 app.include_router(query.router)
 app.include_router(diagnose.router)
