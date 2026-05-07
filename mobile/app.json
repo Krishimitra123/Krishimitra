@@ -57,14 +57,15 @@
         }
       ],
       "expo-audio",
-      "expo-web-browser"
+      "expo-web-browser",
+      "expo-asset"
     ],
     "experiments": {
       "typedRoutes": true
     },
     "extra": {
       "eas": {
-        "projectId": "73d027d3-3727-4f5f-8e59-eb1f34216b0c"
+        "projectId": "ae8c11c0-85ee-4d2a-850e-61d3e4e19bc6"
       }
     }
   }
