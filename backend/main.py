@@ -19,6 +19,7 @@ from routers import query, diagnose, admin
 from routers import weather, soil, market
 from routers import auth
 from routers import transcribe
+from routers import tts
 
 app = FastAPI(
     title='KrishiMitra API',
@@ -44,6 +45,7 @@ app.include_router(soil.router)
 app.include_router(market.router)
 app.include_router(auth.router)
 app.include_router(transcribe.router)
+app.include_router(tts.router)
 
 @app.get('/health')
 async def health_check():

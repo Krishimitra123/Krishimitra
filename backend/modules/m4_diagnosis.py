@@ -38,7 +38,7 @@ PLANT_CONTEXT_TERMS = [
 ]
 
 POWDERY_MILDEW_TERMS = [
-    'powdery mildew', 'ಕಣಕಾಲು', 'white powder', 'powder', 'fuzzy white', 'white fungal',
+    'powdery mildew', 'ಬೂದಿ ರೋಗ', 'ಕಣಕಾಲು', 'ಕಲೆಕಾಲು', 'white powder', 'powder', 'fuzzy white', 'white fungal',
 ]
 
 DIAGNOSIS_PROMPT = """You are an expert Indian crop pathologist for organic farming.
@@ -89,12 +89,13 @@ RULE 1 — CONFIDENCE HONESTY (MOST IMPORTANT):
 - Set confidence_pct 40-64 if you see a plant but symptoms are mild or ambiguous
 - If confidence_pct < 40, you MUST set needs_retake=true
 - NEVER guess a disease when you cannot clearly see symptoms
-- Do NOT default to any single disease (especially NOT Powdery Mildew / ಕಣಕಾಲು ರೋಗ) unless you can see white powder on leaves
+- Do NOT default to any single disease unless you can clearly identify it
+- **CRITICAL TRANSLATION RULE**: "Powdery Mildew" MUST be translated to Kannada as "ಬೂದಿ ರೋಗ" (Boodi Roga), NEVER use "ಕಣಕಾಲು ರೋಗ" or "ಕಲೆಕಾಲು ರೋಗ".
 
 RULE 2 — LANGUAGE:
-- ALL values must be in KANNADA (ಕನ್ನಡ) script
-- plant_health_status must be exactly one of: "ಆರೋಗ್ಯಕರ" OR "ರೋಗಗ್ರಸ್ತ" OR "ಅಸ್ಪಷ್ಟ"
-- disease_name may be an English scientific name, but disease_name_kn MUST be in Kannada
+- ALL values must be in the USER's language script (Kannada by default, but adapt if requested)
+- plant_health_status must be translated properly (e.g., "ಆರೋಗ್ಯಕರ", "ರೋಗಗ್ರಸ್ತ", "ಅಸ್ಪಷ್ಟ")
+- disease_name may be an English scientific name, but disease_name_kn MUST be in the regional language
 
 RULE 3 — ORGANIC TREATMENTS ONLY:
 - Only suggest organic inputs: ಜೀವಾಮೃತ, ಬೇವಿನ ಎಣ್ಣೆ, ಪಂಚಗವ್ಯ, ಟ್ರೈಕೋಡರ್ಮಾ, ಬೀಜಾಮೃತ

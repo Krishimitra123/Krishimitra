@@ -12,7 +12,7 @@ router = APIRouter(prefix='/api/diagnose', tags=['diagnose'])
 
 # Fallback English→Kannada disease name translations (for cases where API doesn't return Kannada)
 DISEASE_NAME_FALLBACK = {
-    'powdery mildew': 'ಕಣಕಾಲು ರೋಗ',
+    'powdery mildew': 'ಬೂದಿ ರೋಗ',
     'leaf spot': 'ಎಲೆ ಚುಕ್ಕೆ ರೋಗ',
     'rust': 'ತುಪ್ಪೆ ರೋಗ',
     'blight': 'ಆತ್ಮಘಾತ ರೋಗ',
@@ -42,75 +42,74 @@ def _resolve_kannada_disease_name(finding: DiagnosisFinding) -> str:
     return 'ತಿಳಿದಿರದ ರೋಗ'
 
 
-def _build_kannada_summary(finding: DiagnosisFinding) -> str:
-    """Build a natural Kannada prose summary from the diagnosis fields."""
+def _build_summary(finding: DiagnosisFinding, lang: str) -> str:
+    """Build a natural prose summary from the diagnosis fields in the preferred language."""
+    is_en = lang.startswith('en')
     if finding.needs_retake:
-        return 'ಚಿತ್ರ ಸ್ಪಷ್ಟವಾಗಿಲ್ಲ. ದಯವಿಟ್ಟು ಉತ್ತಮ ಬೆಳಕಿನಲ್ಲಿ ಮತ್ತೊಮ್ಮೆ ಫೋಟೋ ತೆಗೆಯಿರಿ.'
+        return 'Image is unclear. Please take another photo in good lighting.' if is_en else 'ಚಿತ್ರ ಸ್ಪಷ್ಟವಾಗಿಲ್ಲ. ದಯವಿಟ್ಟು ಉತ್ತಮ ಬೆಳಕಿನಲ್ಲಿ ಮತ್ತೊಮ್ಮೆ ಫೋಟೋ ತೆಗೆಯಿರಿ.'
 
     parts = []
 
-    # Disease identification — DISEASE NAME FIRST (required for audio diagnosis)
-    final_disease_name = _resolve_kannada_disease_name(finding)
-    
+    # Disease identification
+    final_disease_name = finding.disease_name if is_en else _resolve_kannada_disease_name(finding)
     health = finding.plant_health_status.lower() if finding.plant_health_status else ''
     
     if health in ('healthy', 'ಆರೋಗ್ಯಕರ'):
-        parts.append('ನಿಮ್ಮ ಬೆಳೆ ಆರೋಗ್ಯಕರವಾಗಿದೆ. ಯಾವುದೇ ರೋಗ ಕಂಡುಬಂದಿಲ್ಲ.')
+        parts.append('Your crop is healthy. No disease found.' if is_en else 'ನಿಮ್ಮ ಬೆಳೆ ಆರೋಗ್ಯಕರವಾಗಿದೆ. ಯಾವುದೇ ರೋಗ ಕಂಡುಬಂದಿಲ್ಲ.')
     else:
-        # ALWAYS STATE DISEASE NAME FIRST - this is critical for voice diagnosis
-        parts.append(f'ನಿಮ್ಮ ಬೆಳೆಗೆ {final_disease_name} ಇದೆ.')
+        parts.append(f'Your crop has {final_disease_name}.' if is_en else f'ನಿಮ್ಮ ಬೆಳೆಗೆ {final_disease_name} ಇದೆ.')
         
-        # Add confidence if available
         if finding.confidence_pct and finding.confidence_pct > 0:
             conf = int(finding.confidence_pct)
-            parts.append(f'ವಿಶ್ವಾಸ ಮಟ್ಟ ಶೇಕಡಾ {conf}.')
+            parts.append(f'Confidence level {conf}%.' if is_en else f'ವಿಶ್ವಾಸ ಮಟ್ಟ ಶೇಕಡಾ {conf}.')
 
     # Cause
     if finding.probable_cause and finding.probable_cause.lower() not in ('unknown', 'none', ''):
-        parts.append(f'ಕಾರಣ: {finding.probable_cause}.')
+        parts.append(f'Cause: {finding.probable_cause}.' if is_en else f'ಕಾರಣ: {finding.probable_cause}.')
 
     # Treatments
     if finding.organic_treatments:
-        parts.append('ಜೈವಿಕ ಚಿಕಿತ್ಸೆ:')
+        parts.append('Organic Treatment:' if is_en else 'ಜೈವಿಕ ಚಿಕಿತ್ಸೆ:')
         for i, t in enumerate(finding.organic_treatments[:3], 1):
             parts.append(f'{i}. {t}.')
 
     # Prevention
     if finding.prevention_measures:
-        parts.append('ಮುಂಜಾಗ್ರತೆ:')
+        parts.append('Prevention:' if is_en else 'ಮುಂಜಾಗ್ರತೆ:')
         for p in finding.prevention_measures[:2]:
             parts.append(f'{p}.')
 
     return ' '.join(parts)
 
 
-def _build_kannada_audio_text(finding: DiagnosisFinding) -> list[str]:
+def _build_audio_text(finding: DiagnosisFinding, lang: str) -> list[str]:
+    is_en = lang.startswith('en')
     if finding.needs_retake:
-        return ['ಚಿತ್ರ ಸ್ಪಷ್ಟವಾಗಿಲ್ಲ. ದಯವಿಟ್ಟು ಉತ್ತಮ ಬೆಳಕಿನಲ್ಲಿ ಮತ್ತೊಮ್ಮೆ ಫೋಟೋ ತೆಗೆಯಿರಿ.']
+        return ['Image is unclear. Please take another photo in good lighting.'] if is_en else ['ಚಿತ್ರ ಸ್ಪಷ್ಟವಾಗಿಲ್ಲ. ದಯವಿಟ್ಟು ಉತ್ತಮ ಬೆಳಕಿನಲ್ಲಿ ಮತ್ತೊಮ್ಮೆ ಫೋಟೋ ತೆಗೆಯಿರಿ.']
 
-    disease_name = _resolve_kannada_disease_name(finding)
+    disease_name = finding.disease_name if is_en else _resolve_kannada_disease_name(finding)
     health = finding.plant_health_status.lower() if finding.plant_health_status else ''
 
     intro_parts = []
     body_parts = []
 
     if health in ('healthy', 'ಆರೋಗ್ಯಕರ'):
-        intro_parts.append('ನಿಮ್ಮ ಬೆಳೆ ಆರೋಗ್ಯಕರವಾಗಿದೆ. ಯಾವುದೇ ರೋಗ ಕಂಡುಬಂದಿಲ್ಲ.')
+        intro_parts.append('Your crop is healthy. No disease found.' if is_en else 'ನಿಮ್ಮ ಬೆಳೆ ಆರೋಗ್ಯಕರವಾಗಿದೆ. ಯಾವುದೇ ರೋಗ ಕಂಡುಬಂದಿಲ್ಲ.')
     else:
-        intro_parts.append(f'ನಿಮ್ಮ ಬೆಳೆಗೆ {disease_name} ಇದೆ.')
+        intro_parts.append(f'Your crop has {disease_name}.' if is_en else f'ನಿಮ್ಮ ಬೆಳೆಗೆ {disease_name} ಇದೆ.')
         if finding.confidence_pct and finding.confidence_pct > 0:
-            intro_parts.append(f'ವಿಶ್ವಾಸ ಮಟ್ಟ ಶೇಕಡಾ {int(finding.confidence_pct)}.')
+            intro_parts.append(f'Confidence level {int(finding.confidence_pct)}%.' if is_en else f'ವಿಶ್ವಾಸ ಮಟ್ಟ ಶೇಕಡಾ {int(finding.confidence_pct)}.')
 
     if finding.probable_cause and finding.probable_cause.lower() not in ('unknown', 'none', ''):
-        body_parts.append(f'ಕಾರಣ: {finding.probable_cause}.')
+        body_parts.append(f'Cause: {finding.probable_cause}.' if is_en else f'ಕಾರಣ: {finding.probable_cause}.')
 
     if finding.organic_treatments:
-        body_parts.append('ಜೈವಿಕ ಚಿಕಿತ್ಸೆ:')
+        body_parts.append('Organic Treatment:' if is_en else 'ಜೈವಿಕ ಚಿಕಿತ್ಸೆ:')
         for i, t in enumerate(finding.organic_treatments[:3], 1):
             body_parts.append(f'{i}. {t}.')
 
     if finding.prevention_measures:
-        body_parts.append('ಮುಂಜಾಗ್ರತೆ:')
+        body_parts.append('Prevention:' if is_en else 'ಮುಂಜಾಗ್ರತೆ:')
         for p in finding.prevention_measures[:2]:
             body_parts.append(f'{p}.')
 
@@ -125,15 +124,7 @@ async def diagnose_endpoint(request: DiagnosisRequest):
     try:
         finding = await m4_diagnosis.diagnose(request)
 
-        # Generate Kannada summary
-        summary_kn = _build_kannada_summary(finding)
-        finding.summary_kn = summary_kn
-        
-        print(f'[Diagnose] Disease: {finding.disease_name_kn or finding.disease_name}')
-        print(f'[Diagnose] Health: {finding.plant_health_status}')
-        print(f'[Diagnose] Summary: {summary_kn[:200]}...')
-
-        # Generate TTS audio with the disease name in a short intro segment first
+        # Get language
         sarvam_key = os.environ.get('SARVAM_API_KEY', '').strip()
         tts_lang = (
             request.user_context.preferred_language
@@ -142,9 +133,18 @@ async def diagnose_endpoint(request: DiagnosisRequest):
             or request.tts_language
             or 'kn-IN'
         )
-        if sarvam_key and summary_kn:
+
+        # Generate summary in preferred language
+        summary_text = _build_summary(finding, tts_lang)
+        finding.summary_kn = summary_text
+        
+        print(f'[Diagnose] Disease: {finding.disease_name_kn or finding.disease_name}')
+        print(f'[Diagnose] Health: {finding.plant_health_status}')
+        print(f'[Diagnose] Summary: {summary_text[:200]}...')
+
+        if sarvam_key and summary_text:
             try:
-                audio_texts = _build_kannada_audio_text(finding)
+                audio_texts = _build_audio_text(finding, tts_lang)
                 audio_parts = []
                 for idx, audio_text in enumerate(audio_texts, 1):
                     audio_b64 = await m1_voice.text_to_audio(audio_text, sarvam_key, language_code=tts_lang)

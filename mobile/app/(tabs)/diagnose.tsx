@@ -17,6 +17,7 @@ import { playBase64Audio, startRecording, stopRecordingAndGetBase64, stopPlaybac
 import { sendDiagnosis, sendVoiceQuery, ConversationTurn } from '@/services/queryService';
 import { useAudioStore } from '@/stores/useAudioStore';
 import { useSessionStore } from '@/stores/useSessionStore';
+import { useUserStore } from '@/stores/useUserStore';
 
 const { width, height } = Dimensions.get('window');
 
@@ -64,6 +65,8 @@ export default function DiagnoseScreen() {
 
   const audioStore = useAudioStore();
   const { addMessage, currentSession } = useSessionStore();
+  const preferred_language = useUserStore((s) => s.preferred_language);
+  const isEn = preferred_language?.startsWith('en');
 
   const diseaseOpacity = useRef(new Animated.Value(0)).current;
   const pulseAnim = useRef(new Animated.Value(1)).current;
@@ -126,7 +129,7 @@ export default function DiagnoseScreen() {
 
       addMessage({
         id: Date.now().toString(), role: 'assistant',
-        text: finding.summary_kn || diseaseName || 'ರೋಗ ಪತ್ತೆ ಪೂರ್ಣ',
+        text: finding.summary_kn || diseaseName || (isEn ? 'Diagnosis complete' : 'ರೋಗ ಪತ್ತೆ ಪೂರ್ಣ'),
         sources: finding.sources || [], timestamp: Date.now(), is_diagnosis: true,
         audio_base64: finding.audio_base64 || undefined,
       });
@@ -135,12 +138,12 @@ export default function DiagnoseScreen() {
       setCanAskFollowUp(true);
     } catch (error: any) {
       console.error('[Diagnose] Error:', error);
-      Alert.alert('ದೋಷ', error?.response?.data?.detail || error?.message || 'ಮತ್ತೊಮ್ಮೆ ಪ್ರಯತ್ನಿಸಿ');
+      Alert.alert(isEn ? 'Error' : 'ದೋಷ', error?.response?.data?.detail || error?.message || (isEn ? 'Please try again' : 'ಮತ್ತೊಮ್ಮೆ ಪ್ರಯತ್ನಿಸಿ'));
     } finally {
       setIsAnalyzing(false);
       audioStore.setState('IDLE');
     }
-  }, [addMessage, audioStore, isAnalyzing, overlayMode, playDiagnosisAudio]);
+  }, [addMessage, audioStore, isAnalyzing, overlayMode, playDiagnosisAudio, isEn]);
 
   const handleFollowUpQuestion = useCallback(async () => {
     try {
@@ -163,11 +166,11 @@ export default function DiagnoseScreen() {
       setDiseaseOverlay(response.answer_text_kn);
       await playDiagnosisAudio(response.audio_base64);
     } catch (error: any) {
-      Alert.alert('ದೋಷ', error?.response?.data?.detail || error?.message || 'ಮತ್ತೊಮ್ಮೆ ಪ್ರಯತ್ನಿಸಿ');
+      Alert.alert(isEn ? 'Error' : 'ದೋಷ', error?.response?.data?.detail || error?.message || (isEn ? 'Please try again' : 'ಮತ್ತೊಮ್ಮೆ ಪ್ರಯತ್ನಿಸಿ'));
     } finally {
       audioStore.setState('IDLE');
     }
-  }, [addMessage, audioStore, currentSession?.messages, playDiagnosisAudio]);
+  }, [addMessage, audioStore, currentSession?.messages, playDiagnosisAudio, isEn]);
 
   const resetDiagnosis = useCallback(async () => {
     await stopPlayback();
@@ -219,7 +222,7 @@ export default function DiagnoseScreen() {
               <View style={[styles.corner, styles.cornerBR]} />
               <MaterialCommunityIcons name="leaf-circle-outline" size={64} color="rgba(76,175,80,0.5)" />
             </View>
-            <Text style={styles.cameraHint}>ಎಲೆ ಅಥವಾ ಸಸ್ಯದ ಫೋಟೋ ತೆಗೆಯಿರಿ</Text>
+            <Text style={styles.cameraHint}>{isEn ? 'Take a photo of a leaf or plant' : 'ಎಲೆ ಅಥವಾ ಸಸ್ಯದ ಫೋಟೋ ತೆಗೆಯಿರಿ'}</Text>
           </LinearGradient>
         )}
 
@@ -237,10 +240,10 @@ export default function DiagnoseScreen() {
             </Animated.View>
             <WaveformBars active />
             <Text style={styles.overlayStatus}>
-              {overlayMode === 'analyzing' ? 'ವಿಶ್ಲೇಷಿಸುತ್ತಿದೆ...' :
-               overlayMode === 'recording' ? 'ಕೇಳುತ್ತಿದೆ...' :
-               overlayMode === 'processing' ? 'ಯೋಚಿಸುತ್ತಿದೆ...' :
-               overlayMode === 'speaking' ? 'ಹೇಳುತ್ತಿದೆ...' : ''}
+              {overlayMode === 'analyzing' ? (isEn ? 'Analyzing...' : 'ವಿಶ್ಲೇಷಿಸುತ್ತಿದೆ...') :
+               overlayMode === 'recording' ? (isEn ? 'Listening...' : 'ಕೇಳುತ್ತಿದೆ...') :
+               overlayMode === 'processing' ? (isEn ? 'Thinking...' : 'ಯೋಚಿಸುತ್ತಿದೆ...') :
+               overlayMode === 'speaking' ? (isEn ? 'Speaking...' : 'ಹೇಳುತ್ತಿದೆ...') : ''}
             </Text>
           </View>
         )}
@@ -263,7 +266,7 @@ export default function DiagnoseScreen() {
         {/* Tap zone hint for follow-up mode */}
         {result && canAskFollowUp && (
           <View style={styles.tapHintOverlay}>
-            <Text style={styles.tapHintText}>📸 ಹೊಸ ಫೋಟೋ ತೆಗೆಯಲು ಕ್ಲಿಕ ಮಾಡಿ</Text>
+            <Text style={styles.tapHintText}>{isEn ? '📸 Tap to take a new photo' : '📸 ಹೊಸ ಫೋಟೋ ತೆಗೆಯಲು ಕ್ಲಿಕ ಮಾಡಿ'}</Text>
           </View>
         )}
       </TouchableOpacity>
@@ -277,11 +280,11 @@ export default function DiagnoseScreen() {
             activeOpacity={0.8}
           >
             <MaterialCommunityIcons name="camera-retake" size={20} color="#fff" />
-            <Text style={styles.newPhotoBtnText}>ಹೊಸ ಫೋಟೋ</Text>
+            <Text style={styles.newPhotoBtnText}>{isEn ? 'New Photo' : 'ಹೊಸ ಫೋಟೋ'}</Text>
           </TouchableOpacity>
         )}
         {result && canAskFollowUp && (
-          <Text style={styles.followUpHint}>ಪ್ರಶ್ನೆ ಕೇಳಲು ಮೈಕ್ ಒತ್ತಿ</Text>
+          <Text style={styles.followUpHint}>{isEn ? 'Tap Mic to ask a question' : 'ಪ್ರಶ್ನೆ ಕೇಳಲು ಮೈಕ್ ಒತ್ತಿ'}</Text>
         )}
         <TouchableOpacity
           style={[
@@ -301,7 +304,7 @@ export default function DiagnoseScreen() {
           )}
         </TouchableOpacity>
         <Text style={styles.bottomHint}>
-          {canAskFollowUp ? 'ಅಡ್ಡ ಪ್ರಶ್ನೆ' : 'ರೋಗ ಪತ್ತೆ'}
+          {canAskFollowUp ? (isEn ? 'Ask Follow-up' : 'ಅಡ್ಡ ಪ್ರಶ್ನೆ') : (isEn ? 'Diagnose' : 'ರೋಗ ಪತ್ತೆ')}
         </Text>
       </LinearGradient>
     </View>

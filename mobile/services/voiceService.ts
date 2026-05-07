@@ -9,6 +9,7 @@
 import { Audio, InterruptionModeIOS, InterruptionModeAndroid } from 'expo-av';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Speech from 'expo-speech';
+import { apiClient } from './api';
 
 // ── Recording state ───────────────────────────────────────────────
 let _recording: Audio.Recording | null = null;
@@ -219,9 +220,25 @@ export async function speakText(text: string, language: string = 'kn-IN'): Promi
   if (!cleanText) return;
 
   await stopPlayback();
-  // Ensure we're in speaker mode before expo-speech speaks
+  // Ensure we're in speaker mode
   await _setPlaybackMode();
 
+  try {
+    const res = await apiClient.post('/api/tts', {
+      text: cleanText,
+      language_code: language,
+    }, { timeout: 15000 });
+    
+    if (res.data?.audio_base64) {
+      console.log(`[Voice] Sarvam TTS success for "${cleanText.slice(0, 20)}..."`);
+      await playBase64Audio(res.data.audio_base64);
+      return;
+    }
+  } catch (err: any) {
+    console.warn('[Voice] Sarvam TTS failed, falling back to local Speech API:', err.message);
+  }
+
+  // Fallback to local expo-speech
   await new Promise<void>((resolve) => {
     Speech.speak(cleanText, {
       language,

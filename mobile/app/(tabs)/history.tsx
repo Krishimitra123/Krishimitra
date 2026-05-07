@@ -15,31 +15,33 @@ import { NivettiHeader } from '@/components/NivettiHeader';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Colors, FontSize, Spacing, BorderRadius, Shadows } from '@/constants/theme';
 import { useSessionStore, Session } from '@/stores/useSessionStore';
+import { useUserStore } from '@/stores/useUserStore';
 
 export default function HistoryScreen() {
   const { pastSessions, clearHistory, deleteSession } = useSessionStore();
+  const isEn = useUserStore((s) => s.preferred_language)?.startsWith('en');
 
   const handleClear = useCallback(() => {
     Alert.alert(
-      'ಇತಿಹಾಸ ಅಳಿಸಿ',
-      'ಎಲ್ಲಾ ಹಿಂದಿನ ಸಂಭಾಷಣೆಗಳನ್ನು ಅಳಿಸಬೇಕೇ?',
+      isEn ? 'Clear History' : 'ಇತಿಹಾಸ ಅಳಿಸಿ',
+      isEn ? 'Delete all past conversations?' : 'ಎಲ್ಲಾ ಹಿಂದಿನ ಸಂಭಾಷಣೆಗಳನ್ನು ಅಳಿಸಬೇಕೇ?',
       [
-        { text: 'ರದ್ದುಮಾಡಿ', style: 'cancel' },
-        { text: 'ಅಳಿಸಿ', style: 'destructive', onPress: clearHistory },
+        { text: isEn ? 'Cancel' : 'ರದ್ದುಮಾಡಿ', style: 'cancel' },
+        { text: isEn ? 'Delete' : 'ಅಳಿಸಿ', style: 'destructive', onPress: clearHistory },
       ]
     );
-  }, []);
+  }, [isEn]);
 
   const handleDelete = useCallback((id: string) => {
     Alert.alert(
-      'ಅಳಿಸಿ',
-      'ಈ ಸಂಭಾಷಣೆಯನ್ನು ಅಳಿಸಬೇಕೇ?',
+      isEn ? 'Delete' : 'ಅಳಿಸಿ',
+      isEn ? 'Delete this conversation?' : 'ಈ ಸಂಭಾಷಣೆಯನ್ನು ಅಳಿಸಬೇಕೇ?',
       [
-        { text: 'ರದ್ದುಮಾಡಿ', style: 'cancel' },
-        { text: 'ಅಳಿಸಿ', style: 'destructive', onPress: () => deleteSession(id) },
+        { text: isEn ? 'Cancel' : 'ರದ್ದುಮಾಡಿ', style: 'cancel' },
+        { text: isEn ? 'Delete' : 'ಅಳಿಸಿ', style: 'destructive', onPress: () => deleteSession(id) },
       ]
     );
-  }, []);
+  }, [isEn]);
 
   const renderSession = ({ item }: { item: Session }) => {
     const messageCount = item.messages.length;
@@ -58,14 +60,14 @@ export default function HistoryScreen() {
           </View>
           <View style={styles.sessionInfo}>
             <Text style={styles.sessionTitle} numberOfLines={1}>
-              {item.title || 'ಸಂಭಾಷಣೆ'}
+              {item.title || (isEn ? 'Conversation' : 'ಸಂಭಾಷಣೆ')}
             </Text>
             <Text style={styles.sessionMeta}>
-              {messageCount} ಸಂದೇಶಗಳು • {date.toLocaleDateString('kn-IN')}
+              {messageCount} {isEn ? 'messages' : 'ಸಂದೇಶಗಳು'} • {date.toLocaleDateString(isEn ? 'en-IN' : 'kn-IN')}
             </Text>
           </View>
           <Text style={styles.sessionTime}>
-            {date.toLocaleTimeString('kn-IN', { hour: '2-digit', minute: '2-digit' })}
+            {date.toLocaleTimeString(isEn ? 'en-IN' : 'kn-IN', { hour: '2-digit', minute: '2-digit' })}
           </Text>
         </View>
 
@@ -83,7 +85,7 @@ export default function HistoryScreen() {
           <View style={styles.sourceBadge}>
             <MaterialCommunityIcons name="file-document-outline" size={11} color={Colors.earth} />
             <Text style={styles.sourceBadgeText}>
-              {lastMsg.sources.length} ಮೂಲಗಳು
+              {lastMsg.sources.length} {isEn ? 'sources' : 'ಮೂಲಗಳು'}
             </Text>
           </View>
         )}
@@ -94,11 +96,11 @@ export default function HistoryScreen() {
   return (
     <View style={styles.container}>
       <NivettiHeader
-        title="ಇತಿಹಾಸ"
+        title={isEn ? 'History' : 'ಇತಿಹಾಸ'}
         rightAction={
           pastSessions.length > 0 ? (
             <TouchableOpacity onPress={handleClear} style={styles.clearAllBtn}>
-              <Text style={styles.clearAllText}>ಅಳಿಸಿ</Text>
+              <Text style={styles.clearAllText}>{isEn ? 'Clear' : 'ಅಳಿಸಿ'}</Text>
             </TouchableOpacity>
           ) : null
         }
@@ -117,9 +119,9 @@ export default function HistoryScreen() {
             <View style={styles.emptyIconCircle}>
               <MaterialCommunityIcons name="history" size={48} color={Colors.primary} />
             </View>
-            <Text style={styles.emptyTitle}>ಇತಿಹಾಸ ಖಾಲಿ</Text>
+            <Text style={styles.emptyTitle}>{isEn ? 'History Empty' : 'ಇತಿಹಾಸ ಖಾಲಿ'}</Text>
             <Text style={styles.emptySubtitle}>
-              ನಿಮ್ಮ ಮೊದಲ ಪ್ರಶ್ನೆ ಕೇಳಿ — ಇಲ್ಲಿ ಕಾಣಿಸುತ್ತದೆ
+              {isEn ? 'Ask your first question — it will appear here' : 'ನಿಮ್ಮ ಮೊದಲ ಪ್ರಶ್ನೆ ಕೇಳಿ — ಇಲ್ಲಿ ಕಾಣಿಸುತ್ತದೆ'}
             </Text>
           </View>
         }

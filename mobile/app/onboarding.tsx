@@ -142,7 +142,7 @@ export default function OnboardingScreen() {
         await processTranscript(transcript);
       } catch (e: any) {
         setStatus(prompt.tapMic);
-        Alert.alert('Error', e.message);
+        Alert.alert(langCode === 'en' ? 'Error' : 'ದೋಷ', e.message);
       } finally {
         setBusy(false);
       }
@@ -153,7 +153,7 @@ export default function OnboardingScreen() {
         setRecording(true);
         setStatus('🎙️ ...');
       } catch (e: any) {
-        Alert.alert('Permission Denied', 'Please allow microphone access.');
+        Alert.alert(langCode === 'en' ? 'Permission Denied' : 'ಅನುಮತಿ ನಿರಾಕರಿಸಲಾಗಿದೆ', langCode === 'en' ? 'Please allow microphone access.' : 'ದಯವಿಟ್ಟು ಮೈಕ್ರೊಫೋನ್ ಅನುಮತಿ ನೀಡಿ.');
       }
     }
   }
@@ -304,7 +304,7 @@ export default function OnboardingScreen() {
       </TouchableOpacity>
 
       <Text style={styles.hint}>
-        {recording ? '🔴 Recording...' : prompt.tapMic}
+        {recording ? (langCode === 'en' ? '🔴 Recording...' : '🔴 ರೆಕಾರ್ಡ್ ಆಗುತ್ತಿದೆ...') : prompt.tapMic}
       </Text>
     </LinearGradient>
   );

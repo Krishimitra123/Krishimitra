@@ -20,6 +20,7 @@ const { width } = Dimensions.get('window');
 export default function LoginScreen() {
   const router = useRouter();
   const { setAuthenticated } = useUserStore();
+  const isEn = useUserStore((s) => s.preferred_language)?.startsWith('en');
 
   const [step, setStep] = useState<'PHONE' | 'OTP'>('PHONE');
   const [phone, setPhone] = useState('');
@@ -50,7 +51,7 @@ export default function LoginScreen() {
   const handleSendOTP = async () => {
     const cleaned = phone.replace(/\D/g, '');
     if (cleaned.length !== 10) {
-      Alert.alert('ದೋಷ', 'ದಯವಿಟ್ಟು 10 ಅಂಕಿಯ ಮೊಬೈಲ್ ಸಂಖ್ಯೆ ನಮೂದಿಸಿ');
+      Alert.alert(isEn ? 'Error' : 'ದೋಷ', isEn ? 'Please enter a 10-digit mobile number' : 'ದಯವಿಟ್ಟು 10 ಅಂಕಿಯ ಮೊಬೈಲ್ ಸಂಖ್ಯೆ ನಮೂದಿಸಿ');
       return;
     }
 
@@ -70,15 +71,15 @@ export default function LoginScreen() {
         setMessage(result.message);
       }
     } catch (e: any) {
-      const detail = e.response?.data?.detail || 'ಸೇವೆ ಲಭ್ಯವಿಲ್ಲ. ದಯವಿಟ್ಟು ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.';
-      Alert.alert('ದೋಷ', detail);
+      const detail = e.response?.data?.detail || (isEn ? 'Service unavailable. Please try again.' : 'ಸೇವೆ ಲಭ್ಯವಿಲ್ಲ. ದಯವಿಟ್ಟು ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.');
+      Alert.alert(isEn ? 'Error' : 'ದೋಷ', detail);
     }
     setLoading(false);
   };
 
   const handleVerifyOTP = async () => {
     if (otp.length !== 6) {
-      Alert.alert('ದೋಷ', 'ದಯವಿಟ್ಟು 6 ಅಂಕಿಯ OTP ನಮೂದಿಸಿ');
+      Alert.alert(isEn ? 'Error' : 'ದೋಷ', isEn ? 'Please enter 6-digit OTP' : 'ದಯವಿಟ್ಟು 6 ಅಂಕಿಯ OTP ನಮೂದಿಸಿ');
       return;
     }
 
@@ -102,8 +103,8 @@ export default function LoginScreen() {
         setMessage(result.message);
       }
     } catch (e: any) {
-      const detail = e.response?.data?.detail || 'ಪರಿಶೀಲನೆ ವಿಫಲ';
-      Alert.alert('ದೋಷ', detail);
+      const detail = e.response?.data?.detail || (isEn ? 'Verification failed' : 'ಪರಿಶೀಲನೆ ವಿಫಲ');
+      Alert.alert(isEn ? 'Error' : 'ದೋಷ', detail);
     }
     setLoading(false);
   };
@@ -122,17 +123,17 @@ export default function LoginScreen() {
           {/* Logo */}
           <View style={styles.logoSection}>
             <Text style={styles.logoIcon}>🌾</Text>
-            <Text style={styles.logoText}>ಕೃಷಿ ಮಿತ್ರ</Text>
+            <Text style={styles.logoText}>{isEn ? 'KrishiMitra' : 'ಕೃಷಿ ಮಿತ್ರ'}</Text>
             <Text style={styles.logoSubtext}>KrishiMitra</Text>
-            <Text style={styles.tagline}>ನಿಮ್ಮ ಜೈವಿಕ ಕೃಷಿ ಸಹಾಯಕ</Text>
+            <Text style={styles.tagline}>{isEn ? 'Your Organic Farming Assistant' : 'ನಿಮ್ಮ ಜೈವಿಕ ಕೃಷಿ ಸಹಾಯಕ'}</Text>
           </View>
 
           {/* Card */}
           <View style={[styles.card, Shadows.lg]}>
             {step === 'PHONE' ? (
               <>
-                <Text style={styles.cardTitle}>ಲಾಗಿನ್ / ನೋಂದಣಿ</Text>
-                <Text style={styles.cardSubtitle}>ನಿಮ್ಮ ಮೊಬೈಲ್ ಸಂಖ್ಯೆ ನಮೂದಿಸಿ</Text>
+                <Text style={styles.cardTitle}>{isEn ? 'Login / Register' : 'ಲಾಗಿನ್ / ನೋಂದಣಿ'}</Text>
+                <Text style={styles.cardSubtitle}>{isEn ? 'Enter your mobile number' : 'ನಿಮ್ಮ ಮೊಬೈಲ್ ಸಂಖ್ಯೆ ನಮೂದಿಸಿ'}</Text>
 
                 <View style={styles.phoneInputRow}>
                   <View style={styles.countryCode}>
@@ -158,15 +159,15 @@ export default function LoginScreen() {
                   {loading ? (
                     <ActivityIndicator color="#fff" />
                   ) : (
-                    <Text style={styles.primaryBtnText}>OTP ಕಳುಹಿಸಿ →</Text>
+                    <Text style={styles.primaryBtnText}>{isEn ? 'Send OTP →' : 'OTP ಕಳುಹಿಸಿ →'}</Text>
                   )}
                 </TouchableOpacity>
               </>
             ) : (
               <>
-                <Text style={styles.cardTitle}>OTP ಪರಿಶೀಲನೆ</Text>
+                <Text style={styles.cardTitle}>{isEn ? 'OTP Verification' : 'OTP ಪರಿಶೀಲನೆ'}</Text>
                 <Text style={styles.cardSubtitle}>
-                  +91 {phone} ಗೆ ಕಳುಹಿಸಲಾದ 6 ಅಂಕಿಯ OTP ನಮೂದಿಸಿ
+                  {isEn ? `Enter the 6-digit OTP sent to +91 ${phone}` : `+91 ${phone} ಗೆ ಕಳುಹಿಸಲಾದ 6 ಅಂಕಿಯ OTP ನಮೂದಿಸಿ`}
                 </Text>
 
                 <TextInput
@@ -189,7 +190,7 @@ export default function LoginScreen() {
                   {loading ? (
                     <ActivityIndicator color="#fff" />
                   ) : (
-                    <Text style={styles.primaryBtnText}>ಪರಿಶೀಲಿಸಿ ✓</Text>
+                    <Text style={styles.primaryBtnText}>{isEn ? 'Verify ✓' : 'ಪರಿಶೀಲಿಸಿ ✓'}</Text>
                   )}
                 </TouchableOpacity>
 
@@ -200,13 +201,13 @@ export default function LoginScreen() {
                 >
                   <Text style={[styles.resendText, countdown > 0 && styles.resendDisabled]}>
                     {countdown > 0
-                      ? `ಮತ್ತೆ ಕಳುಹಿಸಿ (${countdown}s)`
-                      : 'OTP ಮತ್ತೆ ಕಳುಹಿಸಿ'}
+                      ? (isEn ? `Resend (${countdown}s)` : `ಮತ್ತೆ ಕಳುಹಿಸಿ (${countdown}s)`)
+                      : (isEn ? 'Resend OTP' : 'OTP ಮತ್ತೆ ಕಳುಹಿಸಿ')}
                   </Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity onPress={() => { setStep('PHONE'); setOtp(''); setMessage(''); }}>
-                  <Text style={styles.changePhoneText}>← ಬೇರೆ ಸಂಖ್ಯೆ ಬಳಸಿ</Text>
+                  <Text style={styles.changePhoneText}>{isEn ? '← Use a different number' : '← ಬೇರೆ ಸಂಖ್ಯೆ ಬಳಸಿ'}</Text>
                 </TouchableOpacity>
               </>
             )}

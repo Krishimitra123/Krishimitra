@@ -25,10 +25,10 @@ const { width } = Dimensions.get('window');
 
 // Quick actions with vector icons
 const QUICK_ACTIONS = [
-  { key: 'jeeva', icon: 'flask-outline' as const, labelKn: 'ಜೀವಾಮೃತ', query: 'ಜೀವಾಮೃತ ತಯಾರಿಸುವ ವಿಧಾನ ಹೇಳಿ' },
-  { key: 'mulch', icon: 'grass' as const, labelKn: 'ಮಲ್ಚಿಂಗ್', query: 'ಮಲ್ಚಿಂಗ್ ಹೇಗೆ ಮಾಡಬೇಕು' },
-  { key: 'soil', icon: 'earth' as const, labelKn: 'ಮಣ್ಣು', query: 'ಮಣ್ಣಿನ ಆರೋಗ್ಯ ಸುಧಾರಿಸುವ ವಿಧಾನ' },
-  { key: 'worm', icon: 'bug-outline' as const, labelKn: 'ಗೊಬ್ಬರ', query: 'ಎರೆಹುಳು ಗೊಬ್ಬರ ತಯಾರಿಕೆ ಹೇಗೆ' },
+  { key: 'jeeva', icon: 'flask-outline' as const, labelKn: 'ಜೀವಾಮೃತ', labelEn: 'Jivamrutha', query: 'ಜೀವಾಮೃತ ತಯಾರಿಸುವ ವಿಧಾನ ಹೇಳಿ' },
+  { key: 'mulch', icon: 'grass' as const, labelKn: 'ಮಲ್ಚಿಂಗ್', labelEn: 'Mulching', query: 'ಮಲ್ಚಿಂಗ್ ಹೇಗೆ ಮಾಡಬೇಕು' },
+  { key: 'soil', icon: 'earth' as const, labelKn: 'ಮಣ್ಣು', labelEn: 'Soil Health', query: 'ಮಣ್ಣಿನ ಆರೋಗ್ಯ ಸುಧಾರಿಸುವ ವಿಧಾನ' },
+  { key: 'worm', icon: 'bug-outline' as const, labelKn: 'ಗೊಬ್ಬರ', labelEn: 'Compost', query: 'ಎರೆಹುಳು ಗೊಬ್ಬರ ತಯಾರಿಕೆ ಹೇಗೆ' },
 ];
 
 // Waveform bars for recording indicator
@@ -56,7 +56,9 @@ function WaveformIndicator({ active, color = '#fff' }: { active: boolean; color?
 
 export default function HomeScreen() {
   const router = useRouter();
-  const { farmer_name, district, crops, primary_crop } = useUserStore();
+  const { farmer_name, district, crops, primary_crop, preferred_language } = useUserStore();
+  const isEn = preferred_language?.startsWith('en');
+
   const { startNewSession, addMessage, currentSession } = useSessionStore();
   const audioStore = useAudioStore();
 
@@ -154,14 +156,14 @@ export default function HomeScreen() {
             await speakText(response.answer_text_kn);
           }
         } catch (e: any) {
-          addMessage({ id: (Date.now() + 1).toString(), role: 'assistant', text: 'ಸೇವೆ ಲಭ್ಯವಿಲ್ಲ', sources: [], timestamp: Date.now(), is_diagnosis: false });
+          addMessage({ id: (Date.now() + 1).toString(), role: 'assistant', text: isEn ? 'Service Unavailable' : 'ಸೇವೆ ಲಭ್ಯವಿಲ್ಲ', sources: [], timestamp: Date.now(), is_diagnosis: false });
         }
         audioStore.setState('IDLE');
       }
     } catch (err: any) {
       audioStore.setError(err.message);
     }
-  }, [audioStore.state, currentSession]);
+  }, [audioStore.state, currentSession, isEn]);
 
   const handleQuickAction = useCallback(async (query: string, key: string) => {
     if (quickLoading) return;
@@ -185,16 +187,16 @@ export default function HomeScreen() {
         await speakText(response.answer_text_kn);
       }
     } catch {
-      addMessage({ id: (Date.now() + 1).toString(), role: 'assistant', text: 'ಸೇವೆ ಲಭ್ಯವಿಲ್ಲ', sources: [], timestamp: Date.now(), is_diagnosis: false });
+      addMessage({ id: (Date.now() + 1).toString(), role: 'assistant', text: isEn ? 'Service Unavailable' : 'ಸೇವೆ ಲಭ್ಯವಿಲ್ಲ', sources: [], timestamp: Date.now(), is_diagnosis: false });
     }
     setQuickLoading(null);
-  }, [quickLoading, currentSession]);
+  }, [quickLoading, currentSession, isEn]);
 
   const isRecording = audioStore.state === 'RECORDING';
   const isProcessing = audioStore.state === 'STT_PROCESSING';
   const isPlaying = audioStore.state === 'PLAYING';
 
-  const micLabel = isRecording ? 'ನಿಲ್ಲಿಸಲು ಒತ್ತಿ' : isProcessing ? 'ಯೋಚಿಸುತ್ತಿದೆ...' : isPlaying ? 'ಕೇಳಿ...' : 'ಒತ್ತಿ ಮಾತನಾಡಿ';
+  const micLabel = isRecording ? (isEn ? 'Tap to Stop' : 'ನಿಲ್ಲಿಸಲು ಒತ್ತಿ') : isProcessing ? (isEn ? 'Thinking...' : 'ಯೋಚಿಸುತ್ತಿದೆ...') : isPlaying ? (isEn ? 'Listening...' : 'ಕೇಳಿ...') : (isEn ? 'Tap to Speak' : 'ಒತ್ತಿ ಮಾತನಾಡಿ');
 
   return (
     <View style={styles.container}>
@@ -206,8 +208,8 @@ export default function HomeScreen() {
         style={styles.header}
       >
         <Animated.View style={{ opacity: greetingOpacity }}>
-          <Text style={styles.namaste}>ನಮಸ್ಕಾರ 🙏</Text>
-          <Text style={styles.farmerName}>{farmer_name || 'ರೈತರೇ'}</Text>
+          <Text style={styles.namaste}>{isEn ? 'Namaste 🙏' : 'ನಮಸ್ಕಾರ 🙏'}</Text>
+          <Text style={styles.farmerName}>{farmer_name || (isEn ? 'Farmer' : 'ರೈತರೇ')}</Text>
           {district ? <Text style={styles.districtText}>{district}</Text> : null}
         </Animated.View>
       </LinearGradient>
@@ -232,13 +234,13 @@ export default function HomeScreen() {
               {isProcessing && (
                 <View style={styles.processingBadge}>
                   <ActivityIndicator size="small" color={Colors.primary} />
-                  <Text style={styles.processingText}>ಯೋಚಿಸುತ್ತಿದೆ...</Text>
+                  <Text style={styles.processingText}>{isEn ? 'Thinking...' : 'ಯೋಚಿಸುತ್ತಿದೆ...'}</Text>
                 </View>
               )}
               {isPlaying && (
                 <View style={styles.playingBadge}>
                   <WaveformIndicator active color={Colors.primary} />
-                  <Text style={styles.playingText}>ಕೇಳಿ...</Text>
+                  <Text style={styles.playingText}>{isEn ? 'Playing...' : 'ಕೇಳಿ...'}</Text>
                 </View>
               )}
             </View>
@@ -272,7 +274,7 @@ export default function HomeScreen() {
 
         {/* Quick Actions */}
         <View style={styles.quickSection}>
-          <Text style={styles.sectionLabel}>ತ್ವರಿತ ಸಹಾಯ</Text>
+          <Text style={styles.sectionLabel}>{isEn ? 'Quick Actions' : 'ತ್ವರಿತ ಸಹಾಯ'}</Text>
           <View style={styles.quickRow}>
             {QUICK_ACTIONS.map((a) => (
               <TouchableOpacity
@@ -291,7 +293,7 @@ export default function HomeScreen() {
                   ) : (
                     <MaterialCommunityIcons name={a.icon} size={28} color={Colors.primary} />
                   )}
-                  <Text style={styles.quickLabel}>{a.labelKn}</Text>
+                  <Text style={styles.quickLabel}>{isEn ? a.labelEn : a.labelKn}</Text>
                 </LinearGradient>
               </TouchableOpacity>
             ))}
@@ -310,7 +312,7 @@ export default function HomeScreen() {
                   <View style={styles.widgetRow}>
                     <MaterialCommunityIcons name="weather-sunny" size={32} color={Colors.accent} />
                     <View style={{ marginLeft: Spacing.md, flex: 1 }}>
-                      <Text style={styles.widgetTitle}>ಹವಾಮಾನ / Weather</Text>
+                      <Text style={styles.widgetTitle}>{isEn ? 'Weather' : 'ಹವಾಮಾನ / Weather'}</Text>
                       <Text style={styles.widgetValue}>{Math.round(weather.current.temperature_2m)}°C — {weather.district}</Text>
                     </View>
                     <View style={{ alignItems: 'flex-end' }}>
@@ -330,12 +332,12 @@ export default function HomeScreen() {
                 <View style={styles.widgetRow}>
                   <MaterialCommunityIcons name="chart-line" size={32} color={Colors.accent} />
                   <View style={{ marginLeft: Spacing.md, flex: 1 }}>
-                    <Text style={styles.widgetTitle}>ಮಾರುಕಟ್ಟೆ ಬೆಲೆ / Market</Text>
+                    <Text style={styles.widgetTitle}>{isEn ? 'Market Prices' : 'ಮಾರುಕಟ್ಟೆ ಬೆಲೆ / Market'}</Text>
                     {marketData.map((m, mi) => (
                       <View key={mi}>
                         {m.records?.slice(0, 1).map((p, i) => (
                           <View key={i} style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 }}>
-                            <Text style={styles.widgetValue} numberOfLines={1}>{p.commodity_kn || p.commodity}</Text>
+                            <Text style={styles.widgetValue} numberOfLines={1}>{isEn ? p.commodity : (p.commodity_kn || p.commodity)}</Text>
                             <Text style={styles.widgetPrice}>₹{formatPrice(p.modal_price)}</Text>
                           </View>
                         ))}

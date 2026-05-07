@@ -54,7 +54,9 @@ export default function ChatScreen() {
 
   const { currentSession, addMessage, updateMessage, startNewSession, isLoading, setLoading } = useSessionStore();
   const audioStore = useAudioStore();
-  const farmerName = useUserStore((s) => s.farmer_name) || 'ರೈತರೇ';
+  const preferred_language = useUserStore((s) => s.preferred_language);
+  const isEn = preferred_language?.startsWith('en');
+  const farmerName = useUserStore((s) => s.farmer_name) || (isEn ? 'Farmer' : 'ರೈತರೇ');
 
   useEffect(() => {
     if (currentSession?.messages.length) {
@@ -106,7 +108,7 @@ export default function ChatScreen() {
           audioResult = await stopRecordingAndGetBase64();
         } catch {
           audioStore.setState('IDLE'); setLoading(false);
-          Alert.alert('ದೋಷ', 'ಧ್ವನಿ ರೆಕಾರ್ಡ್ ಆಗಲಿಲ್ಲ. ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.');
+          isEn ? Alert.alert('Error', 'Voice not recorded. Please try again.') : Alert.alert('ದೋಷ', 'ಧ್ವನಿ ರೆಕಾರ್ಡ್ ಆಗಲಿಲ್ಲ. ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.');
           return;
         }
         const userMsgId = Date.now().toString();
@@ -114,7 +116,7 @@ export default function ChatScreen() {
         setLoading(true);
         try {
           const response = await sendVoiceQuery(audioResult.base64, audioResult.mimeType, conversationHistory);
-          const transcript = response.transcript?.trim() || '🎙️ ಧ್ವನಿ';
+          const transcript = response.transcript?.trim() || (isEn ? '🎙️ Voice' : '🎙️ ಧ್ವನಿ');
           updateMessage(userMsgId, { text: transcript });
           addMessage({
             id: (Date.now() + 1).toString(), role: 'assistant',
@@ -134,7 +136,7 @@ export default function ChatScreen() {
             await speakText(response.answer_text_kn);
           }
         } catch (e: any) {
-          const errorMsg = e.response?.data?.detail || 'ಸೇವೆ ಲಭ್ಯವಿಲ್ಲ';
+          const errorMsg = e.response?.data?.detail || (isEn ? 'Service Unavailable' : 'ಸೇವೆ ಲಭ್ಯವಿಲ್ಲ');
           addMessage({ id: (Date.now() + 1).toString(), role: 'assistant', text: errorMsg, sources: [], timestamp: Date.now(), is_diagnosis: false });
         }
         setLoading(false); audioStore.setState('IDLE');
@@ -142,7 +144,7 @@ export default function ChatScreen() {
     } catch (err: any) {
       audioStore.setError(err.message); setLoading(false);
     }
-  }, [audioStore.state]);
+  }, [audioStore.state, conversationHistory, isEn]);
 
   const handleTextSubmit = useCallback(async () => {
     if (!textInput.trim() || isLoading) return;
@@ -163,10 +165,10 @@ export default function ChatScreen() {
         catch {} finally { audioStore.setState('IDLE'); }
       } else { await speakText(response.answer_text_kn); }
     } catch {
-      addMessage({ id: (Date.now() + 1).toString(), role: 'assistant', text: 'ಸೇವೆ ಲಭ್ಯವಿಲ್ಲ', sources: [], timestamp: Date.now(), is_diagnosis: false });
+      addMessage({ id: (Date.now() + 1).toString(), role: 'assistant', text: isEn ? 'Service Unavailable' : 'ಸೇವೆ ಲಭ್ಯವಿಲ್ಲ', sources: [], timestamp: Date.now(), is_diagnosis: false });
     }
     setLoading(false);
-  }, [textInput, isLoading]);
+  }, [textInput, isLoading, conversationHistory, isEn]);
 
   const handlePlayAudio = useCallback(async (audioB64: string) => {
     try { audioStore.setState('PLAYING'); await playBase64Audio(audioB64); audioStore.setState('IDLE'); }
@@ -194,7 +196,7 @@ export default function ChatScreen() {
           {!isUser && item.audio_base64 && (
             <TouchableOpacity onPress={() => handlePlayAudio(item.audio_base64!)} style={styles.replayBtn}>
               <MaterialCommunityIcons name="volume-high" size={14} color={Colors.primary} />
-              <Text style={styles.replayTxt}>ಮತ್ತೆ ಕೇಳಿ</Text>
+              <Text style={styles.replayTxt}>{isEn ? 'Listen Again' : 'ಮತ್ತೆ ಕೇಳಿ'}</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -207,8 +209,8 @@ export default function ChatScreen() {
       <View style={styles.emptyIconCircle}>
         <MaterialCommunityIcons name="sprout" size={48} color={Colors.primary} />
       </View>
-      <Text style={styles.emptyGreeting}>ನಮಸ್ಕಾರ {farmerName}!</Text>
-      <Text style={styles.emptyHint}>ಮೈಕ್ ಒತ್ತಿ ಮಾತನಾಡಿ</Text>
+      <Text style={styles.emptyGreeting}>{isEn ? `Namaste ${farmerName}!` : `ನಮಸ್ಕಾರ ${farmerName}!`}</Text>
+      <Text style={styles.emptyHint}>{isEn ? 'Tap Mic to Speak' : 'ಮೈಕ್ ಒತ್ತಿ ಮಾತನಾಡಿ'}</Text>
     </View>
   );
 
@@ -219,11 +221,11 @@ export default function ChatScreen() {
         <View style={styles.headerRow}>
           <View style={styles.headerLeft}>
             <MaterialCommunityIcons name="sprout" size={22} color="#fff" />
-            <Text style={styles.headerTitle}>ಕೃಷಿ ಮಿತ್ರ</Text>
+            <Text style={styles.headerTitle}>{isEn ? 'KrishiMitra' : 'ಕೃಷಿ ಮಿತ್ರ'}</Text>
           </View>
           <TouchableOpacity onPress={handleNewChat} style={styles.newChatBtn}>
             <MaterialCommunityIcons name="plus" size={16} color="#fff" />
-            <Text style={styles.newChatText}>ಹೊಸದು</Text>
+            <Text style={styles.newChatText}>{isEn ? 'New' : 'ಹೊಸದು'}</Text>
           </TouchableOpacity>
         </View>
       </LinearGradient>
@@ -241,7 +243,7 @@ export default function ChatScreen() {
           <View style={styles.typingRow}>
             <View style={styles.typingDots}>
               <WaveformBars active />
-              <Text style={styles.typingText}>ಯೋಚಿಸುತ್ತಿದೆ...</Text>
+              <Text style={styles.typingText}>{isEn ? 'Thinking...' : 'ಯೋಚಿಸುತ್ತಿದೆ...'}</Text>
             </View>
           </View>
         )}
@@ -249,7 +251,7 @@ export default function ChatScreen() {
         {isPlayingAudio && (
           <TouchableOpacity style={styles.playingBar} onPress={handleStopPlayback}>
             <WaveformBars active color="#fff" />
-            <Text style={styles.playingBarText}>ನಿಲ್ಲಿಸಲು ಒತ್ತಿ</Text>
+            <Text style={styles.playingBarText}>{isEn ? 'Tap to Stop' : 'ನಿಲ್ಲಿಸಲು ಒತ್ತಿ'}</Text>
             <MaterialCommunityIcons name="stop" size={18} color="#fff" />
           </TouchableOpacity>
         )}
@@ -261,12 +263,12 @@ export default function ChatScreen() {
                 <View style={styles.recDot} />
                 <Text style={styles.recordingTime}>{Math.floor(recordingSeconds / 60)}:{(recordingSeconds % 60).toString().padStart(2, '0')}</Text>
                 <WaveformBars active color={Colors.error} />
-                <Text style={styles.recordingLabel}>ಕೇಳುತ್ತಿದೆ...</Text>
+                <Text style={styles.recordingLabel}>{isEn ? 'Listening...' : 'ಕೇಳುತ್ತಿದೆ...'}</Text>
               </View>
             ) : (
               <View style={styles.recordingRow}>
                 <ActivityIndicator size="small" color={Colors.primary} />
-                <Text style={styles.processingLabel}>ಅನುವಾದಿಸುತ್ತಿದೆ...</Text>
+                <Text style={styles.processingLabel}>{isEn ? 'Processing...' : 'ಅನುವಾದಿಸುತ್ತಿದೆ...'}</Text>
               </View>
             )}
           </View>
@@ -286,7 +288,7 @@ export default function ChatScreen() {
             <>
               <TextInput
                 style={styles.textInput}
-                placeholder="ಟೈಪ್ ಮಾಡಿ..."
+                placeholder={isEn ? 'Type here...' : 'ಟೈಪ್ ಮಾಡಿ...'}
                 placeholderTextColor={Colors.textMuted}
                 value={textInput}
                 onChangeText={setTextInput}
@@ -316,7 +318,7 @@ export default function ChatScreen() {
                   />
                 </TouchableOpacity>
               </Animated.View>
-              <Text style={styles.micHint}>{isRecording ? 'ನಿಲ್ಲಿಸಲು ಒತ್ತಿ' : 'ಒತ್ತಿ ಮಾತನಾಡಿ'}</Text>
+              <Text style={styles.micHint}>{isRecording ? (isEn ? 'Tap to Stop' : 'ನಿಲ್ಲಿಸಲು ಒತ್ತಿ') : (isEn ? 'Tap to Speak' : 'ಒತ್ತಿ ಮಾತನಾಡಿ')}</Text>
             </View>
           )}
         </View>

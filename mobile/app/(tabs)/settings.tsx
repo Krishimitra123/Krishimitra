@@ -32,6 +32,8 @@ export default function SettingsScreen() {
   const langCode = (store.tts_language || 'kn').split('-')[0]; // normalise 'kn-IN' → 'kn'
   const [ttsLanguage, setTtsLanguage] = useState(langCode);
   const [newCrop, setNewCrop] = useState('');
+  
+  const isEn = store.preferred_language?.startsWith('en');
 
   useEffect(() => {
     setTtsLanguage((store.tts_language || 'kn').split('-')[0]);
@@ -39,7 +41,7 @@ export default function SettingsScreen() {
 
   const handleLanguageSelect = (code: string) => {
     setTtsLanguage(code);
-    const fullCode = LANGUAGES.find(l => l.code === code)?.sarvam ?? code;
+    const fullCode = code === 'en' ? 'en-IN' : code === 'hi' ? 'hi-IN' : code === 'ta' ? 'ta-IN' : code === 'te' ? 'te-IN' : code === 'ml' ? 'ml-IN' : code === 'mr' ? 'mr-IN' : code === 'bn' ? 'bn-IN' : code === 'gu' ? 'gu-IN' : code === 'pa' ? 'pa-IN' : code === 'od' ? 'od-IN' : 'kn-IN';
     store.setProfile({ tts_language: fullCode, preferred_language: fullCode });
   };
 
@@ -62,9 +64,9 @@ export default function SettingsScreen() {
   };
 
   const handleLogout = () => {
-    Alert.alert('ಲಾಗ್ ಔಟ್', 'ಖಚಿತಪಡಿಸಿ?', [
-      { text: 'ಬೇಡ', style: 'cancel' },
-      { text: 'ಹೌದು', style: 'destructive', onPress: () => store.reset() },
+    Alert.alert(isEn ? 'Logout' : 'ಲಾಗ್ ಔಟ್', isEn ? 'Are you sure?' : 'ಖಚಿತಪಡಿಸಿ?', [
+      { text: isEn ? 'Cancel' : 'ಬೇಡ', style: 'cancel' },
+      { text: isEn ? 'Yes' : 'ಹೌದು', style: 'destructive', onPress: () => store.reset() },
     ]);
   };
 
@@ -74,7 +76,7 @@ export default function SettingsScreen() {
       <LinearGradient colors={['#1B5E20', '#2E7D32']} style={styles.header}>
         <View style={styles.headerRow}>
           <MaterialCommunityIcons name="cog" size={22} color="#fff" />
-          <Text style={styles.headerTitle}>ಸೆಟ್ಟಿಂಗ್ಸ್</Text>
+          <Text style={styles.headerTitle}>{isEn ? 'Settings' : 'ಸೆಟ್ಟಿಂಗ್ಸ್'}</Text>
         </View>
       </LinearGradient>
 
@@ -88,12 +90,12 @@ export default function SettingsScreen() {
           <View style={{ flex: 1 }}>
             <Text style={styles.profileName}>{store.farmer_name || '—'}</Text>
             <Text style={styles.profilePhone}>{store.phone ? `+91 ${store.phone}` : '—'}</Text>
-            <Text style={styles.profileMeta}>{store.district || 'ಜಿಲ್ಲೆ ಇಲ್ಲ'}</Text>
+            <Text style={styles.profileMeta}>{store.district || (isEn ? 'No district' : 'ಜಿಲ್ಲೆ ಇಲ್ಲ')}</Text>
             {store.crops?.length > 0 && (
               <View style={styles.cropRow}>
                 {store.crops.map((c, i) => (
                   <View key={i} style={styles.cropTag}>
-                    <Text style={styles.cropTagTxt}>{formatCropLabel(c)}</Text>
+                    <Text style={styles.cropTagTxt}>{formatCropLabel(c, isEn)}</Text>
                   </View>
                 ))}
               </View>
@@ -101,7 +103,7 @@ export default function SettingsScreen() {
             {!store.crops?.length && store.primary_crop ? (
               <View style={styles.cropRow}>
                 <View style={styles.cropTag}>
-                  <Text style={styles.cropTagTxt}>{formatCropLabel(store.primary_crop)}</Text>
+                  <Text style={styles.cropTagTxt}>{formatCropLabel(store.primary_crop, isEn)}</Text>
                 </View>
               </View>
             ) : null}
@@ -112,9 +114,9 @@ export default function SettingsScreen() {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <MaterialCommunityIcons name="volume-high" size={20} color={Colors.primary} />
-            <Text style={styles.sectionTitle}>ಧ್ವನಿ ಭಾಷೆ</Text>
+            <Text style={styles.sectionTitle}>{isEn ? 'Voice Language' : 'ಧ್ವನಿ ಭಾಷೆ'}</Text>
           </View>
-          <Text style={styles.sectionHint}>AI ಯಾವ ಭಾಷೆಯಲ್ಲಿ ಮಾತನಾಡಬೇಕು?</Text>
+          <Text style={styles.sectionHint}>{isEn ? 'Which language should AI speak?' : 'AI ಯಾವ ಭಾಷೆಯಲ್ಲಿ ಮಾತನಾಡಬೇಕು?'}</Text>
           <View style={styles.langGrid}>
             {LANGUAGES.map((lang) => {
               const active = ttsLanguage === lang.code;
@@ -142,13 +144,13 @@ export default function SettingsScreen() {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <MaterialCommunityIcons name="sprout" size={20} color={Colors.primary} />
-            <Text style={styles.sectionTitle}>ಬೆಳೆಗಳು / Crops</Text>
+            <Text style={styles.sectionTitle}>{isEn ? 'Crops' : 'ಬೆಳೆಗಳು / Crops'}</Text>
           </View>
-          <Text style={styles.sectionHint}>ಒತ್ತಿ ಸೇರಿಸಿ ಅಥವಾ ತೆಗೆದುಹಾಕಿ</Text>
+          <Text style={styles.sectionHint}>{isEn ? 'Tap to add or remove' : 'ಒತ್ತಿ ಸೇರಿಸಿ ಅಥವಾ ತೆಗೆದುಹಾಕಿ'}</Text>
           <View style={styles.cropEditRow}>
             {(store.crops || []).map((c, i) => (
               <View key={i} style={styles.cropEditTag}>
-                <Text style={styles.cropEditTxt}>{formatCropLabel(c)}</Text>
+                <Text style={styles.cropEditTxt}>{formatCropLabel(c, isEn)}</Text>
                 <TouchableOpacity onPress={() => removeCrop(i)}>
                   <MaterialCommunityIcons name="close-circle" size={16} color={Colors.error} />
                 </TouchableOpacity>
@@ -159,7 +161,7 @@ export default function SettingsScreen() {
             {CROPS.map((crop) => (
               <TouchableOpacity key={crop.name_en} style={styles.quickCropBtn} onPress={() => quickAddCrop(crop.name_en)} activeOpacity={0.8}>
                 <Text style={styles.quickCropIcon}>{crop.icon}</Text>
-                <Text style={styles.quickCropText}>{crop.name_kn}</Text>
+                <Text style={styles.quickCropText}>{isEn ? crop.name_en : crop.name_kn}</Text>
               </TouchableOpacity>
             ))}
           </ScrollView>
@@ -183,17 +185,17 @@ export default function SettingsScreen() {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <MaterialCommunityIcons name="information-outline" size={20} color={Colors.primary} />
-            <Text style={styles.sectionTitle}>ಅಪ್ಲಿಕೇಶನ್</Text>
+            <Text style={styles.sectionTitle}>{isEn ? 'Application' : 'ಅಪ್ಲಿಕೇಶನ್'}</Text>
           </View>
-          <InfoRow icon="tag-outline" label="ಆವೃತ್ತಿ" value="v2.0.0" />
+          <InfoRow icon="tag-outline" label={isEn ? 'Version' : 'ಆವೃತ್ತಿ'} value="v2.0.0" />
           <InfoRow icon="robot-outline" label="AI" value="Gemini + Sarvam" />
-          <InfoRow icon="office-building" label="ನಿರ್ಮಾಣ" value="Nivetti Systems" />
+          <InfoRow icon="office-building" label={isEn ? 'Built by' : 'ನಿರ್ಮಾಣ'} value="Nivetti Systems" />
         </View>
 
         {/* Logout */}
         <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout} activeOpacity={0.8}>
           <MaterialCommunityIcons name="logout" size={20} color={Colors.error} />
-          <Text style={styles.logoutTxt}>ಲಾಗ್ ಔಟ್</Text>
+          <Text style={styles.logoutTxt}>{isEn ? 'Logout' : 'ಲಾಗ್ ಔಟ್'}</Text>
         </TouchableOpacity>
 
       </ScrollView>
@@ -211,9 +213,9 @@ function InfoRow({ icon, label, value }: { icon: string; label: string; value: s
   );
 }
 
-function formatCropLabel(crop: string): string {
+function formatCropLabel(crop: string, isEn: boolean): string {
   const match = CROPS.find((item) => item.name_en.toLowerCase() === crop.toLowerCase() || item.name_kn === crop);
-  return match ? `${match.icon} ${match.name_kn}` : crop;
+  return match ? `${match.icon} ${isEn ? match.name_en : match.name_kn}` : crop;
 }
 
 const styles = StyleSheet.create({
