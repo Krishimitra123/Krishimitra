@@ -218,7 +218,7 @@ def _needs_hallucination_guard(finding: DiagnosisFinding) -> bool:
         return True
 
     confidence = float(finding.confidence_pct or 0)
-    if confidence < 70:
+    if confidence < 45:
         return True
 
     disease_blob = f"{finding.disease_name or ''} {finding.disease_name_kn or ''}".lower()
