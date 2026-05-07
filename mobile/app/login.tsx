@@ -57,24 +57,15 @@ export default function LoginScreen() {
 
     setLoading(true);
     setMessage('');
-    try {
-      const result = await sendOTP(cleaned);
-      if (result.success) {
-        setStep('OTP');
-        setCountdown(60);
-        setMessage(result.message);
-        // In dev mode, auto-fill OTP if returned by backend
-        if (result.dev_otp) {
-          setOtp(result.dev_otp);
-        }
-      } else {
-        setMessage(result.message);
-      }
-    } catch (e: any) {
-      const detail = e.response?.data?.detail || (isEn ? 'Service unavailable. Please try again.' : 'ಸೇವೆ ಲಭ್ಯವಿಲ್ಲ. ದಯವಿಟ್ಟು ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.');
-      Alert.alert(isEn ? 'Error' : 'ದೋಷ', detail);
-    }
-    setLoading(false);
+    
+    // DEMO MODE: Bypass real API call
+    setTimeout(() => {
+      setStep('OTP');
+      setCountdown(60);
+      setMessage('Demo Mode: OTP sent successfully');
+      setOtp('123456'); // Auto-fill dummy OTP
+      setLoading(false);
+    }, 800);
   };
 
   const handleVerifyOTP = async () => {
@@ -85,28 +76,23 @@ export default function LoginScreen() {
 
     setLoading(true);
     setMessage('');
-    try {
-      const result = await verifyOTP(phone.replace(/\D/g, ''), otp);
-      if (result.success && result.token) {
-        setAuthenticated(phone.replace(/\D/g, ''), result.token);
-        setMessage('✅ ' + result.message);
-        // Navigate to onboarding or tabs
-        setTimeout(() => {
-          const isOnboarded = useUserStore.getState().is_onboarded;
-          if (isOnboarded) {
-            router.replace('/(tabs)');
-          } else {
-            router.replace('/onboarding');
-          }
-        }, 500);
-      } else {
-        setMessage(result.message);
-      }
-    } catch (e: any) {
-      const detail = e.response?.data?.detail || (isEn ? 'Verification failed' : 'ಪರಿಶೀಲನೆ ವಿಫಲ');
-      Alert.alert(isEn ? 'Error' : 'ದೋಷ', detail);
-    }
-    setLoading(false);
+    
+    // DEMO MODE: Bypass real API call
+    setTimeout(() => {
+      setAuthenticated(phone.replace(/\D/g, ''), 'demo_token_123456');
+      setMessage('✅ Demo Login Successful');
+      
+      setTimeout(() => {
+        const isOnboarded = useUserStore.getState().is_onboarded;
+        if (isOnboarded) {
+          router.replace('/(tabs)');
+        } else {
+          router.replace('/onboarding');
+        }
+      }, 500);
+      
+      setLoading(false);
+    }, 800);
   };
 
   const handleResend = async () => {
