@@ -23,7 +23,7 @@ services:
       - key: SUPABASE_SERVICE_KEY
         sync: false
       - key: EMBEDDING_MODEL_NAME
-        value: sentence-transformers/paraphrase-multilingual-mpnet-base-v2
+        value: sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2
       - key: RAG_SIMILARITY_THRESHOLD
         value: "0.30"
       - key: RAG_TOP_K

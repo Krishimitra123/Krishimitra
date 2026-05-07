@@ -15,7 +15,7 @@ import os
 SUPABASE_URL  = os.environ.get('SUPABASE_URL', '')
 SUPABASE_KEY  = os.environ.get('SUPABASE_SERVICE_KEY', '')
 MODEL_NAME    = os.environ.get('EMBEDDING_MODEL_NAME',
-                'sentence-transformers/paraphrase-multilingual-mpnet-base-v2')
+                'sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2')
 THRESHOLD     = float(os.environ.get('RAG_SIMILARITY_THRESHOLD', '0.35'))
 TOP_K         = int(os.environ.get('RAG_TOP_K', '5'))
 
