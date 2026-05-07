@@ -10,7 +10,7 @@
     "preview": {
       "distribution": "internal",
       "env": {
-        "EXPO_PUBLIC_API_BASE_URL": "https://long-bugs-drive.loca.lt"
+        "EXPO_PUBLIC_API_BASE_URL": "https://krishimitra-izss.onrender.com"
       }
     },
     "production": {}
