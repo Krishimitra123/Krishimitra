@@ -67,7 +67,7 @@ export default function DiagnoseScreen() {
   const [followUpText, setFollowUpText] = useState<string | null>(null);
 
   const audioStore = useAudioStore();
-  const { addMessage, currentSession } = useSessionStore();
+  const { addMessage, currentSession, startNewSession } = useSessionStore();
   const preferred_language = useUserStore((s) => s.preferred_language);
 
   const pulseAnim = useRef(new Animated.Value(1)).current;
@@ -127,6 +127,9 @@ export default function DiagnoseScreen() {
       setResult(finding);
       setIsAnalyzing(false);
 
+      // Ensure we have a session so follow-up history works
+      if (!currentSession) startNewSession();
+
       const diseaseName = cleanDiseaseName(finding.disease_name_kn || finding.disease_name);
       addMessage({
         id: Date.now().toString(), role: 'assistant',
@@ -164,6 +167,7 @@ export default function DiagnoseScreen() {
       if (audioStore.state !== 'RECORDING') return;
       audioStore.setState('STT_PROCESSING');
       const recordedAudio = await stopRecordingAndGetBase64();
+      if (!currentSession) startNewSession();
       const history = buildConversationHistory(currentSession?.messages ?? []);
       addMessage({ id: Date.now().toString(), role: 'user', text: '🎙️ ...', sources: [], timestamp: Date.now(), is_diagnosis: true });
       const response = await sendVoiceQuery(recordedAudio.base64, recordedAudio.mimeType, history);

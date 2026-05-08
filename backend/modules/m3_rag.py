@@ -64,8 +64,8 @@ async def retrieve(nlp_result: NLPResult) -> list:
         return []
 
     try:
-        # Get embeddings from Gemini (768 dimensions)
-        # We use await to avoid blocking the event loop
+        # Get embeddings from Gemini — force 768 dimensions to match Supabase pgvector
+        # gemini-embedding-001 defaults to 3072 dims, but our DB stores 768
         loop = asyncio.get_event_loop()
         result = await loop.run_in_executor(
             None,
@@ -73,10 +73,11 @@ async def retrieve(nlp_result: NLPResult) -> list:
                 model="models/gemini-embedding-001",
                 content=query_text,
                 task_type="retrieval_query",
+                output_dimensionality=768,
             )
         )
         embedding = result['embedding']
-        print(f'[M3] Gemini embedding generated (dim={len(embedding)})')
+        print(f'[M3] Gemini embedding OK (dim={len(embedding)})')
 
         # Call Supabase RPC
         response = _client.rpc('match_chunks', {
