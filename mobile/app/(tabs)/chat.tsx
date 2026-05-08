@@ -12,6 +12,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Colors, FontSize, Spacing, BorderRadius, Shadows } from '@/constants/theme';
+import { t } from '@/constants/i18n';
 import { useSessionStore, Message } from '@/stores/useSessionStore';
 import { useAudioStore } from '@/stores/useAudioStore';
 import { useUserStore } from '@/stores/useUserStore';
@@ -56,7 +57,7 @@ export default function ChatScreen() {
   const audioStore = useAudioStore();
   const preferred_language = useUserStore((s) => s.preferred_language);
   const isEn = preferred_language?.startsWith('en');
-  const farmerName = useUserStore((s) => s.farmer_name) || (isEn ? 'Farmer' : 'ರೈತರೇ');
+  const farmerName = useUserStore((s) => s.farmer_name) || t('farmer');
 
   useEffect(() => {
     if (currentSession?.messages.length) {
@@ -108,7 +109,7 @@ export default function ChatScreen() {
           audioResult = await stopRecordingAndGetBase64();
         } catch {
           audioStore.setState('IDLE'); setLoading(false);
-          isEn ? Alert.alert('Error', 'Voice not recorded. Please try again.') : Alert.alert('ದೋಷ', 'ಧ್ವನಿ ರೆಕಾರ್ಡ್ ಆಗಲಿಲ್ಲ. ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.');
+          Alert.alert(t('error'), t('tryAgain'));
           return;
         }
         const userMsgId = Date.now().toString();
@@ -136,7 +137,7 @@ export default function ChatScreen() {
             await speakText(response.answer_text_kn);
           }
         } catch (e: any) {
-          const errorMsg = e.response?.data?.detail || (isEn ? 'Service Unavailable' : 'ಸೇವೆ ಲಭ್ಯವಿಲ್ಲ');
+          const errorMsg = e.response?.data?.detail || t('serviceUnavailable');
           addMessage({ id: (Date.now() + 1).toString(), role: 'assistant', text: errorMsg, sources: [], timestamp: Date.now(), is_diagnosis: false });
         }
         setLoading(false); audioStore.setState('IDLE');
@@ -165,7 +166,7 @@ export default function ChatScreen() {
         catch {} finally { audioStore.setState('IDLE'); }
       } else { await speakText(response.answer_text_kn); }
     } catch {
-      addMessage({ id: (Date.now() + 1).toString(), role: 'assistant', text: isEn ? 'Service Unavailable' : 'ಸೇವೆ ಲಭ್ಯವಿಲ್ಲ', sources: [], timestamp: Date.now(), is_diagnosis: false });
+      addMessage({ id: (Date.now() + 1).toString(), role: 'assistant', text: t('serviceUnavailable'), sources: [], timestamp: Date.now(), is_diagnosis: false });
     }
     setLoading(false);
   }, [textInput, isLoading, conversationHistory, isEn]);
@@ -193,10 +194,16 @@ export default function ChatScreen() {
           <Text style={[styles.bubbleText, isUser && styles.userBubbleText]}>
             {item.text}
           </Text>
+          {!isUser && item.sources && item.sources.length > 0 && (
+            <View style={styles.sourceRow}>
+              <MaterialCommunityIcons name="book-open-variant" size={11} color={Colors.textMuted} />
+              <Text style={styles.sourceText}>{item.sources.join(' • ')}</Text>
+            </View>
+          )}
           {!isUser && item.audio_base64 && (
             <TouchableOpacity onPress={() => handlePlayAudio(item.audio_base64!)} style={styles.replayBtn}>
               <MaterialCommunityIcons name="volume-high" size={14} color={Colors.primary} />
-              <Text style={styles.replayTxt}>{isEn ? 'Listen Again' : 'ಮತ್ತೆ ಕೇಳಿ'}</Text>
+              <Text style={styles.replayTxt}>{t('listenAgain')}</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -209,8 +216,8 @@ export default function ChatScreen() {
       <View style={styles.emptyIconCircle}>
         <MaterialCommunityIcons name="sprout" size={48} color={Colors.primary} />
       </View>
-      <Text style={styles.emptyGreeting}>{isEn ? `Namaste ${farmerName}!` : `ನಮಸ್ಕಾರ ${farmerName}!`}</Text>
-      <Text style={styles.emptyHint}>{isEn ? 'Tap Mic to Speak' : 'ಮೈಕ್ ಒತ್ತಿ ಮಾತನಾಡಿ'}</Text>
+      <Text style={styles.emptyGreeting}>{t('namaste').replace(' 🙏', '')} {farmerName}!</Text>
+      <Text style={styles.emptyHint}>{t('micTapSpeak')}</Text>
     </View>
   );
 
@@ -221,11 +228,11 @@ export default function ChatScreen() {
         <View style={styles.headerRow}>
           <View style={styles.headerLeft}>
             <MaterialCommunityIcons name="sprout" size={22} color="#fff" />
-            <Text style={styles.headerTitle}>{isEn ? 'KrishiMitra' : 'ಕೃಷಿ ಮಿತ್ರ'}</Text>
+            <Text style={styles.headerTitle}>{t('krishiMitra')}</Text>
           </View>
           <TouchableOpacity onPress={handleNewChat} style={styles.newChatBtn}>
             <MaterialCommunityIcons name="plus" size={16} color="#fff" />
-            <Text style={styles.newChatText}>{isEn ? 'New' : 'ಹೊಸದು'}</Text>
+            <Text style={styles.newChatText}>{t('newChat')}</Text>
           </TouchableOpacity>
         </View>
       </LinearGradient>
@@ -243,7 +250,7 @@ export default function ChatScreen() {
           <View style={styles.typingRow}>
             <View style={styles.typingDots}>
               <WaveformBars active />
-              <Text style={styles.typingText}>{isEn ? 'Thinking...' : 'ಯೋಚಿಸುತ್ತಿದೆ...'}</Text>
+              <Text style={styles.typingText}>{t('thinking')}</Text>
             </View>
           </View>
         )}
@@ -251,7 +258,7 @@ export default function ChatScreen() {
         {isPlayingAudio && (
           <TouchableOpacity style={styles.playingBar} onPress={handleStopPlayback}>
             <WaveformBars active color="#fff" />
-            <Text style={styles.playingBarText}>{isEn ? 'Tap to Stop' : 'ನಿಲ್ಲಿಸಲು ಒತ್ತಿ'}</Text>
+            <Text style={styles.playingBarText}>{t('tapToStop')}</Text>
             <MaterialCommunityIcons name="stop" size={18} color="#fff" />
           </TouchableOpacity>
         )}
@@ -263,12 +270,12 @@ export default function ChatScreen() {
                 <View style={styles.recDot} />
                 <Text style={styles.recordingTime}>{Math.floor(recordingSeconds / 60)}:{(recordingSeconds % 60).toString().padStart(2, '0')}</Text>
                 <WaveformBars active color={Colors.error} />
-                <Text style={styles.recordingLabel}>{isEn ? 'Listening...' : 'ಕೇಳುತ್ತಿದೆ...'}</Text>
+                <Text style={styles.recordingLabel}>{t('listening')}</Text>
               </View>
             ) : (
               <View style={styles.recordingRow}>
                 <ActivityIndicator size="small" color={Colors.primary} />
-                <Text style={styles.processingLabel}>{isEn ? 'Processing...' : 'ಅನುವಾದಿಸುತ್ತಿದೆ...'}</Text>
+                <Text style={styles.processingLabel}>{t('processing')}</Text>
               </View>
             )}
           </View>
@@ -288,7 +295,7 @@ export default function ChatScreen() {
             <>
               <TextInput
                 style={styles.textInput}
-                placeholder={isEn ? 'Type here...' : 'ಟೈಪ್ ಮಾಡಿ...'}
+                placeholder={t('typeHere')}
                 placeholderTextColor={Colors.textMuted}
                 value={textInput}
                 onChangeText={setTextInput}
@@ -318,7 +325,7 @@ export default function ChatScreen() {
                   />
                 </TouchableOpacity>
               </Animated.View>
-              <Text style={styles.micHint}>{isRecording ? (isEn ? 'Tap to Stop' : 'ನಿಲ್ಲಿಸಲು ಒತ್ತಿ') : (isEn ? 'Tap to Speak' : 'ಒತ್ತಿ ಮಾತನಾಡಿ')}</Text>
+              <Text style={styles.micHint}>{isRecording ? t('tapToStop') : t('tapToSpeak')}</Text>
             </View>
           )}
         </View>
@@ -355,6 +362,8 @@ const styles = StyleSheet.create({
   userBubbleText: { color: Colors.textPrimary },
   replayBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 6, backgroundColor: Colors.primarySoft, paddingVertical: 4, paddingHorizontal: Spacing.sm, borderRadius: BorderRadius.full, alignSelf: 'flex-start' },
   replayTxt: { fontSize: FontSize.xs, color: Colors.primary, fontWeight: '700' },
+  sourceRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 6, paddingTop: 4, borderTopWidth: 1, borderTopColor: Colors.border },
+  sourceText: { fontSize: 10, color: Colors.textMuted, flex: 1 },
 
   typingRow: { paddingHorizontal: Spacing.md, paddingBottom: Spacing.sm },
   typingDots: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, backgroundColor: Colors.primarySoft, paddingVertical: 8, paddingHorizontal: Spacing.md, borderRadius: BorderRadius.full, alignSelf: 'flex-start' },

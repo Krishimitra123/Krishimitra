@@ -39,6 +39,7 @@ interface SessionStore {
   endSession:      () => void;
   clearHistory:    () => void;
   deleteSession:   (id: string) => void;
+  loadSession:     (id: string) => void;
 }
 
 function generateId(): string {
@@ -118,6 +119,26 @@ export const useSessionStore = create<SessionStore>()(
         set((s) => ({
           pastSessions: s.pastSessions.filter((sess) => sess.id !== id),
         })),
+
+      loadSession: (id) => {
+        const current = get().currentSession;
+        const past = get().pastSessions;
+        const target = past.find((s) => s.id === id);
+        if (!target) return;
+
+        // Archive current session if it has messages
+        let updatedPast = past.filter((s) => s.id !== id);
+        if (current && current.messages.length > 0) {
+          updatedPast = [current, ...updatedPast].slice(0, 10);
+        }
+
+        set({
+          currentSession: { ...target },
+          pastSessions: updatedPast,
+          isLoading: false,
+          error: null,
+        });
+      },
     }),
     {
       name: 'krishimitra-sessions',

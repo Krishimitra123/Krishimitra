@@ -173,14 +173,14 @@ async def text_to_audio(text: str, api_key: str, language_code: str = 'kn-IN') -
     LANGUAGE_SPEAKER_MAP = {
         'kn-IN': 'aditya',
         'hi-IN': 'arvind',
-        'ta-IN': 'anitha',
+        'ta-IN': 'vijay',
         'te-IN': 'vijay',
         'ml-IN': 'neel',
-        'mr-IN': 'aditya',
-        'bn-IN': 'aditya',
-        'gu-IN': 'aditya',
-        'pa-IN': 'aditya',
-        'or-IN': 'aditya',
+        'mr-IN': 'arvind',
+        'bn-IN': 'arvind',
+        'gu-IN': 'arvind',
+        'pa-IN': 'arvind',
+        'or-IN': 'arvind',
         'en-IN': 'aditya',
     }
     lang_code = _normalize_language_code(language_code)

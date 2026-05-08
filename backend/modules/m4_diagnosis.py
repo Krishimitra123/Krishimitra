@@ -34,7 +34,11 @@ CHEMICAL_TERMS = [
 
 PLANT_CONTEXT_TERMS = [
     'leaf', 'leaves', 'stem', 'root', 'fruit', 'flower', 'crop', 'plant',
+    'trunk', 'bark', 'branch', 'tuber', 'bulb', 'pod', 'seed', 'grain',
+    'blight', 'rot', 'wilt', 'mildew', 'spot', 'mosaic', 'canker', 'rust',
+    'fungal', 'fungus', 'bacterial', 'viral', 'healthy', 'disease',
     'ಎಲೆ', 'ಕಾಂಡ', 'ಬೇರು', 'ಹಣ್ಣು', 'ಹೂ', 'ಬೆಳೆ', 'ಸಸ್ಯ',
+    'ಕಾಂಡ', 'ತೊಗಟೆ', 'ಗಡ್ಡೆ', 'ಬೀಜ', 'ರೋಗ', 'ಆರೋಗ್ಯಕರ',
 ]
 
 POWDERY_MILDEW_TERMS = [
@@ -42,9 +46,10 @@ POWDERY_MILDEW_TERMS = [
 ]
 
 DIAGNOSIS_PROMPT = """You are an expert Indian crop pathologist specializing in organic farming and sustainable agriculture.
+You can diagnose diseases from ANY plant part — leaf, stem, root, trunk, bark, fruit, flower, tuber, bulb, pod, grain, or seed.
 
 === STEP 1: IS THIS A PLANT IMAGE? ===
-Carefully examine the image. It must contain a plant, leaf, stem, root, flower, or fruit.
+Carefully examine the image. It must contain ANY plant part (leaf, stem, root, trunk, bark, fruit, flower, tuber, bulb, pod, seed, grain, or whole plant).
 If the image does NOT show a plant part clearly, return:
 {
   "plant_health_status": "ಅಸ್ಪಷ್ಟ",
