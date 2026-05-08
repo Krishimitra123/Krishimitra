@@ -125,7 +125,7 @@ def _convert_audio_to_wav(audio_bytes: bytes, mime_type: str) -> bytes:
 async def audio_to_transcript(audio_base64: str, api_key: str, mime_type: str = 'audio/mp4', language_code: str = 'kn-IN') -> dict:
     """
     Decode base64 audio → convert to WAV via ffmpeg → send to Sarvam saarika:v2.5.
-    Hard 20s timeout (belt-and-suspenders: httpx 20s + asyncio.wait_for 18s).
+    Falls back to Gemini 2.0 Flash if Sarvam fails (quota, errors, etc).
     """
     raw_bytes = base64.b64decode(audio_base64)
 
@@ -135,28 +135,80 @@ async def audio_to_transcript(audio_base64: str, api_key: str, mime_type: str = 
     )
 
     sarvam_lang = _normalize_language_code(language_code)
-    print(f'[M1-STT] Sending {len(wav_bytes)} bytes as audio.wav to Sarvam (lang={sarvam_lang})...')
+
+    # ── Try Sarvam first ──
+    if api_key:
+        try:
+            print(f'[M1-STT] Sending {len(wav_bytes)} bytes to Sarvam (lang={sarvam_lang})...')
+            async with httpx.AsyncClient(timeout=15.0) as client:
+                resp = await asyncio.wait_for(
+                    client.post(
+                        'https://api.sarvam.ai/speech-to-text',
+                        headers={'api-subscription-key': api_key},
+                        data={'language_code': sarvam_lang, 'model': 'saarika:v2.5'},
+                        files={'file': ('audio.wav', wav_bytes, 'audio/wav')},
+                    ),
+                    timeout=14.0,
+                )
+            if resp.status_code == 200:
+                transcript = (resp.json().get('transcript') or '').strip()
+                if transcript:
+                    print(f'[M1-STT] Sarvam OK ({sarvam_lang}): "{transcript}"')
+                    return {'transcript': transcript, 'language': sarvam_lang, 'confidence': 1.0}
+            else:
+                print(f'[M1-STT] Sarvam failed {resp.status_code}: {resp.text[:150]}')
+        except Exception as e:
+            print(f'[M1-STT] Sarvam error: {e}')
+
+    # ── Fallback: Gemini 2.0 Flash STT ──
+    gemini_key = os.environ.get('GEMINI_API_KEY', '').strip()
+    if not gemini_key:
+        raise ValueError('Both Sarvam and Gemini keys unavailable for STT')
+
+    print(f'[M1-STT] Falling back to Gemini STT (lang={sarvam_lang})...')
+    wav_b64 = base64.b64encode(wav_bytes).decode()
+
+    LANG_NAMES = {
+        'kn-IN': 'Kannada', 'hi-IN': 'Hindi', 'ta-IN': 'Tamil', 'te-IN': 'Telugu',
+        'ml-IN': 'Malayalam', 'mr-IN': 'Marathi', 'bn-IN': 'Bengali', 'gu-IN': 'Gujarati',
+        'pa-IN': 'Punjabi', 'or-IN': 'Odia', 'en-IN': 'English',
+    }
+    lang_name = LANG_NAMES.get(sarvam_lang, 'Kannada')
+
+    gemini_url = f'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={gemini_key}'
+    payload = {
+        'contents': [{
+            'parts': [
+                {'inline_data': {'mime_type': 'audio/wav', 'data': wav_b64}},
+                {'text': f'Transcribe this audio exactly as spoken. The language is {lang_name} ({sarvam_lang}). Return ONLY the transcript text, nothing else. No explanation, no quotes, just the words spoken.'},
+            ]
+        }],
+        'generationConfig': {'temperature': 0.0, 'maxOutputTokens': 500},
+    }
 
     try:
-        async with httpx.AsyncClient(timeout=15.0) as client:
+        async with httpx.AsyncClient(timeout=20.0) as client:
             resp = await asyncio.wait_for(
-                client.post(
-                    'https://api.sarvam.ai/speech-to-text',
-                    headers={'api-subscription-key': api_key},
-                    data={'language_code': sarvam_lang, 'model': 'saarika:v2.5'},
-                    files={'file': ('audio.wav', wav_bytes, 'audio/wav')},
-                ),
-                timeout=14.0,
+                client.post(gemini_url, json=payload),
+                timeout=18.0,
             )
-    except asyncio.TimeoutError:
-        raise ValueError('Sarvam STT timed out after 14s')
+        if resp.status_code == 200:
+            candidates = resp.json().get('candidates', [])
+            if candidates:
+                parts = candidates[0].get('content', {}).get('parts', [])
+                transcript = parts[0].get('text', '').strip() if parts else ''
+                # Clean up Gemini response (it sometimes adds quotes or prefixes)
+                for prefix in ['Transcript:', 'The transcript is:', '"', "'"]:
+                    if transcript.startswith(prefix):
+                        transcript = transcript[len(prefix):].strip()
+                transcript = transcript.rstrip('"\'').strip()
+                print(f'[M1-STT] Gemini OK ({sarvam_lang}): "{transcript}"')
+                return {'transcript': transcript, 'language': sarvam_lang, 'confidence': 0.9}
+        print(f'[M1-STT] Gemini failed {resp.status_code}: {resp.text[:150]}')
+    except Exception as e:
+        print(f'[M1-STT] Gemini STT error: {e}')
 
-    if resp.status_code != 200:
-        raise ValueError(f'STT {resp.status_code}: {resp.text[:200]}')
-
-    transcript = (resp.json().get('transcript') or '').strip()
-    print(f'[M1-STT] Transcript ({sarvam_lang}): "{transcript}"')
-    return {'transcript': transcript, 'language': sarvam_lang, 'confidence': 1.0}
+    return {'transcript': '', 'language': sarvam_lang, 'confidence': 0.0}
 
 
 async def text_to_audio(text: str, api_key: str, language_code: str = 'kn-IN') -> str:

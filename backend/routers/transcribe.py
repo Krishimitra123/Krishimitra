@@ -29,14 +29,10 @@ class TranscribeResponse(BaseModel):
 async def transcribe_endpoint(request: TranscribeRequest):
     """
     STT-only endpoint for onboarding.
-    Returns transcript in the specified language.
+    Tries Sarvam first, falls back to Gemini 2.0 Flash.
     25s hard timeout.
     """
     sarvam_key = os.environ.get('SARVAM_API_KEY', '').strip()
-
-    if not sarvam_key:
-        print('[Transcribe] No SARVAM_API_KEY — returning empty transcript')
-        return TranscribeResponse(transcript='', language=request.language_code, success=False)
 
     if not request.audio_base64 or len(request.audio_base64) < 500:
         return TranscribeResponse(transcript='', language=request.language_code, success=False)
@@ -45,11 +41,11 @@ async def transcribe_endpoint(request: TranscribeRequest):
         result = await asyncio.wait_for(
             m1_voice.audio_to_transcript(
                 request.audio_base64,
-                sarvam_key,
+                sarvam_key,  # May be empty — audio_to_transcript handles fallback
                 mime_type=request.audio_mime,
                 language_code=request.language_code,
             ),
-            timeout=25.0,
+            timeout=30.0,  # Increased to allow Gemini fallback
         )
         transcript = (result.get('transcript') or '').strip()
         print(f'[Transcribe] OK ({request.language_code}): "{transcript}"')
@@ -59,7 +55,7 @@ async def transcribe_endpoint(request: TranscribeRequest):
             success=bool(transcript),
         )
     except asyncio.TimeoutError:
-        print('[Transcribe] Timed out after 25s')
+        print('[Transcribe] Timed out after 30s')
         return TranscribeResponse(transcript='', language=request.language_code, success=False)
     except Exception as e:
         print(f'[Transcribe] Error: {e}')

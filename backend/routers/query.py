@@ -24,10 +24,17 @@ async def _run_query(request: QueryRequest) -> QueryResponse:
     if request.audio_base64:
         try:
             mime = request.audio_mime or 'audio/mp4'
+            tts_lang = (
+                request.preferred_language
+                or (request.user_context.preferred_language if request.user_context else None)
+                or request.tts_language
+                or 'kn-IN'
+            )
             result = await m1_voice.audio_to_transcript(
                 request.audio_base64,
                 SARVAM_KEY(),
                 mime_type=mime,
+                language_code=tts_lang,
             )
             transcript = (result.get('transcript') or '').strip()
             print(f'[Query] STT: "{transcript}"')
