@@ -180,18 +180,36 @@ def _build(data: dict, source: str) -> DiagnosisFinding:
     safe = [t for t in data.get('organic_treatments', [])
             if not any(c.lower() in t.lower() for c in CHEMICAL_TERMS)]
     conf = max(0, min(100, int(data.get('confidence_pct', 0) or 0)))
+
+    # Coerce fields that models sometimes return as lists instead of strings
+    probable_cause = data.get('probable_cause', '')
+    if isinstance(probable_cause, list):
+        probable_cause = '. '.join(str(x) for x in probable_cause)
+    
+    plant_health = data.get('plant_health_status', 'Unclear')
+    if isinstance(plant_health, list):
+        plant_health = str(plant_health[0]) if plant_health else 'Unclear'
+
+    disease_name = data.get('disease_name', 'Unknown')
+    if isinstance(disease_name, list):
+        disease_name = str(disease_name[0]) if disease_name else 'Unknown'
+
+    disease_name_kn = data.get('disease_name_kn', '')
+    if isinstance(disease_name_kn, list):
+        disease_name_kn = str(disease_name_kn[0]) if disease_name_kn else ''
+
     return DiagnosisFinding(
-        plant_health_status=data.get('plant_health_status', 'Unclear'),
-        disease_name=data.get('disease_name', 'Unknown'),
-        disease_name_kn=data.get('disease_name_kn', ''),
+        plant_health_status=plant_health,
+        disease_name=disease_name,
+        disease_name_kn=disease_name_kn,
         confidence_pct=float(conf),
         visual_symptoms=data.get('visual_symptoms', []),
-        probable_cause=data.get('probable_cause', ''),
+        probable_cause=probable_cause,
         organic_treatments=safe or ['ಸ್ಥಳೀಯ KVK ಸಲಹೆ ಪಡೆಯಿರಿ'],
         prevention_measures=data.get('prevention_measures', []),
         needs_retake=bool(data.get('needs_retake', False)),
         sources=[source, 'ICAR Crop Protection Guidelines'],
-        is_reliable=conf >= 25 and bool(data.get('disease_name')) and not data.get('needs_retake', False),
+        is_reliable=conf >= 25 and bool(disease_name) and not data.get('needs_retake', False),
     )
 
 

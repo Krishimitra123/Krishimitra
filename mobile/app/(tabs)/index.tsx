@@ -7,7 +7,7 @@ import React, { useState, useCallback, useEffect, useRef } from 'react';
 import {
   View, Text, StyleSheet, ScrollView,
   TouchableOpacity, Animated, ActivityIndicator, Dimensions,
-  StatusBar,
+  StatusBar, Image,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -208,11 +208,17 @@ export default function HomeScreen() {
         colors={['#1B5E20', '#2E7D32']}
         style={styles.header}
       >
-        <Animated.View style={{ opacity: greetingOpacity }}>
-          <Text style={styles.namaste}>{t('namaste')}</Text>
-          <Text style={styles.farmerName}>{farmer_name || t('farmer')}</Text>
-          {district ? <Text style={styles.districtText}>{district}</Text> : null}
-        </Animated.View>
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <Image
+            source={require('@/assets/images/krishimitra-logo.png')}
+            style={styles.headerLogo}
+          />
+          <Animated.View style={{ opacity: greetingOpacity, flex: 1 }}>
+            <Text style={styles.namaste}>{t('namaste')}</Text>
+            <Text style={styles.farmerName}>{farmer_name || t('farmer')}</Text>
+            {district ? <Text style={styles.districtText}>{district}</Text> : null}
+          </Animated.View>
+        </View>
       </LinearGradient>
 
       <ScrollView
@@ -365,6 +371,7 @@ const styles = StyleSheet.create({
     paddingBottom: Spacing.xl,
     paddingHorizontal: Spacing.xl,
   },
+  headerLogo: { width: 52, height: 52, borderRadius: 26, marginRight: 14 },
   namaste: { fontSize: FontSize.lg, color: 'rgba(255,255,255,0.8)', fontWeight: '500' },
   farmerName: { fontSize: 36, fontWeight: '900', color: '#fff', marginTop: 2 },
   districtText: { fontSize: FontSize.sm, color: 'rgba(255,255,255,0.65)', marginTop: 4 },

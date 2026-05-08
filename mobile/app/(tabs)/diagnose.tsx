@@ -3,6 +3,7 @@
  * Shows FULL diagnosis result card with remedies on this screen.
  * Auto-plays voice advisory with disease + remedies.
  * Sources shown in text (not spoken).
+ * Result card stays visible during playback and follow-up.
  */
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -48,9 +49,9 @@ function WaveformBars({ active, color = '#fff' }: { active: boolean; color?: str
     return () => { loops.forEach(l => l.stop()); timers.forEach(t => clearTimeout(t)); };
   }, [active]);
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, height: 52 }}>
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, height: 36 }}>
       {bars.map((bar, i) => (
-        <Animated.View key={i} style={{ width: 5, height: 40, borderRadius: 3, backgroundColor: color, transform: [{ scaleY: bar }] }} />
+        <Animated.View key={i} style={{ width: 4, height: 28, borderRadius: 2, backgroundColor: color, transform: [{ scaleY: bar }] }} />
       ))}
     </View>
   );
@@ -70,7 +71,7 @@ export default function DiagnoseScreen() {
   const preferred_language = useUserStore((s) => s.preferred_language);
 
   const pulseAnim = useRef(new Animated.Value(1)).current;
-  const resultSlide = useRef(new Animated.Value(height)).current;
+  const resultSlide = useRef(new Animated.Value(300)).current;
 
   const overlayMode: OverlayMode = useMemo(() => {
     if (audioStore.state === 'PLAYING') return 'speaking';
@@ -79,6 +80,9 @@ export default function DiagnoseScreen() {
     if (isAnalyzing) return 'analyzing';
     return 'idle';
   }, [audioStore.state, isAnalyzing]);
+
+  // Whether we have a valid diagnosis result (not a retake request)
+  const hasResult = result && !result.needs_retake;
 
   useEffect(() => {
     if (overlayMode === 'idle') { pulseAnim.setValue(1); return; }
@@ -92,12 +96,12 @@ export default function DiagnoseScreen() {
 
   // Slide result card up when result arrives
   useEffect(() => {
-    if (result && !result.needs_retake) {
+    if (hasResult) {
       Animated.spring(resultSlide, { toValue: 0, useNativeDriver: true, tension: 40, friction: 8 }).start();
     } else {
-      resultSlide.setValue(height);
+      resultSlide.setValue(300);
     }
-  }, [result]);
+  }, [hasResult]);
 
   const playDiagnosisAudio = useCallback(async (audioBase64?: string | null) => {
     if (!audioBase64) return;
@@ -121,6 +125,7 @@ export default function DiagnoseScreen() {
 
       const finding = await sendDiagnosis(image.base64, image.mimeType);
       setResult(finding);
+      setIsAnalyzing(false);
 
       const diseaseName = cleanDiseaseName(finding.disease_name_kn || finding.disease_name);
       addMessage({
@@ -131,8 +136,9 @@ export default function DiagnoseScreen() {
       });
 
       // Auto-play full diagnosis audio (disease + remedies)
-      await playDiagnosisAudio(finding.audio_base64);
+      // Result card is now visible DURING playback
       setCanAskFollowUp(true);
+      await playDiagnosisAudio(finding.audio_base64);
     } catch (error: any) {
       console.error('[Diagnose] Error:', error);
       Alert.alert(t('error'), error?.response?.data?.detail || error?.message || t('tryAgain'));
@@ -144,6 +150,12 @@ export default function DiagnoseScreen() {
 
   const handleFollowUpQuestion = useCallback(async () => {
     try {
+      if (audioStore.state === 'PLAYING') {
+        // Stop current playback first
+        await stopPlayback();
+        audioStore.setState('IDLE');
+        return;
+      }
       if (audioStore.state === 'IDLE' || audioStore.state === 'ERROR') {
         audioStore.setState('RECORDING');
         await startRecording();
@@ -180,80 +192,66 @@ export default function DiagnoseScreen() {
     audioStore.setState('IDLE');
   }, [audioStore]);
 
-  const handlePrimaryPress = useCallback(async () => {
-    if (overlayMode === 'analyzing' || overlayMode === 'processing') return;
-    if (overlayMode === 'speaking') {
-      await stopPlayback();
-      audioStore.setState('IDLE');
-      return;
-    }
-    if (canAskFollowUp) { await handleFollowUpQuestion(); return; }
-    await captureAndDiagnose();
-  }, [canAskFollowUp, captureAndDiagnose, handleFollowUpQuestion, overlayMode, audioStore]);
-
-  const primaryButtonDisabled = overlayMode === 'analyzing' || overlayMode === 'processing';
-  const micIcon = overlayMode === 'recording' ? 'stop' : overlayMode === 'speaking' ? 'stop' : canAskFollowUp ? 'microphone' : 'camera';
-
   // Confidence color
   const confColor = (result?.confidence_pct ?? 0) >= 60 ? '#4CAF50' : (result?.confidence_pct ?? 0) >= 30 ? '#FF9800' : '#F44336';
 
   return (
     <View style={styles.container}>
-      {/* Camera / Image zone */}
-      <TouchableOpacity
-        style={styles.cameraZone}
-        onPress={result && canAskFollowUp ? resetDiagnosis : undefined}
-        activeOpacity={canAskFollowUp ? 0.8 : 1}
-      >
-        {imageUri ? (
-          <Image source={{ uri: imageUri }} style={styles.previewImage} />
-        ) : (
-          <LinearGradient colors={['#0d1f0f', '#1B3A1E', '#0d1f0f']} style={styles.cameraPlaceholder}>
-            <View style={styles.scanFrame}>
-              <View style={[styles.corner, styles.cornerTL]} />
-              <View style={[styles.corner, styles.cornerTR]} />
-              <View style={[styles.corner, styles.cornerBL]} />
-              <View style={[styles.corner, styles.cornerBR]} />
-              <MaterialCommunityIcons name="leaf-circle-outline" size={64} color="rgba(76,175,80,0.5)" />
+      {/* ─── TOP SECTION: Camera placeholder OR captured image ─── */}
+      {!hasResult ? (
+        /* Full camera zone when no result yet */
+        <TouchableOpacity
+          style={styles.cameraZoneFull}
+          onPress={overlayMode === 'idle' && !imageUri ? captureAndDiagnose : undefined}
+          activeOpacity={0.9}
+        >
+          {imageUri ? (
+            <Image source={{ uri: imageUri }} style={styles.previewImage} />
+          ) : (
+            <LinearGradient colors={['#0d1f0f', '#1B3A1E', '#0d1f0f']} style={styles.cameraPlaceholder}>
+              <View style={styles.scanFrame}>
+                <View style={[styles.corner, styles.cornerTL]} />
+                <View style={[styles.corner, styles.cornerTR]} />
+                <View style={[styles.corner, styles.cornerBL]} />
+                <View style={[styles.corner, styles.cornerBR]} />
+                <MaterialCommunityIcons name="leaf-circle-outline" size={64} color="rgba(76,175,80,0.5)" />
+              </View>
+              <Text style={styles.cameraHint}>{t('takePhoto')}</Text>
+            </LinearGradient>
+          )}
+
+          {/* Processing overlay — only when no result yet */}
+          {overlayMode !== 'idle' && (
+            <View style={styles.loadingOverlay}>
+              <Animated.View style={[styles.orbContainer, { transform: [{ scale: pulseAnim }] }]}>
+                <LinearGradient colors={['rgba(46,125,50,0.9)', 'rgba(27,94,32,0.9)']} style={styles.orb}>
+                  <MaterialCommunityIcons name="leaf" size={40} color="#fff" />
+                </LinearGradient>
+              </Animated.View>
+              <WaveformBars active />
+              <Text style={styles.overlayStatus}>
+                {overlayMode === 'analyzing' ? t('analyzing') : overlayMode === 'processing' ? t('thinking') : ''}
+              </Text>
             </View>
-            <Text style={styles.cameraHint}>{t('takePhoto')}</Text>
-          </LinearGradient>
-        )}
-
-        {/* Processing overlay */}
-        {overlayMode !== 'idle' && (
-          <View style={styles.loadingOverlay}>
-            <Animated.View style={[styles.orbContainer, { transform: [{ scale: pulseAnim }] }]}>
-              <LinearGradient colors={['rgba(46,125,50,0.9)', 'rgba(27,94,32,0.9)']} style={styles.orb}>
-                <MaterialCommunityIcons
-                  name={overlayMode === 'recording' ? 'microphone' : overlayMode === 'speaking' ? 'volume-high' : 'leaf'}
-                  size={40}
-                  color="#fff"
-                />
-              </LinearGradient>
-            </Animated.View>
-            <WaveformBars active />
-            <Text style={styles.overlayStatus}>
-              {overlayMode === 'analyzing' ? t('analyzing') :
-               overlayMode === 'recording' ? t('listening') :
-               overlayMode === 'processing' ? t('thinking') :
-               overlayMode === 'speaking' ? t('speaking') : ''}
-            </Text>
+          )}
+        </TouchableOpacity>
+      ) : (
+        /* Compact image strip when result is showing */
+        <View style={styles.imageStrip}>
+          {imageUri && <Image source={{ uri: imageUri }} style={styles.stripImage} />}
+          <View style={styles.stripOverlay}>
+            <TouchableOpacity style={styles.retakeChip} onPress={resetDiagnosis} activeOpacity={0.85}>
+              <MaterialCommunityIcons name="camera-retake" size={16} color="#fff" />
+              <Text style={styles.retakeChipText}>{t('newPhoto')}</Text>
+            </TouchableOpacity>
           </View>
-        )}
+        </View>
+      )}
 
-        {/* Retake button */}
-        {imageUri && result && canAskFollowUp && overlayMode === 'idle' && (
-          <TouchableOpacity style={styles.retakeButton} onPress={resetDiagnosis} activeOpacity={0.85}>
-            <MaterialCommunityIcons name="camera-retake" size={20} color="#fff" />
-          </TouchableOpacity>
-        )}
-      </TouchableOpacity>
-
-      {/* ── RESULT CARD — shows diagnosis details right here ── */}
-      {result && !result.needs_retake && overlayMode === 'idle' && (
+      {/* ─── RESULT CARD — stays visible during speaking/recording ─── */}
+      {hasResult && (
         <Animated.View style={[styles.resultCard, { transform: [{ translateY: resultSlide }] }]}>
-          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 90 }}>
+          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 140 }}>
             {/* Disease name + confidence */}
             <View style={styles.resultHeader}>
               <MaterialCommunityIcons
@@ -273,6 +271,30 @@ export default function DiagnoseScreen() {
                 <Text style={[styles.confText, { color: confColor }]}>{Math.round(result.confidence_pct)}%</Text>
               </View>
             </View>
+
+            {/* Now Playing / Speaking indicator */}
+            {overlayMode === 'speaking' && (
+              <TouchableOpacity
+                style={styles.nowPlayingBar}
+                onPress={async () => { await stopPlayback(); audioStore.setState('IDLE'); }}
+                activeOpacity={0.85}
+              >
+                <WaveformBars active color={Colors.primary} />
+                <Text style={styles.nowPlayingText}>{t('speaking')}</Text>
+                <MaterialCommunityIcons name="stop-circle" size={24} color={Colors.error} />
+              </TouchableOpacity>
+            )}
+
+            {/* Recording indicator */}
+            {(overlayMode === 'recording' || overlayMode === 'processing') && (
+              <View style={styles.nowPlayingBar}>
+                <WaveformBars active color={overlayMode === 'recording' ? Colors.error : Colors.primary} />
+                <Text style={styles.nowPlayingText}>
+                  {overlayMode === 'recording' ? t('listening') : t('thinking')}
+                </Text>
+                {overlayMode === 'processing' && <ActivityIndicator size="small" color={Colors.primary} />}
+              </View>
+            )}
 
             {/* Cause */}
             {result.probable_cause && result.probable_cause.toLowerCase() !== 'unknown' && (
@@ -314,7 +336,7 @@ export default function DiagnoseScreen() {
             )}
 
             {/* Listen Again */}
-            {result.audio_base64 && (
+            {result.audio_base64 && overlayMode === 'idle' && (
               <TouchableOpacity style={styles.listenBtn} onPress={() => playDiagnosisAudio(result.audio_base64)}>
                 <MaterialCommunityIcons name="volume-high" size={18} color={Colors.primary} />
                 <Text style={styles.listenBtnText}>{t('listenAgain')}</Text>
@@ -332,55 +354,85 @@ export default function DiagnoseScreen() {
         </Animated.View>
       )}
 
-      {/* Bottom bar */}
-      <LinearGradient colors={[Colors.surface, Colors.background]} style={styles.bottomBar}>
-        {result && canAskFollowUp && overlayMode === 'idle' && (
-          <TouchableOpacity style={styles.newPhotoBtn} onPress={resetDiagnosis} activeOpacity={0.8}>
-            <MaterialCommunityIcons name="camera-retake" size={20} color="#fff" />
-            <Text style={styles.newPhotoBtnText}>{t('newPhoto')}</Text>
-          </TouchableOpacity>
-        )}
-        {result && canAskFollowUp && overlayMode === 'idle' && (
+      {/* ─── BOTTOM ACTION BAR ─── */}
+      <View style={styles.bottomBar}>
+        {/* Follow-up hint */}
+        {hasResult && canAskFollowUp && overlayMode === 'idle' && (
           <Text style={styles.followUpHint}>{t('askFollowUp')}</Text>
         )}
 
-        {/* Stop playback bar */}
-        {overlayMode === 'speaking' && (
-          <TouchableOpacity style={styles.stopBar} onPress={async () => { await stopPlayback(); audioStore.setState('IDLE'); }}>
-            <WaveformBars active color={Colors.error} />
-            <Text style={styles.stopBarText}>{t('tapToStop')}</Text>
-            <MaterialCommunityIcons name="stop" size={20} color={Colors.error} />
+        {/* Primary Action Button */}
+        {!hasResult ? (
+          /* Camera / analyzing button */
+          <TouchableOpacity
+            style={[
+              styles.primaryButton,
+              (overlayMode === 'analyzing' || overlayMode === 'processing') && styles.primaryButtonDisabled,
+            ]}
+            onPress={captureAndDiagnose}
+            disabled={overlayMode !== 'idle'}
+            activeOpacity={0.85}
+          >
+            {overlayMode === 'analyzing' || overlayMode === 'processing' ? (
+              <ActivityIndicator size="large" color="#fff" />
+            ) : (
+              <MaterialCommunityIcons name="camera" size={36} color="#fff" />
+            )}
           </TouchableOpacity>
+        ) : (
+          /* Follow-up buttons when result exists */
+          <View style={styles.followUpActions}>
+            {overlayMode === 'speaking' ? (
+              <TouchableOpacity
+                style={[styles.primaryButton, { backgroundColor: Colors.error }]}
+                onPress={async () => { await stopPlayback(); audioStore.setState('IDLE'); }}
+                activeOpacity={0.85}
+              >
+                <MaterialCommunityIcons name="stop" size={36} color="#fff" />
+              </TouchableOpacity>
+            ) : overlayMode === 'recording' ? (
+              <TouchableOpacity
+                style={[styles.primaryButton, { backgroundColor: Colors.error }]}
+                onPress={handleFollowUpQuestion}
+                activeOpacity={0.85}
+              >
+                <MaterialCommunityIcons name="stop" size={36} color="#fff" />
+              </TouchableOpacity>
+            ) : overlayMode === 'processing' ? (
+              <View style={[styles.primaryButton, styles.primaryButtonDisabled]}>
+                <ActivityIndicator size="large" color="#fff" />
+              </View>
+            ) : (
+              <TouchableOpacity
+                style={[styles.primaryButton, { backgroundColor: '#2196F3' }]}
+                onPress={handleFollowUpQuestion}
+                activeOpacity={0.85}
+              >
+                <MaterialCommunityIcons name="microphone" size={36} color="#fff" />
+              </TouchableOpacity>
+            )}
+          </View>
         )}
 
-        <TouchableOpacity
-          style={[
-            styles.primaryButton,
-            canAskFollowUp && styles.primaryButtonFollowUp,
-            overlayMode === 'recording' && styles.primaryButtonRecording,
-            primaryButtonDisabled && styles.primaryButtonDisabled,
-          ]}
-          onPress={handlePrimaryPress}
-          disabled={primaryButtonDisabled}
-          activeOpacity={0.85}
-        >
-          {overlayMode === 'analyzing' || overlayMode === 'processing' ? (
-            <ActivityIndicator size="large" color="#fff" />
-          ) : (
-            <MaterialCommunityIcons name={micIcon} size={36} color="#fff" />
-          )}
-        </TouchableOpacity>
         <Text style={styles.bottomHint}>
-          {overlayMode === 'speaking' ? t('tapToStop') : canAskFollowUp ? t('askFollowUp') : t('diagnose')}
+          {!hasResult
+            ? (overlayMode === 'analyzing' ? t('analyzing') : t('diagnose'))
+            : overlayMode === 'speaking' ? t('tapToStop')
+            : overlayMode === 'recording' ? t('listening')
+            : overlayMode === 'processing' ? t('thinking')
+            : t('askFollowUp')
+          }
         </Text>
-      </LinearGradient>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0d1f0f' },
-  cameraZone: { flex: 0.45, position: 'relative', overflow: 'hidden' },
+  container: { flex: 1, backgroundColor: Colors.background },
+
+  // ── Full camera zone (before result) ──
+  cameraZoneFull: { flex: 0.55, position: 'relative', overflow: 'hidden' },
   cameraPlaceholder: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   scanFrame: { width: 220, height: 220, alignItems: 'center', justifyContent: 'center', position: 'relative' },
   corner: { position: 'absolute', width: 28, height: 28, borderColor: 'rgba(76,175,80,0.8)', borderWidth: 3 },
@@ -396,15 +448,43 @@ const styles = StyleSheet.create({
   orb: { width: 80, height: 80, borderRadius: 40, alignItems: 'center', justifyContent: 'center' },
   overlayStatus: { fontSize: FontSize.lg, color: '#fff', fontWeight: '700', marginTop: Spacing.sm },
 
-  retakeButton: { position: 'absolute', top: 50, right: 16, width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(0,0,0,0.6)', alignItems: 'center', justifyContent: 'center' },
+  // ── Compact image strip (after result) ──
+  imageStrip: { height: 120, position: 'relative', overflow: 'hidden' },
+  stripImage: { width: '100%', height: '100%', resizeMode: 'cover' },
+  stripOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    paddingHorizontal: 16,
+  },
+  retakeChip: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: 'rgba(0,0,0,0.6)', paddingHorizontal: 12, paddingVertical: 6,
+    borderRadius: 20,
+  },
+  retakeChipText: { fontSize: 12, color: '#fff', fontWeight: '700' },
 
-  // Result card
-  resultCard: { flex: 0.55, backgroundColor: Colors.background, borderTopLeftRadius: 24, borderTopRightRadius: 24, marginTop: -20, paddingHorizontal: Spacing.md, paddingTop: Spacing.md },
+  // ── Result card ──
+  resultCard: {
+    flex: 1, backgroundColor: Colors.background,
+    borderTopLeftRadius: 24, borderTopRightRadius: 24,
+    marginTop: -16, paddingHorizontal: Spacing.md, paddingTop: Spacing.md,
+  },
   resultHeader: { flexDirection: 'row', alignItems: 'center', paddingBottom: Spacing.sm, borderBottomWidth: 1, borderBottomColor: Colors.border },
   diseaseName: { fontSize: 18, fontWeight: '800', color: Colors.textPrimary },
   diseaseNameEn: { fontSize: 13, color: Colors.textMuted, marginTop: 2 },
   confBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
   confText: { fontSize: 14, fontWeight: '800' },
+
+  nowPlayingBar: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    backgroundColor: Colors.primarySoft, paddingHorizontal: 14, paddingVertical: 10,
+    borderRadius: BorderRadius.lg, marginTop: Spacing.sm,
+  },
+  nowPlayingText: { flex: 1, fontSize: 14, fontWeight: '700', color: Colors.primary },
+
   resultSection: { marginTop: Spacing.md },
   sectionLabel: { fontSize: 14, fontWeight: '700', color: Colors.primary, marginBottom: 6 },
   sectionText: { fontSize: 14, color: Colors.textSecondary, lineHeight: 22 },
@@ -418,16 +498,15 @@ const styles = StyleSheet.create({
   followUpCard: { flexDirection: 'row', backgroundColor: Colors.surface, borderRadius: BorderRadius.lg, padding: Spacing.md, marginTop: Spacing.md, gap: 8, borderWidth: 1, borderColor: Colors.primary + '20' },
   followUpText: { flex: 1, fontSize: 14, color: Colors.textPrimary, lineHeight: 22 },
 
-  // Bottom bar
-  bottomBar: { paddingHorizontal: Spacing.md, paddingBottom: 28, paddingTop: Spacing.sm, alignItems: 'center' },
-  newPhotoBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: Colors.primary, paddingHorizontal: 16, paddingVertical: 8, borderRadius: BorderRadius.full, marginBottom: 6 },
-  newPhotoBtnText: { fontSize: 13, color: '#fff', fontWeight: '700' },
+  // ── Bottom bar ──
+  bottomBar: {
+    position: 'absolute', bottom: 0, left: 0, right: 0,
+    paddingBottom: 28, paddingTop: Spacing.sm, alignItems: 'center',
+    backgroundColor: Colors.background + 'EE',
+  },
   followUpHint: { fontSize: 12, color: Colors.textMuted, marginBottom: 6 },
-  stopBar: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#FFF0F0', paddingHorizontal: 16, paddingVertical: 8, borderRadius: BorderRadius.full, marginBottom: 8 },
-  stopBarText: { fontSize: 14, fontWeight: '700', color: Colors.error },
+  followUpActions: { flexDirection: 'row', alignItems: 'center', gap: 16 },
   primaryButton: { width: 72, height: 72, borderRadius: 36, backgroundColor: Colors.primary, alignItems: 'center', justifyContent: 'center', ...Shadows.lg },
-  primaryButtonFollowUp: { backgroundColor: '#2196F3' },
-  primaryButtonRecording: { backgroundColor: Colors.error },
   primaryButtonDisabled: { backgroundColor: Colors.disabled },
   bottomHint: { fontSize: 12, color: Colors.textMuted, marginTop: 6 },
 });
