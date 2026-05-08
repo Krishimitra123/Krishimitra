@@ -104,12 +104,12 @@ def _build_audio_text(finding: DiagnosisFinding, lang: str) -> list[str]:
         body_parts.append(f'Cause: {finding.probable_cause}.' if is_en else f'ಕಾರಣ: {finding.probable_cause}.')
 
     if finding.organic_treatments:
-        body_parts.append('Organic Treatment:' if is_en else 'ಜೈವಿಕ ಚಿಕಿತ್ಸೆ:')
-        for i, t in enumerate(finding.organic_treatments[:3], 1):
-            body_parts.append(f'{i}. {t}.')
+        body_parts.append('Organic treatments include:' if is_en else 'ಸಾವಯವ ಪರಿಹಾರಗಳು ಹೀಗಿವೆ:')
+        for t in finding.organic_treatments[:3]:
+            body_parts.append(f'{t}.')
 
     if finding.prevention_measures:
-        body_parts.append('Prevention:' if is_en else 'ಮುಂಜಾಗ್ರತೆ:')
+        body_parts.append('To prevent this in future:' if is_en else 'ಮುಂದೆ ಇದು ಬರದಂತೆ ತಡೆಯಲು:')
         for p in finding.prevention_measures[:2]:
             body_parts.append(f'{p}.')
 

@@ -70,7 +70,7 @@ async def retrieve(nlp_result: NLPResult) -> list:
         result = await loop.run_in_executor(
             None,
             lambda: genai.embed_content(
-                model="models/embedding-001",
+                model="models/text-embedding-004",
                 content=query_text,
                 task_type="retrieval_query",
             )

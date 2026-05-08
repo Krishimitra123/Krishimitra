@@ -252,7 +252,7 @@ async def text_to_audio(text: str, api_key: str, language_code: str = 'kn-IN') -
         chunk_audio = ''
         for speaker_name in speaker_candidates:
             try:
-                async with httpx.AsyncClient(timeout=10.0) as client:
+                async with httpx.AsyncClient(timeout=15.0) as client:
                     resp = await asyncio.wait_for(
                         client.post(
                             'https://api.sarvam.ai/text-to-speech',
@@ -267,19 +267,25 @@ async def text_to_audio(text: str, api_key: str, language_code: str = 'kn-IN') -
                                 'model': 'bulbul:v3',
                             },
                         ),
-                        timeout=9.0,
+                        timeout=14.0,
                     )
 
                 if resp.status_code == 200:
-                    audios = resp.json().get('audios', [])
+                    data = resp.json()
+                    audios = data.get('audios', [])
                     if audios and audios[0]:
                         chunk_audio = audios[0]
-                        print(f'[M1-TTS] Chunk {i+1}/{len(chunks)} via {speaker_name}: {len(chunk_audio)} chars')
+                        print(f'[M1-TTS] Chunk {i+1}/{len(chunks)} via {speaker_name} OK ({len(chunk_audio)} chars)')
                         break
-
-                print(f'[M1-TTS] Chunk {i+1} error {resp.status_code} via {speaker_name}: {resp.text[:200]}')
+                    else:
+                        print(f'[M1-TTS] Chunk {i+1} via {speaker_name} returned 200 but no audio data')
+                else:
+                    print(f'[M1-TTS] Chunk {i+1} error {resp.status_code} via {speaker_name}: {resp.text[:200]}')
             except Exception as e:
-                print(f'[M1-TTS] Chunk {i+1} failed via {speaker_name}: {e}')
+                import traceback
+                print(f'[M1-TTS] Chunk {i+1} exception via {speaker_name}: {type(e).__name__}: {str(e)}')
+                # Small sleep before retry with next speaker or next attempt
+                await asyncio.sleep(0.5)
 
         if chunk_audio:
             audio_parts.append(chunk_audio)
@@ -298,7 +304,7 @@ async def text_to_audio(text: str, api_key: str, language_code: str = 'kn-IN') -
     return combined
 
 
-def _split_text_for_tts(text: str, max_chars: int = 450) -> list[str]:
+def _split_text_for_tts(text: str, max_chars: int = 300) -> list[str]:
     """Split text on sentence boundaries (।, ., !, ?) into chunks under max_chars."""
     if len(text) <= max_chars:
         return [text]

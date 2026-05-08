@@ -67,8 +67,9 @@ If the image does NOT show a plant part clearly, return:
 If a plant is visible, look for:
 - Color changes (yellowing, browning, spots)
 - Texture changes (wilting, curling, powdery growth)
-- Structural damage (holes, rot, lesions)
-- Distribution of symptoms (veins, edges, base)
+- Structural damage (holes, rot, lesions, bark peeling, trunk oozing)
+- Root health (color, mushiness, nodules, galling)
+- Distribution of symptoms (veins, edges, base, whole plant)
 
 Reply with valid JSON:
 {
