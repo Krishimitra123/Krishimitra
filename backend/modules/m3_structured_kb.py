@@ -52,14 +52,17 @@ def format_recipe_for_response(record: dict) -> str:
     lines.append("")
 
     for ing in record.get("ingredients", []):
-        qty  = ing.get("quantity", "")
-        unit = ing.get("unit", "")
-        item = ing.get("item", "")
-        note = ing.get("notes", "")
-        line = f"- {qty} {unit} {item}".strip()
-        if note:
-            line += f" *({note})*"
-        lines.append(line)
+        if isinstance(ing, dict):
+            qty  = ing.get("quantity", "")
+            unit = ing.get("unit", "")
+            item = ing.get("item", "")
+            note = ing.get("notes", "")
+            line = f"- {qty} {unit} {item}".strip()
+            if note:
+                line += f" *({note})*"
+            lines.append(line)
+        else:
+            lines.append(f"- {ing}")
     lines.append("")
 
     for i, step in enumerate(record.get("preparation_steps_en", []), 1):

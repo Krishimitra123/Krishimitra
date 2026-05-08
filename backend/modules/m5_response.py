@@ -97,28 +97,73 @@ async def _call_mistral(system: str, user_message: str, history: list | None = N
             messages.append({'role': h['role'], 'content': h['content']})
     messages.append({'role': 'user', 'content': user_message})
 
-    async with httpx.AsyncClient(timeout=20.0) as client:
-        resp = await client.post(
-            'https://api.mistral.ai/v1/chat/completions',
-            headers={
-                'Authorization': f'Bearer {api_key}',
-                'Content-Type': 'application/json',
-            },
-            json={
-                'model': model,
-                'messages': messages,
-                'temperature': 0.3,
-                'max_tokens': 500,
-            }
-        )
+    try:
+        async with httpx.AsyncClient(timeout=20.0) as client:
+            resp = await client.post(
+                'https://api.mistral.ai/v1/chat/completions',
+                headers={
+                    'Authorization': f'Bearer {api_key}',
+                    'Content-Type': 'application/json',
+                },
+                json={
+                    'model': model,
+                    'messages': messages,
+                    'temperature': 0.3,
+                    'max_tokens': 500,
+                }
+            )
 
-    if resp.status_code == 200:
-        text = resp.json()['choices'][0]['message']['content'].strip()
-        print(f'[M5] Mistral OK — {len(text)} chars')
-        return _strip_chemicals(text)
-    else:
-        print(f'[M5] Mistral error {resp.status_code}: {resp.text[:200]}')
+        if resp.status_code == 200:
+            text = resp.json()['choices'][0]['message']['content'].strip()
+            print(f'[M5] Mistral OK — {len(text)} chars')
+            return _strip_chemicals(text)
+        else:
+            print(f'[M5] Mistral error {resp.status_code}: {resp.text[:200]}')
+    except Exception as e:
+        print(f'[M5] Mistral failed: {e}')
+    
+    return ''
+
+async def _call_gemini_fallback(system: str, user_message: str, history: list | None = None) -> str:
+    """Fallback to Gemini 2.0 Flash if Mistral fails (e.g. 429 quota limit)."""
+    key = os.environ.get('GEMINI_API_KEY', '').strip()
+    if not key:
         return ''
+        
+    url = f'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={key}'
+    
+    parts = []
+    parts.append({'text': f"SYSTEM PROMPT (Follow strictly):\n{system}\n\n"})
+    
+    if history:
+        for h in history[-6:]:
+            prefix = "Farmer" if h['role'] == 'user' else "KrishiMitra"
+            parts.append({'text': f"{prefix}: {h['content']}\n"})
+            
+    parts.append({'text': f"Farmer: {user_message}\nKrishiMitra:"})
+    
+    payload = {
+        'contents': [{'parts': parts}],
+        'generationConfig': {
+            'temperature': 0.3,
+            'maxOutputTokens': 500,
+        },
+    }
+    
+    try:
+        async with httpx.AsyncClient(timeout=20.0) as client:
+            resp = await client.post(url, json=payload)
+            
+        if resp.status_code == 200:
+            text = resp.json()['candidates'][0]['content']['parts'][0]['text'].strip()
+            print(f'[M5] Gemini Fallback OK — {len(text)} chars')
+            return _strip_chemicals(text)
+        else:
+            print(f'[M5] Gemini Fallback error {resp.status_code}: {resp.text[:200]}')
+    except Exception as e:
+        print(f'[M5] Gemini Fallback failed: {e}')
+        
+    return ''
 
 
 async def generate(
@@ -237,6 +282,10 @@ async def generate(
         history_dicts = [{'role': m.role, 'content': m.content} for m in conversation_history]
 
     answer = await _call_mistral(SYSTEM_PROMPT, user_message, history=history_dicts)
+    
+    if not answer.strip():
+        print('[M5] Falling back to Gemini 2.0 Flash...')
+        answer = await _call_gemini_fallback(SYSTEM_PROMPT, user_message, history=history_dicts)
 
     if skb_record and not answer.strip():
         answer = m3_structured_kb.format_recipe_for_response(skb_record)
