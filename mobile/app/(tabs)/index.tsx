@@ -14,6 +14,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { Colors, FontSize, Spacing, BorderRadius, Shadows } from '@/constants/theme';
 import { useUserStore } from '@/stores/useUserStore';
+import { t } from '@/constants/i18n';
 import { useSessionStore } from '@/stores/useSessionStore';
 import { useAudioStore } from '@/stores/useAudioStore';
 import { startRecording, stopRecordingAndGetBase64, playBase64Audio, stopPlayback, speakText } from '@/services/voiceService';
@@ -156,7 +157,7 @@ export default function HomeScreen() {
             await speakText(response.answer_text_kn);
           }
         } catch (e: any) {
-          addMessage({ id: (Date.now() + 1).toString(), role: 'assistant', text: isEn ? 'Service Unavailable' : 'ಸೇವೆ ಲಭ್ಯವಿಲ್ಲ', sources: [], timestamp: Date.now(), is_diagnosis: false });
+          addMessage({ id: (Date.now() + 1).toString(), role: 'assistant', text: t('serviceUnavailable'), sources: [], timestamp: Date.now(), is_diagnosis: false });
         }
         audioStore.setState('IDLE');
       }
@@ -187,7 +188,7 @@ export default function HomeScreen() {
         await speakText(response.answer_text_kn);
       }
     } catch {
-      addMessage({ id: (Date.now() + 1).toString(), role: 'assistant', text: isEn ? 'Service Unavailable' : 'ಸೇವೆ ಲಭ್ಯವಿಲ್ಲ', sources: [], timestamp: Date.now(), is_diagnosis: false });
+      addMessage({ id: (Date.now() + 1).toString(), role: 'assistant', text: t('serviceUnavailable'), sources: [], timestamp: Date.now(), is_diagnosis: false });
     }
     setQuickLoading(null);
   }, [quickLoading, currentSession, isEn]);
@@ -196,7 +197,7 @@ export default function HomeScreen() {
   const isProcessing = audioStore.state === 'STT_PROCESSING';
   const isPlaying = audioStore.state === 'PLAYING';
 
-  const micLabel = isRecording ? (isEn ? 'Tap to Stop' : 'ನಿಲ್ಲಿಸಲು ಒತ್ತಿ') : isProcessing ? (isEn ? 'Thinking...' : 'ಯೋಚಿಸುತ್ತಿದೆ...') : isPlaying ? (isEn ? 'Listening...' : 'ಕೇಳಿ...') : (isEn ? 'Tap to Speak' : 'ಒತ್ತಿ ಮಾತನಾಡಿ');
+  const micLabel = isRecording ? t('tapToStop') : isProcessing ? t('thinking') : isPlaying ? t('listening') : t('tapToSpeak');
 
   return (
     <View style={styles.container}>
@@ -208,8 +209,8 @@ export default function HomeScreen() {
         style={styles.header}
       >
         <Animated.View style={{ opacity: greetingOpacity }}>
-          <Text style={styles.namaste}>{isEn ? 'Namaste 🙏' : 'ನಮಸ್ಕಾರ 🙏'}</Text>
-          <Text style={styles.farmerName}>{farmer_name || (isEn ? 'Farmer' : 'ರೈತರೇ')}</Text>
+          <Text style={styles.namaste}>{t('namaste')}</Text>
+          <Text style={styles.farmerName}>{farmer_name || t('farmer')}</Text>
           {district ? <Text style={styles.districtText}>{district}</Text> : null}
         </Animated.View>
       </LinearGradient>
@@ -234,13 +235,13 @@ export default function HomeScreen() {
               {isProcessing && (
                 <View style={styles.processingBadge}>
                   <ActivityIndicator size="small" color={Colors.primary} />
-                  <Text style={styles.processingText}>{isEn ? 'Thinking...' : 'ಯೋಚಿಸುತ್ತಿದೆ...'}</Text>
+                  <Text style={styles.processingText}>{t('thinking')}</Text>
                 </View>
               )}
               {isPlaying && (
                 <View style={styles.playingBadge}>
                   <WaveformIndicator active color={Colors.primary} />
-                  <Text style={styles.playingText}>{isEn ? 'Playing...' : 'ಕೇಳಿ...'}</Text>
+                  <Text style={styles.playingText}>{t('listening')}</Text>
                 </View>
               )}
             </View>
@@ -274,7 +275,7 @@ export default function HomeScreen() {
 
         {/* Quick Actions */}
         <View style={styles.quickSection}>
-          <Text style={styles.sectionLabel}>{isEn ? 'Quick Actions' : 'ತ್ವರಿತ ಸಹಾಯ'}</Text>
+          <Text style={styles.sectionLabel}>{t('quickActions')}</Text>
           <View style={styles.quickRow}>
             {QUICK_ACTIONS.map((a) => (
               <TouchableOpacity
@@ -312,7 +313,7 @@ export default function HomeScreen() {
                   <View style={styles.widgetRow}>
                     <MaterialCommunityIcons name="weather-sunny" size={32} color={Colors.accent} />
                     <View style={{ marginLeft: Spacing.md, flex: 1 }}>
-                      <Text style={styles.widgetTitle}>{isEn ? 'Weather' : 'ಹವಾಮಾನ / Weather'}</Text>
+                      <Text style={styles.widgetTitle}>{t('weather')}</Text>
                       <Text style={styles.widgetValue}>{Math.round(weather.current.temperature_2m)}°C — {weather.district}</Text>
                     </View>
                     <View style={{ alignItems: 'flex-end' }}>
@@ -332,7 +333,7 @@ export default function HomeScreen() {
                 <View style={styles.widgetRow}>
                   <MaterialCommunityIcons name="chart-line" size={32} color={Colors.accent} />
                   <View style={{ marginLeft: Spacing.md, flex: 1 }}>
-                    <Text style={styles.widgetTitle}>{isEn ? 'Market Prices' : 'ಮಾರುಕಟ್ಟೆ ಬೆಲೆ / Market'}</Text>
+                    <Text style={styles.widgetTitle}>{t('market')}</Text>
                     {marketData.map((m, mi) => (
                       <View key={mi}>
                         {m.records?.slice(0, 1).map((p, i) => (

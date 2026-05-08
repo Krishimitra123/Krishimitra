@@ -13,8 +13,8 @@ from models.schemas import NLPResult, Intent
 SUPABASE_URL  = os.environ.get('SUPABASE_URL', '')
 SUPABASE_KEY  = os.environ.get('SUPABASE_SERVICE_KEY', '')
 GEMINI_KEY    = os.environ.get('GEMINI_API_KEY', '')
-THRESHOLD     = float(os.environ.get('RAG_SIMILARITY_THRESHOLD', '0.35'))
-TOP_K         = int(os.environ.get('RAG_TOP_K', '5'))
+THRESHOLD     = float(os.environ.get('RAG_SIMILARITY_THRESHOLD', '0.15'))
+TOP_K         = int(os.environ.get('RAG_TOP_K', '3'))
 
 # ── Load once at startup ─────────────────────────────────────────
 _client = None

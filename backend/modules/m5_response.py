@@ -4,7 +4,7 @@ Uses Mistral (mistral-small-latest) via REST API for all text synthesis.
 Gemini is NOT used here — only in M4 for vision.
 
 Architecture:
-  NLP result + SKB record + RAG chunks → Mistral → Kannada answer → TTS
+  NLP result + SKB record + RAG chunks → Mistral → answer in user's language → TTS
 """
 
 import httpx
@@ -13,63 +13,42 @@ import re
 
 from modules import m3_structured_kb
 
-# ── Pre-defined responses (no LLM needed) ────────────────────────
-COMING_SOON_KN = (
-    "ಈ ವಿಷಯ ಶೀಘ್ರದಲ್ಲೇ KrishiMitra ಗೆ ಸೇರಿಸಲಾಗುವುದು. "
-    "ಪ್ರಸ್ತುತ ಮಣ್ಣಿನ ಫಲವತ್ತತೆ ಮತ್ತು ಜೈವಿಕ ಗೊಬ್ಬರ ತಯಾರಿಕೆಯ "
-    "ಮಾಹಿತಿ ನೀಡಲು ಸಿದ್ಧರಾಗಿದ್ದೇವೆ."
-)
-OUT_OF_DOMAIN_KN = (
-    "ನಾನು ಕೇವಲ ಜೈವಿಕ ಕೃಷಿ ಮತ್ತು ಮಣ್ಣಿನ ಫಲವತ್ತತೆ ಬಗ್ಗೆ ಸಹಾಯ ಮಾಡಬಲ್ಲೆ. "
-    "ಜೀವಾಮೃತ, ನುಗ್ಗೆ ಮಲ್ಚಿಂಗ್, ಮಣ್ಣಿನ ಆರೋಗ್ಯ ಬಗ್ಗೆ ಕೇಳಿ."
-)
-KVK_REDIRECT_KN = (
-    "ಈ ವಿಷಯದ ಬಗ್ಗೆ ಖಚಿತ ಮಾಹಿತಿ ಇಲ್ಲ. "
-    "ದಯವಿಟ್ಟು ನಿಮ್ಮ ಸ್ಥಳೀಯ ಕೃಷಿ ವಿಜ್ಞಾನ ಕೇಂದ್ರ (KVK) ಸಂಪರ್ಕಿಸಿ."
-)
+# ── Mistral system prompt — HUMAN-LIKE, ADAPTIVE ─────────────────
+SYSTEM_PROMPT = """You are KrishiMitra — a wise, experienced Karnataka farmer who has practiced organic farming for 35+ years. You speak like a warm, knowledgeable neighbour — NOT like a textbook, NOT like an AI.
 
-# ── Mistral system prompt ─────────────────────────────────────────
-SYSTEM_PROMPT = """You are KrishiMitra — a 60-year-old wise Karnataka farmer who has practiced organic farming for 35+ years. You are NOT an AI. You are a trusted village elder everyone calls KrishiMitra Thatha (grandfather).
+PERSONALITY:
+- Warm, patient, encouraging — like a trusted village elder
+- Use natural phrases: "In my experience...", "What works well is..."
+- Be practical and specific — exact quantities, timings, methods
+- Sound like a real human having a conversation
 
-YOUR PERSONALITY:
-- You speak warmly, like a trusted neighbour who knows farming deeply
-- You use real-life examples: "ನನ್ನ ತೋಟದಲ್ಲಿ..." (In my garden...)
-- You are kind, patient, encouraging — never condescending
-- You speak like a human elder, NOT like a textbook or machine
+RESPONSE LENGTH — MATCH THE QUESTION:
+- Simple greeting or yes/no → 1 sentence
+- Specific question (how to make jeevamrutha?) → 2-4 sentences with exact recipe/steps
+- "Tell me more" or "explain in detail" → 5-8 sentences with thorough explanation
+- NEVER pad a short answer. NEVER truncate a detailed request.
 
-VOICE FORMATTING RULES (CRITICAL — your response will be SPOKEN ALOUD):
-- ALWAYS start with farmer's name: "[Name] ಅವರೇ,"
-- Maximum 3 sentences total. Never more than 3.
-- Sentence 1: Acknowledge the issue warmly
-- Sentence 2: What to do (exact action, exact quantity)
-- Sentence 3: When to do it
-- End with: ಮೂಲ: [source]
-- No lists, no bullet points, no headings, no numbered steps — this is spoken word
-- No markdown formatting, no asterisks, no bold text
-- Use simple words a 60-year-old with no schooling can understand
-- Keep total response under 60 words
+VOICE FORMATTING (your response will be SPOKEN ALOUD):
+- Address farmer by name if provided
+- No bullet points, no numbered lists, no headings — write in flowing prose
+- No markdown, no asterisks, no bold text
+- No "Source:" or "Reference:" citations at the end — sources are shown separately in the app
+- Use simple words that any farmer can understand
 
 LANGUAGE RULES:
 - Check the TARGET LANGUAGE in the user message
-- If kn-IN or Kannada: respond ONLY in Kannada script
-- If hi-IN or Hindi: respond in Devanagari Hindi
-- If ta-IN or Tamil: respond in Tamil script
-- If te-IN or Telugu: respond in Telugu script
-- If ml-IN or Malayalam: respond in Malayalam script
-- If en-IN or English: respond in simple English
-- For any other language, respond in that language's native script
-- NEVER mix languages. Pick one and stick to it.
+- Respond ENTIRELY in that language's native script
+- NEVER mix languages in one response
+- Language mapping: kn-IN=Kannada, hi-IN=Hindi, ta-IN=Tamil, te-IN=Telugu, ml-IN=Malayalam, mr-IN=Marathi, bn-IN=Bengali, gu-IN=Gujarati, pa-IN=Punjabi, or-IN=Odia, en-IN=English
 
-DOMAIN RULES:
-- ONLY answer questions about agriculture, farming, soil, pests, organic methods, rural life
-- If asked about non-farming topics: politely refuse in 1 sentence
+DOMAIN:
+- ONLY answer about agriculture, farming, soil, pests, organic methods
+- If asked non-farming topics: politely refuse in 1 sentence in the target language
 - NEVER suggest chemical inputs — ONLY organic solutions
-- NEVER change the farmer's district
-- When citing knowledge, say it naturally like "ಪಾಲೇಕರ್ ಅವರ ಪ್ರಕಾರ..."
+- When you have verified knowledge from the context, use it. When you don't, use your general farming knowledge but be honest about certainty.
 
-JEEVAMRUTHA RECIPE (use when asked):
-- 200L ನೀರು + 10kg ದೇಸಿ ಹಸುವಿನ ಸಗಣಿ + 10L ಗೋಮೂತ್ರ + 2kg ಬೆಲ್ಲ + 2kg ಕಡಲೆಹಿಟ್ಟು + ಒಂದು ಹಿಡಿ ಮಣ್ಣು
-- 48 ಗಂಟೆ ನೆರಳಿನಲ್ಲಿ ಹುದುಗಿಸಿ, ಎಕರೆಗೆ 200L ಪ್ರತಿ 15 ದಿನಕ್ಕೊಮ್ಮೆ"""
+JEEVAMRUTHA RECIPE (when asked):
+200L water + 10kg desi cow dung + 10L cow urine + 2kg jaggery + 2kg besan flour + a handful of soil from under a tree. Ferment 48 hours in shade, stirring twice daily. Apply 200L per acre every 15 days."""
 
 # ── Chemical safety filter ────────────────────────────────────────
 CHEMICAL_BLOCKLIST = [
@@ -91,6 +70,24 @@ def _strip_chemicals(text: str) -> str:
     return text.strip()
 
 
+def _out_of_domain_msg(lang: str) -> str:
+    """Generate out-of-domain message in the user's language."""
+    msgs = {
+        'kn-IN': 'ನಾನು ಕೇವಲ ಕೃಷಿ ಮತ್ತು ಸಾವಯವ ಕೃಷಿ ಬಗ್ಗೆ ಸಹಾಯ ಮಾಡಬಲ್ಲೆ. ಕೃಷಿ ಸಂಬಂಧಿತ ಪ್ರಶ್ನೆ ಕೇಳಿ.',
+        'hi-IN': 'मैं केवल कृषि और जैविक खेती के बारे में मदद कर सकता हूँ। कृपया खेती संबंधित प्रश्न पूछें।',
+        'ta-IN': 'நான் விவசாயம் மற்றும் இயற்கை வேளாண்மை பற்றி மட்டுமே உதவ முடியும்.',
+        'te-IN': 'నేను వ్యవసాయం మరియు సేంద్రీయ వ్యవసాయం గురించి మాత్రమే సహాయం చేయగలను.',
+        'ml-IN': 'എനിക്ക് കൃഷിയെയും ജൈവ കൃഷിയെയും കുറിച്ച് മാത്രമേ സഹായിക്കാൻ കഴിയൂ.',
+        'mr-IN': 'मी केवळ शेती आणि सेंद्रिय शेतीबद्दल मदत करू शकतो.',
+        'bn-IN': 'আমি শুধুমাত্র কৃষি এবং জৈব চাষ সম্পর্কে সাহায্য করতে পারি।',
+        'gu-IN': 'હું ફક્ત ખેતી અને જૈવિક ખેતી વિશે મદદ કરી શકું છું.',
+        'pa-IN': 'ਮੈਂ ਸਿਰਫ਼ ਖੇਤੀ ਅਤੇ ਜੈਵਿਕ ਖੇਤੀ ਬਾਰੇ ਮਦਦ ਕਰ ਸਕਦਾ ਹਾਂ।',
+        'or-IN': 'ମୁଁ କେବଳ କୃଷି ଏବଂ ଜୈବିକ ଚାଷ ବିଷୟରେ ସାହାଯ୍ୟ କରିପାରିବି।',
+        'en-IN': 'I can only help with farming and organic agriculture. Please ask a farming-related question.',
+    }
+    return msgs.get(lang, msgs['kn-IN'])
+
+
 async def _call_mistral(system: str, user_message: str, history: list | None = None) -> str:
     """Call Mistral REST API. Injects conversation history for follow-up support. Hard 20s timeout."""
     api_key = os.environ.get('MISTRAL_API_KEY', '').strip()
@@ -98,7 +95,7 @@ async def _call_mistral(system: str, user_message: str, history: list | None = N
 
     if not api_key:
         print('[M5] ERROR: MISTRAL_API_KEY not set!')
-        return KVK_REDIRECT_KN
+        return ''
 
     # Build messages array: system + history (last 6 turns) + current question
     messages = [{'role': 'system', 'content': system}]
@@ -118,9 +115,8 @@ async def _call_mistral(system: str, user_message: str, history: list | None = N
             json={
                 'model': model,
                 'messages': messages,
-                'temperature': 0.0,
-                'max_tokens': 400,
-
+                'temperature': 0.3,
+                'max_tokens': 500,
             }
         )
 
@@ -130,7 +126,7 @@ async def _call_mistral(system: str, user_message: str, history: list | None = N
         return _strip_chemicals(text)
     else:
         print(f'[M5] Mistral error {resp.status_code}: {resp.text[:200]}')
-        return KVK_REDIRECT_KN
+        return ''
 
 
 async def generate(
@@ -145,18 +141,15 @@ async def generate(
     """
     Main M5 entry point.
     Returns (answer_text, sources_list)
-    conversation_history: list of {role, content} dicts for follow-up support.
-    preferred_language: language code for response generation (kn-IN, hi-IN, ta-IN, etc.)
     """
     from models.schemas import Intent
 
     rag_chunks = rag_chunks or []
+    language_code = (preferred_language or tts_language or 'kn-IN').strip()
 
     # ── Handle special intents without any LLM call ────────────────
     if nlp_result.intent == Intent.OUT_OF_DOMAIN:
-        return OUT_OF_DOMAIN_KN, []
-    if nlp_result.intent == Intent.COMING_SOON:
-        return COMING_SOON_KN, []
+        return _out_of_domain_msg(language_code), []
 
     # ── Build context from RAG chunks ──────────────────────────────
     district = nlp_result.entities.get('district') or ''
@@ -167,7 +160,6 @@ async def generate(
         for msg in conversation_history:
             content = msg.content if hasattr(msg, 'content') else str(msg)
             if not district:
-                # Look for district mentions in past messages
                 import re
                 for d_name in ['Ballari', 'Bellary', 'Dharwad', 'Bangalore', 'Mysore', 'Hubli',
                                'Belgaum', 'Gulbarga', 'Raichur', 'Shimoga', 'Tumkur', 'Hassan',
@@ -185,9 +177,9 @@ async def generate(
     context_block = ''
     sources = []
 
-    # SKB record (structured knowledge base — Shinan's data)
+    # SKB record (structured knowledge base)
     if skb_record:
-        context_block += f"\n\nVERIFIED RECIPE FROM {skb_record.get('primary_source', 'Palekar ZBNF')}:\n"
+        context_block += f"\n\nVERIFIED RECIPE FROM {skb_record.get('primary_source', 'Organic Farming Guide')}:\n"
 
         raw_ingredients = skb_record.get('ingredients', [])
         if isinstance(raw_ingredients, list):
@@ -209,42 +201,40 @@ async def generate(
         elif steps:
             context_block += f"  Step 1: {steps}\n"
 
-        sources.append(skb_record.get('primary_source', 'Palekar ZBNF Vol 1'))
+        sources.append(skb_record.get('primary_source', 'Organic Farming Guide'))
 
-    # RAG chunks from Supabase (Rikash's embedded documents)
+    # RAG chunks from Supabase
     if rag_chunks:
         context_block += "\n\nRELEVANT KNOWLEDGE FROM VERIFIED SOURCES:\n"
         for i, chunk in enumerate(rag_chunks[:5], 1):
             context_block += f"\n--- Source {i}: {chunk.source_doc} (p.{chunk.source_page}) ---\n"
             context_block += f"{chunk.content}\n"
-            # Add unique sources
             cite = chunk.citation()
             if cite not in sources:
                 sources.append(cite)
-        context_block += "\n\nIMPORTANT: Use the above verified knowledge to answer. Cite sources when possible."
+        context_block += "\n\nUse the above verified knowledge to answer. Weave the information naturally into your response."
 
-    # Map language code to Sarvam format for the TARGET LANGUAGE instruction
+    # Map language code to readable name
     LANG_NAMES = {
-        'kn-IN': 'kn-IN (Kannada)', 'kn': 'kn-IN (Kannada)',
-        'en-IN': 'en-IN (English)', 'en': 'en-IN (English)',
-        'hi-IN': 'hi-IN (Hindi)', 'hi': 'hi-IN (Hindi)',
-        'ta-IN': 'ta-IN (Tamil)', 'ta': 'ta-IN (Tamil)',
-        'te-IN': 'te-IN (Telugu)', 'te': 'te-IN (Telugu)',
-        'ml-IN': 'ml-IN (Malayalam)', 'ml': 'ml-IN (Malayalam)',
-        'mr-IN': 'mr-IN (Marathi)', 'mr': 'mr-IN (Marathi)',
-        'bn-IN': 'bn-IN (Bengali)', 'bn': 'bn-IN (Bengali)',
-        'gu-IN': 'gu-IN (Gujarati)', 'gu': 'gu-IN (Gujarati)',
-        'pa-IN': 'pa-IN (Punjabi)', 'pa': 'pa-IN (Punjabi)',
-        'or-IN': 'or-IN (Odia)', 'od': 'or-IN (Odia)',
+        'kn-IN': 'Kannada (ಕನ್ನಡ)', 'kn': 'Kannada (ಕನ್ನಡ)',
+        'en-IN': 'English', 'en': 'English',
+        'hi-IN': 'Hindi (हिंदी)', 'hi': 'Hindi (हिंदी)',
+        'ta-IN': 'Tamil (தமிழ்)', 'ta': 'Tamil (தமிழ்)',
+        'te-IN': 'Telugu (తెలుగు)', 'te': 'Telugu (తెలుగు)',
+        'ml-IN': 'Malayalam (മലയാളം)', 'ml': 'Malayalam (മലയാളം)',
+        'mr-IN': 'Marathi (मराठी)', 'mr': 'Marathi (मराठी)',
+        'bn-IN': 'Bengali (বাংলা)', 'bn': 'Bengali (বাংলা)',
+        'gu-IN': 'Gujarati (ગુજરાતી)', 'gu': 'Gujarati (ગુજરાતી)',
+        'pa-IN': 'Punjabi (ਪੰਜਾਬੀ)', 'pa': 'Punjabi (ਪੰਜਾਬੀ)',
+        'or-IN': 'Odia (ଓଡ଼ିଆ)', 'od': 'Odia (ଓଡ଼ିଆ)',
     }
-    language_code = (preferred_language or tts_language or 'kn-IN').strip()
-    target_lang = LANG_NAMES.get(language_code, 'kn-IN (Kannada)')
+    target_lang = LANG_NAMES.get(language_code, 'Kannada (ಕನ್ನಡ)')
 
     user_message = (
         f"Farmer: {farmer_name}\n"
-        f"District: {district}, Karnataka\n"
+        f"District: {district}\n"
         f"Crop: {crop}\n"
-        f"TARGET LANGUAGE: {target_lang}\n"
+        f"TARGET LANGUAGE: {target_lang} — respond ENTIRELY in this language\n"
         f"Question: {nlp_result.raw_transcript}"
         f"{context_block}"
     )
@@ -256,11 +246,17 @@ async def generate(
 
     answer = await _call_mistral(SYSTEM_PROMPT, user_message, history=history_dicts)
 
-    if skb_record and (answer == KVK_REDIRECT_KN or not answer.strip()):
+    if skb_record and not answer.strip():
         answer = m3_structured_kb.format_recipe_for_response(skb_record)
 
-    if not sources:
-        sources = ['ಸುಭಾಷ್ ಪಾಲೇಕರ್ ZBNF', 'ICAR ಸಾವಯವ ಕೃಷಿ ಮಾರ್ಗದರ್ಶಿ']
+    if not answer.strip():
+        # Fallback message in user's language
+        fallbacks = {
+            'kn-IN': 'ಕ್ಷಮಿಸಿ, ಸರ್ವರ್ ಸ್ವಲ್ಪ ನಿಧಾನವಾಗಿದೆ. ದಯವಿಟ್ಟು ಮತ್ತೊಮ್ಮೆ ಕೇಳಿ.',
+            'hi-IN': 'क्षमा करें, सर्वर धीमा है। कृपया दोबारा पूछें।',
+            'en-IN': 'Sorry, the server is slow right now. Please try again.',
+        }
+        answer = fallbacks.get(language_code, fallbacks['kn-IN'])
 
+    # Don't add fake sources — only return what we actually have
     return answer, sources
-

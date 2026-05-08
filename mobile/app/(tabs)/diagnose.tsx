@@ -12,6 +12,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Colors, FontSize, Spacing, BorderRadius, Shadows } from '@/constants/theme';
+import { t } from '@/constants/i18n';
 import { captureImageWithUri } from '@/services/diagnosisService';
 import { playBase64Audio, startRecording, stopRecordingAndGetBase64, stopPlayback } from '@/services/voiceService';
 import { sendDiagnosis, sendVoiceQuery, ConversationTurn } from '@/services/queryService';
@@ -222,7 +223,7 @@ export default function DiagnoseScreen() {
               <View style={[styles.corner, styles.cornerBR]} />
               <MaterialCommunityIcons name="leaf-circle-outline" size={64} color="rgba(76,175,80,0.5)" />
             </View>
-            <Text style={styles.cameraHint}>{isEn ? 'Take a photo of a leaf or plant' : 'ಎಲೆ ಅಥವಾ ಸಸ್ಯದ ಫೋಟೋ ತೆಗೆಯಿರಿ'}</Text>
+            <Text style={styles.cameraHint}>{t('takePhoto')}</Text>
           </LinearGradient>
         )}
 
@@ -240,10 +241,10 @@ export default function DiagnoseScreen() {
             </Animated.View>
             <WaveformBars active />
             <Text style={styles.overlayStatus}>
-              {overlayMode === 'analyzing' ? (isEn ? 'Analyzing...' : 'ವಿಶ್ಲೇಷಿಸುತ್ತಿದೆ...') :
-               overlayMode === 'recording' ? (isEn ? 'Listening...' : 'ಕೇಳುತ್ತಿದೆ...') :
-               overlayMode === 'processing' ? (isEn ? 'Thinking...' : 'ಯೋಚಿಸುತ್ತಿದೆ...') :
-               overlayMode === 'speaking' ? (isEn ? 'Speaking...' : 'ಹೇಳುತ್ತಿದೆ...') : ''}
+              {overlayMode === 'analyzing' ? t('analyzing') :
+               overlayMode === 'recording' ? t('listening') :
+               overlayMode === 'processing' ? t('thinking') :
+               overlayMode === 'speaking' ? t('speaking') : ''}
             </Text>
           </View>
         )}
@@ -266,7 +267,7 @@ export default function DiagnoseScreen() {
         {/* Tap zone hint for follow-up mode */}
         {result && canAskFollowUp && (
           <View style={styles.tapHintOverlay}>
-            <Text style={styles.tapHintText}>{isEn ? '📸 Tap to take a new photo' : '📸 ಹೊಸ ಫೋಟೋ ತೆಗೆಯಲು ಕ್ಲಿಕ ಮಾಡಿ'}</Text>
+            <Text style={styles.tapHintText}>{t('tapNewPhoto')}</Text>
           </View>
         )}
       </TouchableOpacity>
@@ -280,11 +281,11 @@ export default function DiagnoseScreen() {
             activeOpacity={0.8}
           >
             <MaterialCommunityIcons name="camera-retake" size={20} color="#fff" />
-            <Text style={styles.newPhotoBtnText}>{isEn ? 'New Photo' : 'ಹೊಸ ಫೋಟೋ'}</Text>
+            <Text style={styles.newPhotoBtnText}>{t('newPhoto')}</Text>
           </TouchableOpacity>
         )}
         {result && canAskFollowUp && (
-          <Text style={styles.followUpHint}>{isEn ? 'Tap Mic to ask a question' : 'ಪ್ರಶ್ನೆ ಕೇಳಲು ಮೈಕ್ ಒತ್ತಿ'}</Text>
+          <Text style={styles.followUpHint}>{t('askFollowUp')}</Text>
         )}
         <TouchableOpacity
           style={[
@@ -304,7 +305,7 @@ export default function DiagnoseScreen() {
           )}
         </TouchableOpacity>
         <Text style={styles.bottomHint}>
-          {canAskFollowUp ? (isEn ? 'Ask Follow-up' : 'ಅಡ್ಡ ಪ್ರಶ್ನೆ') : (isEn ? 'Diagnose' : 'ರೋಗ ಪತ್ತೆ')}
+          {canAskFollowUp ? t('askFollowUp') : t('diagnose')}
         </Text>
       </LinearGradient>
     </View>

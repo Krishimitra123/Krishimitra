@@ -86,11 +86,12 @@ Reply with valid JSON:
 }
 
 === STRICT RULES ===
-1. CONFIDENCE: ONLY > 70 if symptoms are clear and distinct. If vague, use 40-60. If < 40, set needs_retake=true.
-2. TRANSLATION: "Powdery Mildew" -> "ಬೂದಿ ರೋಗ" (ALWAYS). "Late Blight" -> "ಕೊಳೆ ರೋಗ". "Yellow Mosaic" -> "ಹಳದಿ ನಂಜು ರೋಗ".
-3. ORGANIC ONLY: NEVER mention chemicals. Use Jeevamrutha, Beejamrutha, Neem oil, Panchagavya, Trichoderma.
-4. HEALTHY: If no symptoms, plant_health_status="ಆರೋಗ್ಯಕರ", disease_name_kn="ಆರೋಗ್ಯಕರ ಸಸ್ಯ".
-5. BLURRY/DARK: needs_retake=true if analysis is impossible.
+1. CONFIDENCE: >70 only if symptoms are clearly visible. 40-70 if symptoms are present but not distinct. 20-40 if you are guessing. <20 means retake needed.
+2. BE HONEST: If you are not sure, set confidence_pct low (20-40). Do NOT invent diseases. If the plant looks healthy, say so.
+3. TRANSLATION: "Powdery Mildew" -> "ಬೂದಿ ರೋಗ" (ALWAYS). "Late Blight" -> "ಕೊಳೆ ರೋಗ". "Yellow Mosaic" -> "ಹಳದಿ ನಂಜು ರೋಗ".
+4. ORGANIC ONLY: NEVER mention chemicals. Use Jeevamrutha, Beejamrutha, Neem oil, Panchagavya, Trichoderma.
+5. HEALTHY: If no symptoms, plant_health_status="ಆರೋಗ್ಯಕರ", disease_name_kn="ಆರೋಗ್ಯಕರ ಸಸ್ಯ".
+6. BLURRY/DARK: needs_retake=true ONLY if the image is truly unreadable.
 
 Reply ONLY with valid JSON."""
 
@@ -183,8 +184,8 @@ def _build(data: dict, source: str) -> DiagnosisFinding:
         organic_treatments=safe or ['ಸ್ಥಳೀಯ KVK ಸಲಹೆ ಪಡೆಯಿರಿ'],
         prevention_measures=data.get('prevention_measures', []),
         needs_retake=bool(data.get('needs_retake', False)),
-        sources=[source, 'ICAR Crop Protection Guidelines', 'Palekar ZBNF'],
-        is_reliable=conf >= 45 and bool(data.get('disease_name')) and not data.get('needs_retake', False),
+        sources=[source, 'ICAR Crop Protection Guidelines'],
+        is_reliable=conf >= 25 and bool(data.get('disease_name')) and not data.get('needs_retake', False),
     )
 
 
@@ -203,17 +204,12 @@ def _needs_hallucination_guard(finding: DiagnosisFinding) -> bool:
         return True
 
     confidence = float(finding.confidence_pct or 0)
-    if confidence < 45:
+    # Only reject very low confidence — let moderate results through
+    if confidence < 15:
         return True
 
-    disease_blob = f"{finding.disease_name or ''} {finding.disease_name_kn or ''}".lower()
-    symptoms_blob = ' '.join(finding.visual_symptoms or []).lower()
-
-    if any(term in disease_blob for term in POWDERY_MILDEW_TERMS):
-        if not any(term in symptoms_blob for term in ['white', 'powder', 'fuzzy', 'fungal', 'fungus', 'mycelium']):
-            return True
-
-    if not _looks_like_plant_context(finding):
+    # Only check plant context for very confident claims about non-plants
+    if confidence > 60 and not _looks_like_plant_context(finding):
         return True
 
     return False

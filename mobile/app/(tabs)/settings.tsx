@@ -12,6 +12,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Colors, FontSize, Spacing, BorderRadius, Shadows } from '@/constants/theme';
 import { useUserStore } from '@/stores/useUserStore';
 import { CROPS } from '@/constants/crops';
+import { t } from '@/constants/i18n';
 
 const LANGUAGES = [
   { code: 'kn', label: 'ಕನ್ನಡ', sub: 'Kannada' },
@@ -41,7 +42,7 @@ export default function SettingsScreen() {
 
   const handleLanguageSelect = (code: string) => {
     setTtsLanguage(code);
-    const fullCode = code === 'en' ? 'en-IN' : code === 'hi' ? 'hi-IN' : code === 'ta' ? 'ta-IN' : code === 'te' ? 'te-IN' : code === 'ml' ? 'ml-IN' : code === 'mr' ? 'mr-IN' : code === 'bn' ? 'bn-IN' : code === 'gu' ? 'gu-IN' : code === 'pa' ? 'pa-IN' : code === 'od' ? 'od-IN' : 'kn-IN';
+    const fullCode = code === 'en' ? 'en-IN' : code === 'hi' ? 'hi-IN' : code === 'ta' ? 'ta-IN' : code === 'te' ? 'te-IN' : code === 'ml' ? 'ml-IN' : code === 'mr' ? 'mr-IN' : code === 'bn' ? 'bn-IN' : code === 'gu' ? 'gu-IN' : code === 'pa' ? 'pa-IN' : code === 'od' ? 'or-IN' : 'kn-IN';
     store.setProfile({ tts_language: fullCode, preferred_language: fullCode });
   };
 
@@ -76,7 +77,7 @@ export default function SettingsScreen() {
       <LinearGradient colors={['#1B5E20', '#2E7D32']} style={styles.header}>
         <View style={styles.headerRow}>
           <MaterialCommunityIcons name="cog" size={22} color="#fff" />
-          <Text style={styles.headerTitle}>{isEn ? 'Settings' : 'ಸೆಟ್ಟಿಂಗ್ಸ್'}</Text>
+          <Text style={styles.headerTitle}>{t('settings')}</Text>
         </View>
       </LinearGradient>
 
@@ -90,7 +91,7 @@ export default function SettingsScreen() {
           <View style={{ flex: 1 }}>
             <Text style={styles.profileName}>{store.farmer_name || '—'}</Text>
             <Text style={styles.profilePhone}>{store.phone ? `+91 ${store.phone}` : '—'}</Text>
-            <Text style={styles.profileMeta}>{store.district || (isEn ? 'No district' : 'ಜಿಲ್ಲೆ ಇಲ್ಲ')}</Text>
+            <Text style={styles.profileMeta}>{store.district || t('noDistrict')}</Text>
             {store.crops?.length > 0 && (
               <View style={styles.cropRow}>
                 {store.crops.map((c, i) => (
@@ -114,9 +115,9 @@ export default function SettingsScreen() {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <MaterialCommunityIcons name="volume-high" size={20} color={Colors.primary} />
-            <Text style={styles.sectionTitle}>{isEn ? 'Voice Language' : 'ಧ್ವನಿ ಭಾಷೆ'}</Text>
+            <Text style={styles.sectionTitle}>{t('voiceLang')}</Text>
           </View>
-          <Text style={styles.sectionHint}>{isEn ? 'Which language should AI speak?' : 'AI ಯಾವ ಭಾಷೆಯಲ್ಲಿ ಮಾತನಾಡಬೇಕು?'}</Text>
+          <Text style={styles.sectionHint}>{t('whichLang')}</Text>
           <View style={styles.langGrid}>
             {LANGUAGES.map((lang) => {
               const active = ttsLanguage === lang.code;
@@ -144,9 +145,9 @@ export default function SettingsScreen() {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <MaterialCommunityIcons name="sprout" size={20} color={Colors.primary} />
-            <Text style={styles.sectionTitle}>{isEn ? 'Crops' : 'ಬೆಳೆಗಳು / Crops'}</Text>
+            <Text style={styles.sectionTitle}>{t('crops')}</Text>
           </View>
-          <Text style={styles.sectionHint}>{isEn ? 'Tap to add or remove' : 'ಒತ್ತಿ ಸೇರಿಸಿ ಅಥವಾ ತೆಗೆದುಹಾಕಿ'}</Text>
+          <Text style={styles.sectionHint}>{t('tapCrop')}</Text>
           <View style={styles.cropEditRow}>
             {(store.crops || []).map((c, i) => (
               <View key={i} style={styles.cropEditTag}>
@@ -185,17 +186,17 @@ export default function SettingsScreen() {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <MaterialCommunityIcons name="information-outline" size={20} color={Colors.primary} />
-            <Text style={styles.sectionTitle}>{isEn ? 'Application' : 'ಅಪ್ಲಿಕೇಶನ್'}</Text>
+            <Text style={styles.sectionTitle}>{t('app')}</Text>
           </View>
-          <InfoRow icon="tag-outline" label={isEn ? 'Version' : 'ಆವೃತ್ತಿ'} value="v2.0.0" />
+          <InfoRow icon="tag-outline" label={t('version')} value="v2.0.0" />
           <InfoRow icon="robot-outline" label="AI" value="Gemini + Sarvam" />
-          <InfoRow icon="office-building" label={isEn ? 'Built by' : 'ನಿರ್ಮಾಣ'} value="Nivetti Systems" />
+          <InfoRow icon="office-building" label={t('builtBy')} value="Nivetti Systems" />
         </View>
 
         {/* Logout */}
         <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout} activeOpacity={0.8}>
           <MaterialCommunityIcons name="logout" size={20} color={Colors.error} />
-          <Text style={styles.logoutTxt}>{isEn ? 'Logout' : 'ಲಾಗ್ ಔಟ್'}</Text>
+          <Text style={styles.logoutTxt}>{t('logout')}</Text>
         </TouchableOpacity>
 
       </ScrollView>
