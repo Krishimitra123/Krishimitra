@@ -101,7 +101,7 @@ export default function OnboardingScreen() {
   function finishOnboarding() {
     store.completeOnboarding();
     setStep('done');
-    setTimeout(() => router.replace('/(tabs)/'), 1500);
+    setTimeout(() => router.replace('/(tabs)'), 1500);
   }
 
   function saveAndAdvance(value: string) {

@@ -293,6 +293,9 @@ const styles = StyleSheet.create({
   },
   quickCropIcon: { fontSize: 22, marginBottom: 4 },
   quickCropText: { fontSize: 11, color: Colors.textPrimary, fontWeight: '700', textAlign: 'center' },
+  addCropRow: { flexDirection: 'row', gap: Spacing.sm, marginTop: Spacing.md },
+  cropInput: { flex: 1, backgroundColor: Colors.background, paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm, borderRadius: BorderRadius.md, borderWidth: 1, borderColor: Colors.border, color: Colors.textPrimary, fontSize: FontSize.md },
+  addCropBtn: { width: 44, alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.primary, borderRadius: BorderRadius.md },
 
   infoRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, paddingVertical: Spacing.sm, borderTopWidth: 1, borderTopColor: Colors.divider },
   infoLabel: { fontSize: FontSize.md, color: Colors.textMuted, flex: 1 },

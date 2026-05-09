@@ -37,6 +37,7 @@ export interface WeatherResponse {
   daily: DailyForecast;
   daily_units: Record<string, string>;
   source: string;
+  error?: string;
 }
 
 export interface AgricultureWeather {
