@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "KrishiMitra",
-    "slug": "krishimitra",
+    "slug": "krishi-xjgne9oaxdmds9e1fvn",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -30,9 +30,10 @@
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "permissions": [
-        "RECORD_AUDIO",
-        "CAMERA",
-        "READ_EXTERNAL_STORAGE"
+        "android.permission.RECORD_AUDIO",
+        "android.permission.CAMERA",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.MODIFY_AUDIO_SETTINGS"
       ],
       "package": "com.nivettisystems.krishimitra"
     },
@@ -63,9 +64,11 @@
     "experiments": {
       "typedRoutes": true
     },
+    "owner": "shinan1",
     "extra": {
+      "router": {},
       "eas": {
-        "projectId": "ae8c11c0-85ee-4d2a-850e-61d3e4e19bc6"
+        "projectId": "2680b4fc-9391-4a57-8ee9-05f6a742c57a"
       }
     }
   }
