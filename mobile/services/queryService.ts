@@ -97,12 +97,22 @@ export async function sendVoiceQuery(
   console.log(`[QueryService] Sending voice query - Size: ${audioSizeKB}KB, Mime: ${mimeType}`);
 
   try {
+    const userState = useUserStore.getState();
+    const userContext = {
+      farmer_name: userState.farmer_name,
+      district: userState.district,
+      primary_crop: userState.primary_crop,
+      agro_zone: userState.agro_zone,
+      preferred_language: userState.preferred_language,
+    };
+
     const res = await apiClient.post('/api/query', {
       audio_base64: audioBase64,
       audio_mime: mimeType,
       conversation_history: conversationHistory?.slice(-6) ?? [],
       tts_language: getPreferredLanguage(),
       preferred_language: getPreferredLanguage(),
+      user_context: userContext,
     }, {
       timeout: 120000,  // 120s to match backend timeout
     });
@@ -135,11 +145,21 @@ export async function sendTextQuery(
   console.log(`[QueryService] Sending text query: "${text.slice(0, 50)}"`);
 
   try {
+    const userState = useUserStore.getState();
+    const userContext = {
+      farmer_name: userState.farmer_name,
+      district: userState.district,
+      primary_crop: userState.primary_crop,
+      agro_zone: userState.agro_zone,
+      preferred_language: userState.preferred_language,
+    };
+
     const res = await apiClient.post('/api/query', {
       text_query: text,
       conversation_history: conversationHistory?.slice(-6) ?? [],
       tts_language: getPreferredLanguage(),
       preferred_language: getPreferredLanguage(),
+      user_context: userContext,
     }, {
       timeout: 120000,  // 120s to match backend timeout
     });

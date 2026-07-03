@@ -22,8 +22,8 @@ export default function LoginScreen() {
   const { setAuthenticated } = useUserStore();
   const isEn = useUserStore((s) => s.preferred_language)?.startsWith('en');
 
-  const [step, setStep] = useState<'PHONE' | 'OTP'>('PHONE');
-  const [phone, setPhone] = useState('');
+  const [step, setStep] = useState<'EMAIL' | 'OTP'>('EMAIL');
+  const [email, setEmail] = useState('');
   const [otp, setOtp] = useState('');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
@@ -48,27 +48,39 @@ export default function LoginScreen() {
     }
   }, [countdown]);
 
-  const handleSendOTP = async () => {
-    const cleaned = phone.replace(/\D/g, '');
-    if (cleaned.length !== 10) {
-      Alert.alert(isEn ? 'Error' : 'ದೋಷ', isEn ? 'Please enter a 10-digit mobile number' : 'ದಯವಿಟ್ಟು 10 ಅಂಕಿಯ ಮೊಬೈಲ್ ಸಂಖ್ಯೆ ನಮೂದಿಸಿ');
+  const handleSendLink = async () => {
+    const trimmed = email.trim();
+    if (!trimmed || !trimmed.includes('@')) {
+      Alert.alert(isEn ? 'Error' : 'ದೋಷ', isEn ? 'Please enter a valid email address' : 'ದಯವಿಟ್ಟು ಮಾನ್ಯ ಇಮೇಲ್ ವಿಳಾಸ ನಮೂದಿಸಿ');
       return;
     }
 
     setLoading(true);
     setMessage('');
     
-    // DEMO MODE: Bypass real API call
-    setTimeout(() => {
-      setStep('OTP');
-      setCountdown(60);
-      setMessage('Demo Mode: OTP sent successfully');
-      setOtp('123456'); // Auto-fill dummy OTP
+    try {
+      const res = await sendOTP({ email: trimmed });
+      if (res.success) {
+        setStep('OTP');
+        setCountdown(60);
+        setMessage(res.message);
+        if (res.dev_otp) {
+          setOtp(res.dev_otp);
+        }
+      } else {
+        Alert.alert(isEn ? 'Error' : 'ದೋಷ', res.message);
+      }
+    } catch (err: any) {
+      Alert.alert(
+        isEn ? 'Connection Error' : 'ಸಂಪರ್ಕ ದೋಷ',
+        isEn ? 'Could not reach server. Please check your internet connection.' : 'ಸರ್ವರ್ ಸಂಪರ್ಕ ವಿಫಲವಾಗಿದೆ. ನೆಟ್‌ವರ್ಕ್ ಪರಿಶೀಲಿಸಿ.'
+      );
+    } finally {
       setLoading(false);
-    }, 800);
+    }
   };
 
-  const handleVerifyOTP = async () => {
+  const handleVerifyLink = async () => {
     if (otp.length !== 6) {
       Alert.alert(isEn ? 'Error' : 'ದೋಷ', isEn ? 'Please enter 6-digit OTP' : 'ದಯವಿಟ್ಟು 6 ಅಂಕಿಯ OTP ನಮೂದಿಸಿ');
       return;
@@ -77,28 +89,37 @@ export default function LoginScreen() {
     setLoading(true);
     setMessage('');
     
-    // DEMO MODE: Bypass real API call
-    setTimeout(() => {
-      setAuthenticated(phone.replace(/\D/g, ''), 'demo_token_123456');
-      setMessage('✅ Demo Login Successful');
-      
-      setTimeout(() => {
-        const isOnboarded = useUserStore.getState().is_onboarded;
-        if (isOnboarded) {
-          router.replace('/(tabs)');
-        } else {
-          router.replace('/onboarding');
-        }
-      }, 500);
-      
+    try {
+      const res = await verifyOTP({ email: email.trim(), otp });
+      if (res.success && res.token) {
+        setAuthenticated(email.trim(), res.token);
+        setMessage('✅ ' + (isEn ? 'Login Successful' : 'ಲಾಗಿನ್ ಯಶಸ್ವಿಯಾಗಿದೆ'));
+        
+        setTimeout(() => {
+          const isOnboarded = useUserStore.getState().is_onboarded;
+          if (isOnboarded) {
+            router.replace('/(tabs)');
+          } else {
+            router.replace('/onboarding');
+          }
+        }, 500);
+      } else {
+        Alert.alert(isEn ? 'Invalid Code' : 'ತಪ್ಪಾದ ಕೋಡ್', res.message);
+      }
+    } catch (err: any) {
+      Alert.alert(
+        isEn ? 'Verification Error' : 'ಪರಿಶೀಲನೆ ದೋಷ',
+        isEn ? 'Failed to verify code. Please try again.' : 'ಕೋಡ್ ಪರಿಶೀಲನೆ ವಿಫಲವಾಗಿದೆ. ದಯವಿಟ್ಟು ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.'
+      );
+    } finally {
       setLoading(false);
-    }, 800);
+    }
   };
 
   const handleResend = async () => {
     if (countdown > 0) return;
     setOtp('');
-    await handleSendOTP();
+    await handleSendLink();
   };
 
   return (
@@ -108,52 +129,53 @@ export default function LoginScreen() {
 
           {/* Logo */}
           <View style={styles.logoSection}>
-            <Text style={styles.logoIcon}>🌾</Text>
+            <Text style={styles.logoIcon}>🌱</Text>
             <Text style={styles.logoText}>{isEn ? 'KrishiMitra' : 'ಕೃಷಿ ಮಿತ್ರ'}</Text>
-            <Text style={styles.logoSubtext}>KrishiMitra</Text>
-            <Text style={styles.tagline}>{isEn ? 'Your Organic Farming Assistant' : 'ನಿಮ್ಮ ಜೈವಿಕ ಕೃಷಿ ಸಹಾಯಕ'}</Text>
+            <Text style={styles.logoSubtext}>{isEn ? 'Your smart farming friend' : 'ನಿಮ್ಮ ಜೈವಿಕ ಕೃಷಿ ಸಹಾಯಕ'}</Text>
+            <Text style={styles.tagline}>{isEn ? 'Organic Farming & Intelligence' : 'ಜೈವಿಕ ಕೃಷಿ ಮತ್ತು ಬುದ್ಧಿವಂತಿಕೆ'}</Text>
           </View>
 
           {/* Card */}
           <View style={[styles.card, Shadows.lg]}>
-            {step === 'PHONE' ? (
+            {step === 'EMAIL' ? (
               <>
-                <Text style={styles.cardTitle}>{isEn ? 'Login / Register' : 'ಲಾಗಿನ್ / ನೋಂದಣಿ'}</Text>
-                <Text style={styles.cardSubtitle}>{isEn ? 'Enter your mobile number' : 'ನಿಮ್ಮ ಮೊಬೈಲ್ ಸಂಖ್ಯೆ ನಮೂದಿಸಿ'}</Text>
+                <Text style={styles.cardTitle}>{isEn ? 'Login to save your farm' : 'ಲಾಗಿನ್ ಮಾಡಿ'}</Text>
+                <Text style={styles.cardSubtitle}>{isEn ? 'We use this to save your farm details securely.' : 'ನಿಮ್ಮ ತೋಟದ ವಿವರಗಳನ್ನು ಸುರಕ್ಷಿತವಾಗಿ ಉಳಿಸಲು ಇದನ್ನು ಬಳಸುತ್ತೇವೆ.'}</Text>
 
                 <View style={styles.phoneInputRow}>
                   <View style={styles.countryCode}>
-                    <Text style={styles.countryCodeText}>🇮🇳 +91</Text>
+                    <Text style={styles.countryCodeText}>✉️</Text>
                   </View>
                   <TextInput
                     style={styles.phoneInput}
-                    placeholder="9876543210"
+                    placeholder="Rameshanna@gmail.com"
                     placeholderTextColor={Colors.textMuted}
-                    value={phone}
-                    onChangeText={(t) => setPhone(t.replace(/\D/g, '').slice(0, 10))}
-                    keyboardType="phone-pad"
-                    maxLength={10}
+                    value={email}
+                    onChangeText={setEmail}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    autoCorrect={false}
                     autoFocus
                   />
                 </View>
 
                 <TouchableOpacity
                   style={[styles.primaryBtn, loading && styles.btnDisabled]}
-                  onPress={handleSendOTP}
+                  onPress={handleSendLink}
                   disabled={loading}
                 >
                   {loading ? (
                     <ActivityIndicator color="#fff" />
                   ) : (
-                    <Text style={styles.primaryBtnText}>{isEn ? 'Send OTP →' : 'OTP ಕಳುಹಿಸಿ →'}</Text>
+                    <Text style={styles.primaryBtnText}>{isEn ? 'Send Login Link →' : 'ಲಾಗಿನ್ ಲಿಂಕ್ ಕಳುಹಿಸಿ →'}</Text>
                   )}
                 </TouchableOpacity>
               </>
             ) : (
               <>
-                <Text style={styles.cardTitle}>{isEn ? 'OTP Verification' : 'OTP ಪರಿಶೀಲನೆ'}</Text>
+                <Text style={styles.cardTitle}>{isEn ? 'Verify your login' : 'ಲಾಗಿನ್ ಪರಿಶೀಲಿಸಿ'}</Text>
                 <Text style={styles.cardSubtitle}>
-                  {isEn ? `Enter the 6-digit OTP sent to +91 ${phone}` : `+91 ${phone} ಗೆ ಕಳುಹಿಸಲಾದ 6 ಅಂಕಿಯ OTP ನಮೂದಿಸಿ`}
+                  {isEn ? `We sent a secure link / OTP code to ${email}` : `${email} ಗೆ ಸುರಕ್ಷಿತ ಲಿಂಕ್ ಅಥವಾ OTP ಕಳುಹಿಸಲಾಗಿದೆ`}
                 </Text>
 
                 <TextInput
@@ -170,7 +192,7 @@ export default function LoginScreen() {
 
                 <TouchableOpacity
                   style={[styles.primaryBtn, loading && styles.btnDisabled]}
-                  onPress={handleVerifyOTP}
+                  onPress={handleVerifyLink}
                   disabled={loading}
                 >
                   {loading ? (
@@ -188,12 +210,12 @@ export default function LoginScreen() {
                   <Text style={[styles.resendText, countdown > 0 && styles.resendDisabled]}>
                     {countdown > 0
                       ? (isEn ? `Resend (${countdown}s)` : `ಮತ್ತೆ ಕಳುಹಿಸಿ (${countdown}s)`)
-                      : (isEn ? 'Resend OTP' : 'OTP ಮತ್ತೆ ಕಳುಹಿಸಿ')}
+                      : (isEn ? 'Resend Link' : 'ಲಿಂಕ್ ಮತ್ತೆ ಕಳುಹಿಸಿ')}
                   </Text>
                 </TouchableOpacity>
 
-                <TouchableOpacity onPress={() => { setStep('PHONE'); setOtp(''); setMessage(''); }}>
-                  <Text style={styles.changePhoneText}>{isEn ? '← Use a different number' : '← ಬೇರೆ ಸಂಖ್ಯೆ ಬಳಸಿ'}</Text>
+                <TouchableOpacity onPress={() => { setStep('EMAIL'); setOtp(''); setMessage(''); }}>
+                  <Text style={styles.changePhoneText}>{isEn ? '← Use a different email' : '← ಬೇರೆ ಇಮೇಲ್ ಬಳಸಿ'}</Text>
                 </TouchableOpacity>
               </>
             )}
@@ -212,6 +234,8 @@ export default function LoginScreen() {
     </LinearGradient>
   );
 }
+
+
 
 const styles = StyleSheet.create({
   container: { flex: 1 },

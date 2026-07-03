@@ -1,6 +1,6 @@
 /**
  * Tab Layout — KrishiMitra
- * Premium bottom tab bar with MaterialCommunityIcons — no emojis.
+ * Premium bottom tab bar: Home → Dashboard → Chat → Analytics → Settings
  */
 
 import React from 'react';
@@ -66,10 +66,10 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="history"
+        name="dashboard"
         options={{
           tabBarIcon: ({ focused }) => (
-            <TabIcon name="history" focused={focused} />
+            <TabIcon name="store" focused={focused} />
           ),
         }}
       />
@@ -77,8 +77,22 @@ export default function TabLayout() {
         name="settings"
         options={{
           tabBarIcon: ({ focused }) => (
-            <TabIcon name="cog-outline" focused={focused} />
+            <TabIcon name="account" focused={focused} />
           ),
+        }}
+      />
+      <Tabs.Screen
+        name="analytics"
+        options={{
+          tabBarIcon: ({ focused }) => (
+            <TabIcon name="chart-areaspline" focused={focused} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="history"
+        options={{
+          href: null,
         }}
       />
     </Tabs>

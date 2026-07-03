@@ -144,7 +144,19 @@ export default function DiagnoseScreen() {
       await playDiagnosisAudio(finding.audio_base64);
     } catch (error: any) {
       console.error('[Diagnose] Error:', error);
-      Alert.alert(t('error'), error?.response?.data?.detail || error?.message || t('tryAgain'));
+      const isEn = preferred_language?.startsWith('en');
+      const isOffline = error.message?.includes('Network') || error.message?.includes('network') || error.message?.includes('timeout') || error.code === 'ECONNABORTED';
+      
+      if (isOffline) {
+        Alert.alert(
+          isEn ? 'Offline Mode' : 'ಆಫ್‌ಲೈನ್ ಮೋಡ್',
+          isEn 
+            ? '⚠️ You are offline. Photo is saved in your farm history. We will analyze it once you connect to the internet.'
+            : '⚠️ ನೀವು ಆಫ್‌ಲೈನ್‌ನಲ್ಲಿದ್ದೀರಿ. ಫೋಟೋವನ್ನು ನಿಮ್ಮ ತೋಟದ ಇತಿಹಾಸದಲ್ಲಿ ಉಳಿಸಲಾಗಿದೆ. ನೆಟ್‌ವರ್ಕ್ ಸಿಕ್ಕಾಗ ವಿಶ್ಲೇಷಣೆ ಮಾಡಲಾಗುವುದು.'
+        );
+      } else {
+        Alert.alert(t('error'), error?.response?.data?.detail || error?.message || t('tryAgain'));
+      }
     } finally {
       setIsAnalyzing(false);
       audioStore.setState('IDLE');
@@ -221,6 +233,14 @@ export default function DiagnoseScreen() {
                 <MaterialCommunityIcons name="leaf-circle-outline" size={64} color="rgba(76,175,80,0.5)" />
               </View>
               <Text style={styles.cameraHint}>{t('takePhoto')}</Text>
+              
+              {/* Visual Guidance Overlay */}
+              <View style={styles.guidanceBox}>
+                <Text style={styles.guidanceTitle}>📸 Guidelines / ಮಾರ್ಗಸೂಚಿಗಳು</Text>
+                <Text style={styles.guidanceText}>• Place one leaf inside the circle / ಒಂದು ಎಲೆಯನ್ನು ವೃತ್ತದೊಳಗೆ ಇರಿಸಿ</Text>
+                <Text style={styles.guidanceText}>• Use daylight / ಹಗಲಿನ ಬೆಳಕನ್ನು ಬಳಸಿ</Text>
+                <Text style={styles.guidanceText}>• Avoid blurry photo / ಮಸುಕಾದ ಫೋಟೋ ಬೇಡ</Text>
+              </View>
             </LinearGradient>
           )}
 
@@ -274,6 +294,37 @@ export default function DiagnoseScreen() {
               <View style={[styles.confBadge, { backgroundColor: confColor + '20' }]}>
                 <Text style={[styles.confText, { color: confColor }]}>{Math.round(result.confidence_pct)}%</Text>
               </View>
+            </View>
+
+            {/* Severity Meter */}
+            <View style={styles.severityContainer}>
+              <Text style={styles.severityLabel}>{preferred_language?.startsWith('en') ? 'Disease Severity:' : 'ರೋಗದ ತೀವ್ರತೆ:'}</Text>
+              {(() => {
+                const conf = result.confidence_pct ?? 0;
+                const isEn = preferred_language?.startsWith('en');
+                let level = isEn ? 'Mild' : 'ಕಡಿಮೆ';
+                let color = '#4CAF50';
+                let percent = 30;
+
+                if (conf >= 75) {
+                  level = isEn ? 'Serious' : 'ತೀವ್ರ';
+                  color = '#F44336';
+                  percent = 90;
+                } else if (conf >= 50) {
+                  level = isEn ? 'Medium' : 'ಮಧ್ಯಮ';
+                  color = '#FF9800';
+                  percent = 60;
+                }
+
+                return (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 4 }}>
+                    <View style={styles.severityBarContainer}>
+                      <View style={[styles.severityFill, { width: `${percent}%`, backgroundColor: color }]} />
+                    </View>
+                    <Text style={[styles.severityLevelText, { color }]}>{level}</Text>
+                  </View>
+                );
+              })()}
             </View>
 
             {/* Now Playing / Speaking indicator */}
@@ -338,6 +389,16 @@ export default function DiagnoseScreen() {
                 <Text style={styles.sourcesText}>{result.sources.join(' • ')}</Text>
               </View>
             )}
+
+            {/* Safety Warning Disclaimer */}
+            <View style={styles.safetyBox}>
+              <MaterialCommunityIcons name="alert-octagon" size={18} color={Colors.error} />
+              <Text style={styles.safetyText}>
+                {preferred_language?.startsWith('en')
+                  ? 'If infection is spreading fast, contact local agriculture officer.'
+                  : 'ಸೋಂಕು ವೇಗವಾಗಿ ಹರಡುತ್ತಿದ್ದರೆ, ದಯವಿಟ್ಟು ಸ್ಥಳೀಯ ಕೃಷಿ ಅಧಿಕಾರಿಯನ್ನು ಸಂಪರ್ಕಿಸಿ.'}
+              </Text>
+            </View>
 
             {/* Listen Again */}
             {result.audio_base64 && overlayMode === 'idle' && (
@@ -513,4 +574,72 @@ const styles = StyleSheet.create({
   primaryButton: { width: 72, height: 72, borderRadius: 36, backgroundColor: Colors.primary, alignItems: 'center', justifyContent: 'center', ...Shadows.lg },
   primaryButtonDisabled: { backgroundColor: Colors.disabled },
   bottomHint: { fontSize: 12, color: Colors.textMuted, marginTop: 6 },
+
+  // New visual styles
+  guidanceBox: {
+    backgroundColor: 'rgba(0,0,0,0.65)',
+    borderRadius: BorderRadius.md,
+    padding: Spacing.md,
+    marginTop: Spacing.lg,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.25)',
+    width: '85%',
+  },
+  guidanceTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#FFF',
+    marginBottom: 4,
+  },
+  guidanceText: {
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.85)',
+    lineHeight: 16,
+  },
+  severityContainer: {
+    marginTop: Spacing.sm,
+    paddingBottom: Spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  severityLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: Colors.textSecondary,
+  },
+  severityBarContainer: {
+    flex: 1,
+    height: 6,
+    backgroundColor: '#ECEFF1',
+    borderRadius: 3,
+    overflow: 'hidden',
+  },
+  severityFill: {
+    height: '100%',
+    borderRadius: 3,
+  },
+  severityLevelText: {
+    fontSize: 12,
+    fontWeight: '800',
+    width: 60,
+    textAlign: 'right',
+  },
+  safetyBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#FFEBEE',
+    borderWidth: 1,
+    borderColor: '#FFCDD2',
+    borderRadius: BorderRadius.md,
+    padding: Spacing.md,
+    marginTop: Spacing.md,
+  },
+  safetyText: {
+    flex: 1,
+    fontSize: FontSize.xs,
+    fontWeight: '700',
+    color: '#C62828',
+    lineHeight: 16,
+  },
 });

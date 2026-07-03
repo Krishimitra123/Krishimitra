@@ -12,9 +12,13 @@ def _require_env(name: str) -> str:
         raise RuntimeError(f"Missing: {name}")
     return value
 
+key = os.getenv("SUPABASE_SERVICE_KEY") or os.getenv("SUPABASE_KEY") or os.getenv("SUPABASE_ANON_KEY")
+if not key:
+    raise RuntimeError("Missing SUPABASE_KEY or SUPABASE_SERVICE_KEY")
+
 supabase = create_client(
     _require_env("SUPABASE_URL"),
-    os.getenv("SUPABASE_ANON_KEY") or _require_env("SUPABASE_KEY")
+    key
 )
 
 print("Connected to Supabase")

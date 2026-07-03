@@ -177,7 +177,7 @@ export async function playBase64Audio(base64Audio: string): Promise<void> {
   try {
     const { sound } = await Audio.Sound.createAsync(
       { uri: fileUri },
-      { shouldPlay: true, volume: 1.0 }
+      { shouldPlay: true, volume: 1.0, rate: 1.22, shouldCorrectPitch: true }
     );
 
     _activeSound = sound;
@@ -215,7 +215,7 @@ export async function playBase64Audio(base64Audio: string): Promise<void> {
   }
 }
 
-export async function speakText(text: string, language: string = 'kn-IN'): Promise<void> {
+export async function speakText(text: string, language: string = 'kn-IN', localOnly: boolean = false): Promise<void> {
   const cleanText = text.trim();
   if (!cleanText) return;
 
@@ -223,30 +223,56 @@ export async function speakText(text: string, language: string = 'kn-IN'): Promi
   // Ensure we're in speaker mode
   await _setPlaybackMode();
 
-  try {
-    const res = await apiClient.post('/api/tts', {
-      text: cleanText,
-      language_code: language,
-    }, { timeout: 15000 });
-    
-    if (res.data?.audio_base64) {
-      console.log(`[Voice] Sarvam TTS success for "${cleanText.slice(0, 20)}..."`);
-      await playBase64Audio(res.data.audio_base64);
-      return;
+  if (!localOnly) {
+    try {
+      const res = await apiClient.post('/api/tts', {
+        text: cleanText,
+        language_code: language,
+      }, { timeout: 10000 }); // 10s — Sarvam TTS takes 5-10s for market reports
+      
+      if (res.data?.audio_base64) {
+        console.log(`[Voice] Sarvam TTS success for "${cleanText.slice(0, 20)}..."`);
+        await playBase64Audio(res.data.audio_base64);
+        return;
+      }
+      // Sarvam returned null audio (API error on backend side — check backend logs)
+      console.warn('[Voice] Sarvam TTS returned null audio — using device TTS fallback');
+    } catch (err: any) {
+      console.warn('[Voice] Sarvam TTS failed, falling back to local Speech API:', err.message);
     }
-  } catch (err: any) {
-    console.warn('[Voice] Sarvam TTS failed, falling back to local Speech API:', err.message);
   }
+  console.log('[Voice] Using local iOS/Android Speech API for TTS...');
+  // expo-speech needs MixWithOthers — DoNotMix blocks its audio session access
+  try {
+    await Audio.setAudioModeAsync({
+      allowsRecordingIOS: false,
+      playsInSilentModeIOS: true,
+      staysActiveInBackground: false,
+      interruptionModeIOS: InterruptionModeIOS.MixWithOthers,
+      interruptionModeAndroid: InterruptionModeAndroid.DuckOthers,
+      shouldDuckAndroid: true,
+      playThroughEarpieceAndroid: false,
+    });
+  } catch {}
 
   // Fallback to local expo-speech
   await new Promise<void>((resolve) => {
-    Speech.speak(cleanText, {
-      language,
-      rate: 0.9,
-      pitch: 1.0,
-      onDone: resolve,
-      onStopped: resolve,
-      onError: () => resolve(),
-    });
+    Speech.stop().then(() => {
+      const locale = language.split('-')[0]; // 'kn' or 'en'
+      Speech.speak(cleanText, {
+        language: locale,
+        rate: 0.95,
+        pitch: 1.0,
+        onDone: resolve,
+        onStopped: resolve,
+        onError: (err) => {
+          console.warn('[Voice] Local Speech.speak error:', err);
+          resolve();
+        },
+      });
+    }).catch(() => resolve());
   });
+
+  // Restore DoNotMix mode after speech completes
+  try { await _setPlaybackMode(); } catch {}
 }

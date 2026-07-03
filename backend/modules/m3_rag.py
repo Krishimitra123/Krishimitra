@@ -6,14 +6,15 @@ Uses Gemini Embeddings API to save local RAM — essential for Render Free Tier.
 
 import os
 import asyncio
-import google.generativeai as genai
+import google.genai as genai
+from google.genai import types as genai_types
 from supabase import create_client
 from models.schemas import NLPResult, Intent
 
 SUPABASE_URL  = os.environ.get('SUPABASE_URL', '')
 SUPABASE_KEY  = os.environ.get('SUPABASE_SERVICE_KEY', '')
 GEMINI_KEY    = os.environ.get('GEMINI_API_KEY', '')
-THRESHOLD     = float(os.environ.get('RAG_SIMILARITY_THRESHOLD', '0.15'))
+THRESHOLD     = float(os.environ.get('RAG_SIMILARITY_THRESHOLD', '0.05'))
 TOP_K         = int(os.environ.get('RAG_TOP_K', '3'))
 
 # ── Load once at startup ─────────────────────────────────────────
@@ -24,8 +25,8 @@ def _ensure_loaded():
     if _client is None and SUPABASE_URL and SUPABASE_KEY:
         _client = create_client(SUPABASE_URL, SUPABASE_KEY)
         print('[M3] Supabase client connected')
-    if GEMINI_KEY:
-        genai.configure(api_key=GEMINI_KEY)
+
+# Gemini client is instantiated per-call to avoid global state issues
 
 class RAGChunk:
     def __init__(self, content: str, source_doc: str, source_page: int,
@@ -66,17 +67,20 @@ async def retrieve(nlp_result: NLPResult) -> list:
     try:
         # Get embeddings from Gemini — force 768 dimensions to match Supabase pgvector
         # gemini-embedding-001 defaults to 3072 dims, but our DB stores 768
+        gemini_client = genai.Client(api_key=GEMINI_KEY)
         loop = asyncio.get_event_loop()
         result = await loop.run_in_executor(
             None,
-            lambda: genai.embed_content(
-                model="models/gemini-embedding-001",
-                content=query_text,
-                task_type="retrieval_query",
-                output_dimensionality=768,
+            lambda: gemini_client.models.embed_content(
+                model="gemini-embedding-001",
+                contents=query_text,
+                config=genai_types.EmbedContentConfig(
+                    task_type="retrieval_query",
+                    output_dimensionality=768,
+                ),
             )
         )
-        embedding = result['embedding']
+        embedding = result.embeddings[0].values
         print(f'[M3] Gemini embedding OK (dim={len(embedding)})')
 
         # Call Supabase RPC

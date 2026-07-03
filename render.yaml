@@ -7,30 +7,47 @@ services:
     rootDir: backend
     buildCommand: pip install -r requirements.txt
     startCommand: gunicorn main:app --workers 1 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT --timeout 120
+    healthCheckPath: /health
+
     envVars:
+      # Python version
       - key: PYTHON_VERSION
-        value: 3.11.9
+        value: "3.11.9"
+
+      # ── AI / STT / TTS ─────────────────────────────────────
       - key: SARVAM_API_KEY
         sync: false
       - key: GEMINI_API_KEY
         sync: false
+
+      # ── Chat LLM (Mistral — primary) ────────────────────────
       - key: MISTRAL_API_KEY
         sync: false
       - key: MISTRAL_MODEL
         value: mistral-small-latest
+
+      # ── Database (Supabase) ────────────────────────────────
       - key: SUPABASE_URL
         sync: false
       - key: SUPABASE_SERVICE_KEY
         sync: false
+
+      # ── RAG / Embedding ────────────────────────────────────
       - key: EMBEDDING_MODEL_NAME
         value: sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2
       - key: RAG_SIMILARITY_THRESHOLD
         value: "0.30"
       - key: RAG_TOP_K
         value: "5"
+
+      # ── Response limits ────────────────────────────────────
       - key: MAX_RESPONSE_WORDS
         value: "150"
+
+      # ── Optional integrations ──────────────────────────────
       - key: FAST2SMS_API_KEY
         sync: false
+
+      # ── Runtime ───────────────────────────────────────────
       - key: ENVIRONMENT
         value: production

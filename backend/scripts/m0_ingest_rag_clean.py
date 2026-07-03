@@ -20,9 +20,9 @@ def _require_env(name: str) -> str:
 
 # -- Supabase credentials --
 SUPABASE_URL = _require_env("SUPABASE_URL")
-SUPABASE_KEY = os.getenv("SUPABASE_ANON_KEY") or os.getenv("SUPABASE_KEY")
+SUPABASE_KEY = os.getenv("SUPABASE_SERVICE_KEY") or os.getenv("SUPABASE_KEY") or os.getenv("SUPABASE_ANON_KEY")
 if not SUPABASE_KEY:
-    raise RuntimeError("Missing SUPABASE_ANON_KEY or SUPABASE_KEY")
+    raise RuntimeError("Missing SUPABASE_KEY or SUPABASE_SERVICE_KEY")
 
 # -- Paths --
 BASE_DIR    = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

@@ -122,6 +122,7 @@ async def _run_query(request: QueryRequest) -> QueryResponse:
             rag_chunks=rag_chunks,
             conversation_history=request.conversation_history,
             preferred_language=preferred_language,
+            user_context=request.user_context,
         )
     )
 

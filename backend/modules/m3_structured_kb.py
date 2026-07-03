@@ -30,21 +30,29 @@ _supabase: Client = create_client(
 
 def get_organic_input(query: str) -> Optional[dict]:
     query_lower = query.lower().strip()
-    response = _supabase.table("organic_inputs") \
-        .select("*") \
-        .or_(f"name_en.ilike.%{query_lower}%,transliteration.ilike.%{query_lower}%") \
-        .limit(1) \
-        .execute()
-    return response.data[0] if response.data else None
+    try:
+        response = _supabase.table("organic_inputs") \
+            .select("*") \
+            .or_(f"name_en.ilike.%{query_lower}%,transliteration.ilike.%{query_lower}%") \
+            .limit(1) \
+            .execute()
+        return response.data[0] if response.data else None
+    except Exception as e:
+        print(f"[StructuredKB Error] Failed to fetch organic input for '{query}': {e}")
+        return None
 
 def get_mulching_plant(query: str) -> Optional[dict]:
     query_lower = query.lower().strip()
-    response = _supabase.table("mulching_plants") \
-        .select("*") \
-        .or_(f"name_en.ilike.%{query_lower}%,transliteration.ilike.%{query_lower}%") \
-        .limit(1) \
-        .execute()
-    return response.data[0] if response.data else None
+    try:
+        response = _supabase.table("mulching_plants") \
+            .select("*") \
+            .or_(f"name_en.ilike.%{query_lower}%,transliteration.ilike.%{query_lower}%") \
+            .limit(1) \
+            .execute()
+        return response.data[0] if response.data else None
+    except Exception as e:
+        print(f"[StructuredKB Error] Failed to fetch mulching plant for '{query}': {e}")
+        return None
 
 def format_recipe_for_response(record: dict) -> str:
     lines = []

@@ -18,6 +18,7 @@ import { useAudioStore } from '@/stores/useAudioStore';
 import { useUserStore } from '@/stores/useUserStore';
 import { startRecording, stopRecordingAndGetBase64, playBase64Audio, speakText, stopPlayback } from '@/services/voiceService';
 import { sendVoiceQuery, sendTextQuery, ConversationTurn } from '@/services/queryService';
+import VoicePipeline from '@/components/VoicePipeline';
 
 const { width } = Dimensions.get('window');
 
@@ -134,7 +135,7 @@ export default function ChatScreen() {
             try { audioStore.setState('PLAYING'); await playBase64Audio(response.audio_base64); }
             catch {} finally { audioStore.setState('IDLE'); }
           } else {
-            await speakText(response.answer_text_kn);
+            await speakText(response.answer_text_kn, preferred_language || 'kn-IN', true);
           }
         } catch (e: any) {
           const errorMsg = e.response?.data?.detail || t('serviceUnavailable');
@@ -164,7 +165,7 @@ export default function ChatScreen() {
       if (response.audio_base64) {
         try { audioStore.setState('PLAYING'); await playBase64Audio(response.audio_base64); }
         catch {} finally { audioStore.setState('IDLE'); }
-      } else { await speakText(response.answer_text_kn); }
+      } else { await speakText(response.answer_text_kn, preferred_language || 'kn-IN', true); }
     } catch {
       addMessage({ id: (Date.now() + 1).toString(), role: 'assistant', text: t('serviceUnavailable'), sources: [], timestamp: Date.now(), is_diagnosis: false });
     }
@@ -211,15 +212,48 @@ export default function ChatScreen() {
     );
   };
 
-  const renderEmpty = () => (
-    <View style={styles.emptyContainer}>
-      <View style={styles.emptyIconCircle}>
-        <MaterialCommunityIcons name="sprout" size={48} color={Colors.primary} />
+  const renderEmpty = () => {
+    const examples = isEn ? [
+      { q: "When should I water my crop?", label: "🌱 Water timing" },
+      { q: "Is this disease dangerous?", label: "🐛 Disease threat" },
+      { q: "Should I sell my ginger today?", label: "💰 Selling advice" }
+    ] : [
+      { q: "ನನ್ನ ಬೆಳೆಗೆ ಯಾವಾಗ ನೀರು ಹಾಯಿಸಬೇಕು?", label: "🌱 ನೀರಾವರಿ ಸಮಯ" },
+      { q: "ಈ ಎಲೆ ರೋಗ ಅಪಾಯಕಾರಿಯೇ?", label: "🐛 ರೋಗದ ಅಪಾಯ" },
+      { q: "ನಾನು ಇಂದು ಶುಂಠಿ ಮಾರಾಟ ಮಾಡಬೇಕೇ?", label: "💰 ಮಾರಾಟದ ಸಲಹೆ" }
+    ];
+
+    const handleExamplePress = (query: string) => {
+      setTextInput(query);
+      setShowTextInput(true);
+    };
+
+    return (
+      <View style={styles.emptyContainer}>
+        <View style={styles.emptyMascotCircle}>
+          <Text style={{ fontSize: 52 }}>🌱</Text>
+        </View>
+        <Text style={styles.emptyGreeting}>{isEn ? `Ask Mitra anything!` : `ಮಿತ್ರನಿಗೆ ಏನನ್ನಾದರೂ ಕೇಳಿ!`}</Text>
+        <Text style={styles.emptyHint}>{isEn ? 'Tap the mic at the bottom to speak' : 'ಮಾತನಾಡಲು ಕೆಳಗಿನ ಮೈಕ್ ಒತ್ತಿ'}</Text>
+        
+        {/* Clickable Examples */}
+        <View style={styles.examplesSection}>
+          <Text style={styles.examplesTitle}>{isEn ? 'Try asking:' : 'ಹೀಗೆ ಕೇಳಿ ನೋಡಿ:'}</Text>
+          {examples.map((item, idx) => (
+            <TouchableOpacity
+              key={idx}
+              style={styles.exampleCard}
+              onPress={() => handleExamplePress(item.q)}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.exampleLabel}>{item.label}</Text>
+              <Text style={styles.exampleText}>"{item.q}"</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
       </View>
-      <Text style={styles.emptyGreeting}>{t('namaste').replace(' 🙏', '')} {farmerName}!</Text>
-      <Text style={styles.emptyHint}>{t('micTapSpeak')}</Text>
-    </View>
-  );
+    );
+  };
 
   return (
     <View style={styles.container}>
@@ -244,6 +278,20 @@ export default function ChatScreen() {
           contentContainerStyle={[styles.messageList, messages.length === 0 && styles.emptyList]}
           ListEmptyComponent={renderEmpty}
           showsVerticalScrollIndicator={false}
+        />
+
+        <VoicePipeline
+          stage={
+            isRecording
+              ? 'recording'
+              : isProcessing
+              ? 'transcribing'
+              : isLoading
+              ? 'thinking'
+              : isPlayingAudio
+              ? 'speaking'
+              : 'idle'
+          }
         />
 
         {isLoading && (
@@ -346,10 +394,35 @@ const styles = StyleSheet.create({
 
   messageList: { paddingVertical: Spacing.md, paddingHorizontal: Spacing.sm, paddingBottom: Spacing.lg },
   emptyList: { flex: 1 },
-  emptyContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 80 },
-  emptyIconCircle: { width: 96, height: 96, borderRadius: 48, backgroundColor: Colors.primarySoft, alignItems: 'center', justifyContent: 'center', marginBottom: Spacing.lg },
-  emptyGreeting: { fontSize: FontSize.xxl, fontWeight: '800', color: Colors.primary, marginBottom: Spacing.sm },
-  emptyHint: { fontSize: FontSize.lg, color: Colors.textMuted, fontWeight: '500' },
+  emptyContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 40, paddingHorizontal: Spacing.md },
+  emptyMascotCircle: { width: 100, height: 100, borderRadius: 50, backgroundColor: Colors.primarySoft, alignItems: 'center', justifyContent: 'center', marginBottom: Spacing.md, borderWidth: 2, borderColor: Colors.primary + '30' },
+  emptyGreeting: { fontSize: FontSize.xl, fontWeight: '900', color: Colors.primary, marginBottom: 4, textAlign: 'center' },
+  emptyHint: { fontSize: FontSize.sm, color: Colors.textMuted, fontWeight: '600', textAlign: 'center', marginBottom: Spacing.xl },
+
+  // Suggestions Styling
+  examplesSection: { width: '100%', paddingHorizontal: Spacing.sm },
+  examplesTitle: { fontSize: FontSize.xs, color: Colors.textMuted, fontWeight: '800', letterSpacing: 0.5, marginBottom: Spacing.sm, textTransform: 'uppercase' },
+  exampleCard: {
+    backgroundColor: Colors.surface,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: BorderRadius.lg,
+    padding: Spacing.md,
+    marginBottom: Spacing.sm,
+    ...Shadows.sm,
+  },
+  exampleLabel: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: Colors.primary,
+    marginBottom: 2,
+    textTransform: 'uppercase',
+  },
+  exampleText: {
+    fontSize: FontSize.sm,
+    color: Colors.textPrimary,
+    fontWeight: '600',
+  },
 
   bubbleWrapper: { flexDirection: 'row', alignItems: 'flex-end', marginVertical: 4, paddingHorizontal: Spacing.sm },
   bubbleRight: { justifyContent: 'flex-end' },

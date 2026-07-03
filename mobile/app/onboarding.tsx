@@ -1,183 +1,182 @@
 /**
- * Onboarding — Voice-first, all 11 languages.
- * Steps: Language → Name → Location → Done
- * Includes text input fallback + better error feedback.
+ * Onboarding Screen — Premium, farmer-friendly, non-voice onboarding flow.
+ * Steps: Language Selection → Name Input → Location Permission → Crop Selection → Complete
  */
+
 import React, { useState, useRef, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput,
-  Animated, ActivityIndicator, Alert, KeyboardAvoidingView, Platform,
+  Animated, ActivityIndicator, Alert, KeyboardAvoidingView, Platform, Dimensions,
 } from 'react-native';
+
+const { width } = Dimensions.get('window');
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { router } from 'expo-router';
-import { useUserStore } from '@/stores/useUserStore';
-import { transcribeAudio } from '@/services/queryService';
-import { startRecording, stopRecordingAndGetBase64, speakText } from '@/services/voiceService';
-import { DISTRICTS } from '@/constants/districts';
+import { useRouter } from 'expo-router';
 import { Colors, Spacing, FontSize, BorderRadius, Shadows } from '@/constants/theme';
+import { useUserStore } from '@/stores/useUserStore';
+import { speakText } from '@/services/voiceService';
 
-const LANGUAGES = [
-  { code: 'kn', label: 'ಕನ್ನಡ',    sub: 'Kannada',   sarvam: 'kn-IN' },
-  { code: 'hi', label: 'हिंदी',     sub: 'Hindi',     sarvam: 'hi-IN' },
-  { code: 'ta', label: 'தமிழ்',    sub: 'Tamil',     sarvam: 'ta-IN' },
-  { code: 'te', label: 'తెలుగు',   sub: 'Telugu',    sarvam: 'te-IN' },
-  { code: 'ml', label: 'മലയാളം',   sub: 'Malayalam', sarvam: 'ml-IN' },
-  { code: 'mr', label: 'मराठी',    sub: 'Marathi',   sarvam: 'mr-IN' },
-  { code: 'bn', label: 'বাংলা',    sub: 'Bengali',   sarvam: 'bn-IN' },
-  { code: 'gu', label: 'ગુજરાતી',  sub: 'Gujarati',  sarvam: 'gu-IN' },
-  { code: 'pa', label: 'ਪੰਜਾਬੀ',   sub: 'Punjabi',   sarvam: 'pa-IN' },
-  { code: 'od', label: 'ଓଡ଼ିଆ',    sub: 'Odia',      sarvam: 'or-IN' },
-  { code: 'en', label: 'English',   sub: 'English',   sarvam: 'en-IN' },
+// Available districts
+const DISTRICTS = [
+  'Bengaluru Rural',
+  'Dakshina Kannada',
+  'Belagavi',
+  'Shimoga',
+  'Chikkamagaluru',
+  'Hassan',
+  'Mandya',
+  'Mysuru',
+  'Kolar',
+  'Tumakuru'
 ];
 
-const P: Record<string, { name: string; loc: string; welcome: string; tapMic: string; noHear: string; typeName: string; typeLoc: string }> = {
-  kn: { name: 'ನಿಮ್ಮ ಹೆಸರು ಏನು?', loc: 'ದಯವಿಟ್ಟು ನಿಮ್ಮ ಜಿಲ್ಲೆ ಹೇಳಿ', welcome: 'ಸ್ವಾಗತ', tapMic: 'ಮೈಕ್ ಒತ್ತಿ ಮಾತನಾಡಿ', noHear: 'ಕೇಳಲಿಲ್ಲ. ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ ಅಥವಾ ಟೈಪ್ ಮಾಡಿ', typeName: 'ಹೆಸರು ಟೈಪ್ ಮಾಡಿ', typeLoc: 'ಜಿಲ್ಲೆ ಟೈಪ್ ಮಾಡಿ' },
-  hi: { name: 'आपका नाम क्या है?', loc: 'कृपया अपना जिला बताइए', welcome: 'स्वागत है', tapMic: 'माइक दबाकर बोलें', noHear: 'सुनाई नहीं दिया। फिर बोलें या टाइप करें', typeName: 'नाम टाइप करें', typeLoc: 'जिला टाइप करें' },
-  ta: { name: 'உங்கள் பெயர் என்ன?', loc: 'தயவுசெய்து உங்கள் மாவட்டத்தை சொல்லுங்கள்', welcome: 'வரவேற்கிறோம்', tapMic: 'மைக்கை அழுத்தி பேசுங்கள்', noHear: 'கேட்கவில்லை. மீண்டும் முயற்சிக்கவும்', typeName: 'பெயர் டைப் செய்யவும்', typeLoc: 'மாவட்டம் டைப் செய்யவும்' },
-  te: { name: 'మీ పేరు ఏమిటి?', loc: 'దయచేసి మీ జిల్లాను చెప్పండి', welcome: 'స్వాగతం', tapMic: 'మైక్ నొక్కి మాట్లాడండి', noHear: 'వినపడలేదు. మళ్ళీ ప్రయత్నించండి', typeName: 'పేరు టైప్ చేయండి', typeLoc: 'జిల్లా టైప్ చేయండి' },
-  ml: { name: 'നിങ്ങളുടെ പേര്?', loc: 'ദയവായി നിങ്ങളുടെ ജില്ല പറയൂ', welcome: 'സ്വാഗതം', tapMic: 'മൈക്ക് അമർത്തി സംസാരിക്കൂ', noHear: 'കേട്ടില്ല. വീണ്ടും ശ്രമിക്കൂ', typeName: 'പേര് ടൈപ്പ് ചെയ്യൂ', typeLoc: 'ജില്ല ടൈപ്പ് ചെയ്യൂ' },
-  mr: { name: 'तुमचे नाव काय?', loc: 'कृपया तुमचा जिल्हा सांगा', welcome: 'स्वागत', tapMic: 'मायक दाबून बोला', noHear: 'ऐकू आले नाही. पुन्हा बोला', typeName: 'नाव टाइप करा', typeLoc: 'जिल्हा टाइप करा' },
-  bn: { name: 'আপনার নাম কি?', loc: 'দয়া করে আপনার জেলা বলুন', welcome: 'স্বাগতম', tapMic: 'মাইক চাপুন এবং বলুন', noHear: 'শোনা যায়নি। আবার চেষ্টা করুন', typeName: 'নাম টাইপ করুন', typeLoc: 'জেলা টাইপ করুন' },
-  gu: { name: 'તમારું નામ શું છે?', loc: 'કૃપા કરીને તમારો જિલ્લો કહો', welcome: 'સ્વાગત', tapMic: 'માઇક દબાવી બોલો', noHear: 'સાંભળ્યું નહીં. ફરી બોલો', typeName: 'નામ ટાઈપ કરો', typeLoc: 'જિલ્લો ટાઈપ કરો' },
-  pa: { name: 'ਤੁਹਾਡਾ ਨਾਂ ਕੀ ਹੈ?', loc: 'ਕਿਰਪਾ ਕਰਕੇ ਆਪਣਾ ਜ਼ਿਲ੍ਹਾ ਦੱਸੋ', welcome: 'ਜੀ ਆਇਆਂ', tapMic: 'ਮਾਈਕ ਦਬਾਓ ਅਤੇ ਬੋਲੋ', noHear: 'ਸੁਣਿਆ ਨਹੀਂ। ਦੁਬਾਰਾ ਬੋਲੋ', typeName: 'ਨਾਂ ਟਾਈਪ ਕਰੋ', typeLoc: 'ਜ਼ਿਲ੍ਹਾ ਟਾਈਪ ਕਰੋ' },
-  od: { name: 'ଆପଣଙ୍କ ନାମ?', loc: 'ଦୟାକରି ଆପଣଙ୍କ ଜିଲ୍ଲା କୁହନ୍ତୁ', welcome: 'ସ୍ୱାଗତ', tapMic: 'ମାଇକ୍ ଦବାଇ କୁହନ୍ତୁ', noHear: 'ଶୁଣିଲି ନାହିଁ। ପୁଣି ଚେଷ୍ଟା କରନ୍ତୁ', typeName: 'ନାମ ଟାଇପ୍ କରନ୍ତୁ', typeLoc: 'ଜିଲ୍ଲା ଟାଇପ୍ କରନ୍ତୁ' },
-  en: { name: 'What is your name?', loc: 'Please say your district', welcome: 'Welcome', tapMic: 'Tap mic and speak', noHear: "Couldn't hear you. Try again or type below", typeName: 'Type your name', typeLoc: 'Type your district' },
-};
+const LANGUAGES = [
+  { code: 'kn', label: 'ಕನ್ನಡ', sub: 'Kannada', locale: 'kn-IN', sample: 'ನಮಸ್ಕಾರ, ನಾನು ಕೃಷಿಮಿತ್ರ.' },
+  { code: 'en', label: 'English', sub: 'English', locale: 'en-IN', sample: 'Hello, I am KrishiMitra.' },
+  { code: 'hi', label: 'हिंदी', sub: 'Hindi', locale: 'hi-IN', sample: 'नमस्ते, मैं कृषि मित्र हूँ।' },
+  { code: 'ta', label: 'தமிழ்', sub: 'Tamil', locale: 'ta-IN', sample: 'வணக்கம், நான் கிருஷி மித்ரா.' },
+  { code: 'te', label: 'తెలుగు', sub: 'Telugu', locale: 'te-IN', sample: 'నమస్కారం, నేను కృషి మిత్ర.' },
+  { code: 'ml', label: 'മലയാളം', sub: 'Malayalam', locale: 'ml-IN', sample: 'നമസ്കാരം, ഞാൻ കൃഷി মിത്ര.' },
+  { code: 'mr', label: 'मराठी', sub: 'Marathi', locale: 'mr-IN', sample: 'नमस्कार, मी कृषी मित्र आहे.' },
+];
 
-type Step = 'lang' | 'name' | 'loc' | 'done';
+const CROPS = [
+  { id: 'potato', emoji: '🥔', labelEn: 'Potato', labelKn: 'ಆಲೂಗಡ್ಡೆ', tagEn: 'Good for cool climates', tagKn: 'ತಂಪಾದ ಹವಾಮಾನಕ್ಕೆ ಸೂಕ್ತ' },
+  { id: 'ginger', emoji: '🌱', labelEn: 'Ginger', labelKn: 'ಶುಂಠಿ', tagEn: 'Good for monsoon areas', tagKn: 'ಮಳೆಗಾಲದ ಪ್ರದೇಶಗಳಿಗೆ ಸೂಕ್ತ' },
+  { id: 'sugarcane', emoji: '🎋', labelEn: 'Sugarcane', labelKn: 'ಕಬ್ಬು', tagEn: 'High water requirement', tagKn: 'ಹೆಚ್ಚಿನ ನೀರಿನ ಅವಶ್ಯಕತೆ' },
+  { id: 'ragi', emoji: '🌾', labelEn: 'Ragi', labelKn: 'ರಾಗಿ', tagEn: 'Drought resistant crop', tagKn: 'ಬರ ನಿರೋಧಕ ಬೆಳೆ' },
+  { id: 'tomato', emoji: '🍅', labelEn: 'Tomato', labelKn: 'ಟೊಮೆಟೊ', tagEn: 'Needs regular monitoring', tagKn: 'ನಿಯಮಿತ ಮೇಲ್ವಿಚಾರಣೆ ಅಗತ್ಯ' },
+  { id: 'onion', emoji: '🧅', labelEn: 'Onion', labelKn: 'ಈರುಳ್ಳಿ', tagEn: 'Requires good drainage', tagKn: 'ಉತ್ತಮ ನೀರು ಹರಿವು ಅಗತ್ಯ' },
+  { id: 'arecanut', emoji: '🌴', labelEn: 'Arecanut', labelKn: 'ಅಡಿಕೆ', tagEn: 'Long-term commercial crop', tagKn: 'ದೀರ್ಘಾವಧಿಯ ವಾಣಿಜ್ಯ ಬೆಳೆ' },
+  { id: 'paddy', emoji: '🌾', labelEn: 'Paddy', labelKn: 'ಭತ್ತ', tagEn: 'Requires flooded soil', tagKn: 'ನಿರಂತರ ನೀರಿನ ಆಶ್ರಯ ಬೇಕು' },
+];
 
-function resolveDistrict(raw: string): string {
-  const value = raw.trim();
-  if (!value) return '';
-  const lower = value.toLowerCase();
-  const exact = DISTRICTS.find((d) => d.name_en.toLowerCase() === lower || d.name_kn === value);
-  if (exact) return exact.name_en;
-  const partial = DISTRICTS.find((d) => lower.includes(d.name_en.toLowerCase()) || value.includes(d.name_kn));
-  return partial ? partial.name_en : value;
-}
+type Step = 'lang' | 'name' | 'loc' | 'crops' | 'done';
 
 export default function OnboardingScreen() {
+  const router = useRouter();
   const store = useUserStore();
+
   const [step, setStep] = useState<Step>('lang');
-  const [langCode, setLangCode] = useState('kn');
-  const [sarvam, setSarvam] = useState('kn-IN');
-  const [status, setStatus] = useState('');
-  const [recording, setRecording] = useState(false);
-  const [busy, setBusy] = useState(false);
+  const [selectedLang, setSelectedLang] = useState('kn');
   const [name, setName] = useState('');
-  const [loc, setLoc] = useState('');
-  const [showTextInput, setShowTextInput] = useState(false);
-  const [textValue, setTextValue] = useState('');
-  const pulseAnim = useRef(new Animated.Value(1)).current;
+  const [district, setDistrict] = useState('Dakshina Kannada');
+  const [selectedCrops, setSelectedCrops] = useState<string[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [playingCode, setPlayingCode] = useState<string | null>(null);
 
-  const prompt = P[langCode] ?? P['kn'];
+  const isEn = selectedLang === 'en';
 
-  useEffect(() => {
-    if (recording) {
-      Animated.loop(Animated.sequence([
-        Animated.timing(pulseAnim, { toValue: 1.25, duration: 600, useNativeDriver: true }),
-        Animated.timing(pulseAnim, { toValue: 1.0, duration: 600, useNativeDriver: true }),
-      ])).start();
-    } else {
-      pulseAnim.stopAnimation();
-      Animated.timing(pulseAnim, { toValue: 1.0, duration: 200, useNativeDriver: true }).start();
+  const handlePlaySample = async (code: string, locale: string, sampleText: string, e: any) => {
+    e.stopPropagation(); // Prevent card selection
+    try {
+      setPlayingCode(code);
+      await speakText(sampleText, locale, true); // Force local speech engine
+    } catch (err) {
+      console.warn('[Onboarding] Play sample failed', err);
+    } finally {
+      setPlayingCode(null);
     }
-  }, [recording]);
+  };
 
-  async function speakQuestion(text: string) {
-    try { setBusy(true); setStatus('🔊'); await speakText(text, sarvam); }
-    catch {} finally { setBusy(false); setStatus(prompt.tapMic); }
-  }
-
-  async function onSelectLanguage(code: string, sv: string) {
-    setLangCode(code); setSarvam(sv); store.setLanguage(sv);
+  const handleLanguageSelect = (code: string, locale: string) => {
+    setSelectedLang(code);
+    store.setLanguage(locale);
     setStep('name');
-    setShowTextInput(false);
-    setTextValue('');
-    await speakQuestion(P[code]?.name ?? P['kn'].name);
-  }
+  };
 
-  function finishOnboarding() {
-    store.completeOnboarding();
+  const handleNameSubmit = () => {
+    const trimmed = name.trim();
+    if (!trimmed) {
+      Alert.alert(
+        isEn ? 'Enter Name' : 'ಹೆಸರು ನಮೂದಿಸಿ',
+        isEn ? 'Please type your name to continue.' : 'ಮುಂದುವರೆಯಲು ದಯವಿಟ್ಟು ನಿಮ್ಮ ಹೆಸರು ಬರೆಯಿರಿ.'
+      );
+      return;
+    }
+    if (trimmed.length > 40) {
+      Alert.alert(isEn ? 'Too Long' : 'ಹೆಚ್ಚು ಅಕ್ಷರಗಳು', isEn ? 'Name must be under 40 characters' : 'ಹೆಸರು 40 ಅಕ್ಷರಗಳಿಗಿಂತ ಕಡಿಮೆ ಇರಬೇಕು');
+      return;
+    }
+    store.setProfile({ farmer_name: trimmed });
+    setStep('loc');
+  };
+
+  const handleLocationAllow = () => {
+    setLoading(true);
+    // Simulate reverse geocoding location permission
+    setTimeout(() => {
+      setDistrict('Dakshina Kannada');
+      store.setProfile({ district: 'Dakshina Kannada' });
+      setLoading(false);
+      setStep('crops');
+    }, 1000);
+  };
+
+  const handleManualDistrict = (selected: string) => {
+    setDistrict(selected);
+    store.setProfile({ district: selected });
+    setStep('crops');
+  };
+
+  const handleToggleCrop = (cropId: string) => {
+    setSelectedCrops(prev =>
+      prev.includes(cropId) ? prev.filter(id => id !== cropId) : [...prev, cropId]
+    );
+  };
+
+  const handleCropsSubmit = () => {
+    if (selectedCrops.length === 0) {
+      Alert.alert(
+        isEn ? 'Select Crops' : 'ಬೆಳೆಗಳನ್ನು ಆರಿಸಿ',
+        isEn ? 'Please select at least one crop.' : 'ದಯವಿಟ್ಟು ಕನಿಷ್ಠ ಒಂದು ಬೆಳೆಯನ್ನು ಆಯ್ಕೆ ಮಾಡಿ.'
+      );
+      return;
+    }
+    store.setProfile({
+      crops: selectedCrops,
+      primary_crop: selectedCrops[0],
+    });
     setStep('done');
-    setTimeout(() => router.replace('/(tabs)'), 1500);
-  }
+  };
 
-  function saveAndAdvance(value: string) {
-    if (!value.trim()) return;
+  const handleComplete = () => {
+    store.completeOnboarding();
+    router.replace('/(tabs)');
+  };
 
-    if (step === 'name') {
-      const n = value.trim().split(' ').slice(0, 4).join(' ');
-      setName(n);
-      store.setProfile({ farmer_name: n });
-      setStep('loc');
-      setShowTextInput(false);
-      setTextValue('');
-      speakQuestion(prompt.loc);
-    } else if (step === 'loc') {
-      const district = resolveDistrict(value);
-      setLoc(district);
-      store.setProfile({ district });
-      finishOnboarding();
-    }
-  }
-
-  async function handleRecord() {
-    if (recording) {
-      try {
-        setRecording(false); setBusy(true); setStatus('...');
-        const audio = await stopRecordingAndGetBase64();
-        const result = await transcribeAudio(audio.base64, audio.mimeType, sarvam);
-        const transcript = result.transcript.trim();
-
-        if (!transcript) {
-          // STT returned empty — show feedback and enable text fallback
-          setStatus(prompt.noHear);
-          setShowTextInput(true);
-          setBusy(false);
-          return;
-        }
-
-        // Show what we heard
-        setStatus(`✓ ${transcript}`);
-        saveAndAdvance(transcript);
-      } catch (e: any) {
-        console.error('[Onboarding] Record error:', e.message);
-        setStatus(prompt.noHear);
-        setShowTextInput(true);
-      } finally { setBusy(false); }
-    } else {
-      try { await startRecording(); setRecording(true); setStatus('🎙️ ...'); }
-      catch (e: any) {
-        Alert.alert(
-          langCode === 'en' ? 'Permission Denied' : 'ಅನುಮತಿ ನಿರಾಕರಿಸಲಾಗಿದೆ',
-          langCode === 'en' ? 'Please allow microphone access.' : 'ದಯವಿಟ್ಟು ಮೈಕ್ರೊಫೋನ್ ಅನುಮತಿ ನೀಡಿ.'
-        );
-      }
-    }
-  }
-
-  function handleTextSubmit() {
-    if (!textValue.trim()) return;
-    saveAndAdvance(textValue);
-  }
-
-  // ── Language selection screen ──
+  // 1. Language Selection Screen
   if (step === 'lang') {
     return (
-      <LinearGradient colors={['#1B5E20', '#2E7D32', '#388E3C']} style={styles.root}>
-        <View style={styles.langHeader}>
-          <MaterialCommunityIcons name="sprout" size={32} color="#fff" />
-          <Text style={styles.langTitle}>KrishiMitra</Text>
-          <Text style={styles.langSub}>Select your language / ನಿಮ್ಮ ಭಾಷೆ ಆಯ್ಕೆ ಮಾಡಿ</Text>
+      <LinearGradient colors={[Colors.primaryDark, Colors.primary]} style={styles.root}>
+        <View style={styles.header}>
+          <Text style={styles.logoIcon}>🌱</Text>
+          <Text style={styles.title}>KrishiMitra</Text>
+          <Text style={styles.sub}>Choose your language / ನಿಮ್ಮ ಭಾಷೆ ಆಯ್ಕೆ ಮಾಡಿ</Text>
         </View>
-        <ScrollView contentContainerStyle={styles.langGrid} showsVerticalScrollIndicator={false}>
+        <ScrollView contentContainerStyle={styles.scrollGrid} showsVerticalScrollIndicator={false}>
           {LANGUAGES.map(l => (
-            <TouchableOpacity key={l.code} style={styles.langCard}
-              onPress={() => onSelectLanguage(l.code, l.sarvam)} activeOpacity={0.75}>
-              <Text style={styles.langCardLabel}>{l.label}</Text>
-              <Text style={styles.langCardSub}>{l.sub}</Text>
+            <TouchableOpacity
+              key={l.code}
+              style={[styles.langCard, selectedLang === l.code && styles.activeCard]}
+              onPress={() => handleLanguageSelect(l.code, l.locale)}
+              activeOpacity={0.8}
+            >
+              <View style={styles.langInfo}>
+                <Text style={styles.langLabel}>{l.label}</Text>
+                <Text style={styles.langSubLabel}>{l.sub}</Text>
+              </View>
+              <TouchableOpacity
+                onPress={(e) => handlePlaySample(l.code, l.locale, l.sample, e)}
+                style={styles.speakerBtn}
+              >
+                {playingCode === l.code ? (
+                  <ActivityIndicator size="small" color={Colors.primary} />
+                ) : (
+                  <MaterialCommunityIcons name="volume-high" size={24} color={Colors.primary} />
+                )}
+              </TouchableOpacity>
             </TouchableOpacity>
           ))}
         </ScrollView>
@@ -185,108 +184,333 @@ export default function OnboardingScreen() {
     );
   }
 
-  // ── Done screen ──
-  if (step === 'done') {
+  // 2. Name Input Screen
+  if (step === 'name') {
     return (
-      <LinearGradient colors={['#1B5E20', '#2E7D32']} style={[styles.root, styles.center]}>
-        <MaterialCommunityIcons name="check-circle" size={80} color="#fff" />
-        <Text style={styles.doneText}>{prompt.welcome}, {name || ''}!</Text>
+      <LinearGradient colors={[Colors.primaryDark, Colors.primary]} style={styles.root}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.centerWrapper}>
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>{isEn ? 'What should we call you?' : 'ನಿಮ್ಮ ಹೆಸರೇನು?'}</Text>
+            <Text style={styles.cardSub}>
+              {isEn 
+                ? 'This name will be used by Mitra to greet you. (Hindi, Kannada, English, etc.)' 
+                : 'ಮಿತ್ರನು ನಿಮ್ಮನ್ನು ಮಾತನಾಡಿಸಲು ಈ ಹೆಸರನ್ನು ಬಳಸುತ್ತಾನೆ.'}
+            </Text>
+            
+            <TextInput
+              style={styles.textInput}
+              placeholder={isEn ? 'Type your name' : 'ನಿಮ್ಮ ಹೆಸರು ಟೈಪ್ ಮಾಡಿ'}
+              placeholderTextColor={Colors.textMuted}
+              value={name}
+              onChangeText={setName}
+              maxLength={40}
+              autoFocus
+            />
+
+            <TouchableOpacity style={styles.primaryBtn} onPress={handleNameSubmit}>
+              <Text style={styles.primaryBtnText}>{isEn ? 'Continue →' : 'ಮುಂದುವರೆಯಿರಿ →'}</Text>
+            </TouchableOpacity>
+          </View>
+        </KeyboardAvoidingView>
       </LinearGradient>
     );
   }
 
-  // ── Name / Location input screen ──
-  const stepIcon = step === 'name' ? 'account' : 'map-marker';
-  const question = step === 'name' ? prompt.name : prompt.loc;
-  const stepNum = step === 'name' ? 1 : 2;
-  const placeholder = step === 'name' ? prompt.typeName : prompt.typeLoc;
+  // 3. Location Permission Screen
+  if (step === 'loc') {
+    return (
+      <LinearGradient colors={[Colors.primaryDark, Colors.primary]} style={styles.root}>
+        <View style={styles.centerWrapper}>
+          <View style={styles.card}>
+            <View style={styles.locIconContainer}>
+              <MaterialCommunityIcons name="map-marker-radius" size={48} color={Colors.primary} />
+            </View>
+            <Text style={styles.cardTitle}>{isEn ? 'Find your farm area' : 'ನಿಮ್ಮ ಕೃಷಿ ವಲಯ ಪತ್ತೆ ಮಾಡಿ'}</Text>
+            <Text style={styles.cardSub}>
+              {isEn 
+                ? 'We use your location to show local weather, nearby market prices, and pest warnings.' 
+                : 'ಸ್ಥಳೀಯ ಹವಾಮಾನ, ಹತ್ತಿರದ ಮಾರುಕಟ್ಟೆ ಧಾರಣೆ ಮತ್ತು ಕೀಟಗಳ ಎಚ್ಚರಿಕೆಯನ್ನು ನೀಡಲು ನಾವು ನಿಮ್ಮ ಸ್ಥಳವನ್ನು ಬಳಸುತ್ತೇವೆ.'}
+            </Text>
 
-  return (
-    <LinearGradient colors={['#1B5E20', '#2E7D32', '#388E3C']} style={[styles.root, styles.center]}>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.center}>
-        <View style={styles.stepRow}>
-          {[1, 2].map(n => (
-            <View key={n} style={[styles.stepDot, n === stepNum && styles.stepDotActive]} />
-          ))}
-        </View>
-        <View style={styles.iconCircle}>
-          <MaterialCommunityIcons name={stepIcon as any} size={40} color="#fff" />
-        </View>
-        <Text style={styles.question}>{question}</Text>
-        {(step === 'name' && name) && <Text style={styles.preview}>✓ {name}</Text>}
-        {(step === 'loc' && loc) && <Text style={styles.preview}>✓ {loc}</Text>}
-        <Text style={styles.statusText}>{busy ? '...' : status || prompt.tapMic}</Text>
+            {loading ? (
+              <ActivityIndicator size="large" color={Colors.primary} style={{ marginVertical: Spacing.md }} />
+            ) : (
+              <>
+                <TouchableOpacity style={styles.primaryBtn} onPress={handleLocationAllow}>
+                  <Text style={styles.primaryBtnText}>{isEn ? 'Allow Location' : 'ಸ್ಥಳ ಪ್ರವೇಶ ಅನುಮತಿಸಿ'}</Text>
+                </TouchableOpacity>
 
-        {/* Mic button */}
-        <TouchableOpacity onPress={handleRecord} disabled={busy} activeOpacity={0.8}>
-          <Animated.View style={[styles.micBtn, recording && styles.micBtnActive, { transform: [{ scale: pulseAnim }] }]}>
-            {busy ? <ActivityIndicator size="large" color="#fff" />
-              : <MaterialCommunityIcons name={recording ? 'stop' : 'microphone'} size={44} color="#fff" />}
-          </Animated.View>
-        </TouchableOpacity>
-        <Text style={styles.hint}>
-          {recording ? '🔴 Recording...' : prompt.tapMic}
-        </Text>
+                <Text style={styles.orText}>{isEn ? '— OR SELECT MANUALLY —' : '— ಅಥವಾ ಹಸ್ತಚಾಲಿತವಾಗಿ ಆಯ್ಕೆ ಮಾಡಿ —'}</Text>
 
-        {/* Text input fallback — always visible with a toggle */}
-        <TouchableOpacity onPress={() => setShowTextInput(!showTextInput)} style={styles.typeToggle}>
-          <MaterialCommunityIcons name="keyboard" size={16} color="rgba(255,255,255,0.7)" />
-          <Text style={styles.typeToggleText}>
-            {showTextInput ? (langCode === 'en' ? 'Hide keyboard' : 'ಕೀಬೋರ್ಡ್ ಮುಚ್ಚಿ') : (langCode === 'en' ? 'Or type instead' : 'ಅಥವಾ ಟೈಪ್ ಮಾಡಿ')}
-          </Text>
-        </TouchableOpacity>
-
-        {showTextInput && (
-          <View style={styles.textRow}>
-            <TextInput
-              style={styles.textInput}
-              placeholder={placeholder}
-              placeholderTextColor="rgba(255,255,255,0.4)"
-              value={textValue}
-              onChangeText={setTextValue}
-              returnKeyType="done"
-              onSubmitEditing={handleTextSubmit}
-              autoFocus
-            />
-            <TouchableOpacity
-              onPress={handleTextSubmit}
-              disabled={!textValue.trim()}
-              style={[styles.submitBtn, !textValue.trim() && styles.submitBtnOff]}
-            >
-              <MaterialCommunityIcons name="check" size={22} color="#fff" />
-            </TouchableOpacity>
+                <ScrollView style={styles.districtList} nestedScrollEnabled>
+                  {DISTRICTS.map(d => (
+                    <TouchableOpacity key={d} style={styles.districtItem} onPress={() => handleManualDistrict(d)}>
+                      <Text style={styles.districtText}>📍 {d}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </>
+            )}
           </View>
-        )}
-      </KeyboardAvoidingView>
+        </View>
+      </LinearGradient>
+    );
+  }
+
+  // 4. Crop Selection Screen
+  if (step === 'crops') {
+    return (
+      <LinearGradient colors={[Colors.primaryDark, Colors.primary]} style={styles.root}>
+        <View style={styles.header}>
+          <Text style={styles.cardTitleWhite}>{isEn ? 'What are you growing?' : 'ನೀವು ಏನು ಬೆಳೆಯುತ್ತಿದ್ದೀರಿ?'}</Text>
+          <Text style={styles.cardSubWhite}>{isEn ? 'Select one or more crops' : 'ಒಂದು ಅಥವಾ ಹೆಚ್ಚಿನ ಬೆಳೆಗಳನ್ನು ಆಯ್ಕೆ ಮಾಡಿ'}</Text>
+        </View>
+
+        <ScrollView contentContainerStyle={styles.cropsGrid} showsVerticalScrollIndicator={false}>
+          {CROPS.map(c => {
+            const active = selectedCrops.includes(c.id);
+            return (
+              <TouchableOpacity
+                key={c.id}
+                style={[styles.cropCard, active && styles.activeCropCard]}
+                onPress={() => handleToggleCrop(c.id)}
+                activeOpacity={0.8}
+              >
+                <View style={styles.cropIconRow}>
+                  <Text style={styles.cropEmoji}>{c.emoji}</Text>
+                  {active && (
+                    <MaterialCommunityIcons name="check-circle" size={24} color={Colors.primary} />
+                  )}
+                </View>
+                <Text style={styles.cropTitle}>{isEn ? c.labelEn : c.labelKn}</Text>
+                <Text style={styles.cropTag}>{isEn ? c.tagEn : c.tagKn}</Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+
+        <View style={styles.bottomBar}>
+          <TouchableOpacity style={styles.primaryBtn} onPress={handleCropsSubmit}>
+            <Text style={styles.primaryBtnText}>
+              {isEn ? `Continue with ${selectedCrops.length} Crops` : `${selectedCrops.length} ಬೆಳೆಗಳೊಂದಿಗೆ ಮುಂದುವರೆಯಿರಿ`}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </LinearGradient>
+    );
+  }
+
+  // 5. Complete Screen
+  return (
+    <LinearGradient colors={[Colors.primaryDark, Colors.primary]} style={styles.root}>
+      <View style={[styles.centerWrapper, { padding: Spacing.xl }]}>
+        <View style={styles.completeCard}>
+          <View style={styles.mascotCircle}>
+            <Text style={styles.mascotEmoji}>🌱</Text>
+          </View>
+          
+          <Text style={styles.completeGreeting}>
+            {isEn ? `Ready, ${name} anna! 👋` : `ಸಿದ್ಧವಾಗಿದೆ, ${name} ಅಣ್ಣಾ! 👋`}
+          </Text>
+          
+          <Text style={styles.completeDescription}>
+            {isEn 
+              ? 'KrishiMitra is ready to guide your farm daily with smart voice advice and price forecasts.'
+              : 'ಕೃಷಿಮಿತ್ರನು ನಿಮ್ಮ ತೋಟಕ್ಕೆ ಸ್ಮಾರ್ಟ್ ಧ್ವನಿ ಸಲಹೆ ಹಾಗೂ ಮಾರುಕಟ್ಟೆ ಮುನ್ಸೂಚನೆ ನೀಡಲು ಸಿದ್ಧನಾಗಿದ್ದಾನೆ.'}
+          </Text>
+
+          <TouchableOpacity style={styles.completeBtn} onPress={handleComplete}>
+            <Text style={styles.completeBtnText}>{isEn ? 'Go to Home' : 'ಮುಖಪುಟಕ್ಕೆ ಹೋಗಿ'}</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
     </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: Spacing.xl },
-  langHeader: { alignItems: 'center', paddingTop: 60, paddingBottom: Spacing.lg },
-  langTitle: { fontSize: 28, fontWeight: '900', color: '#fff', marginTop: Spacing.sm },
-  langSub: { fontSize: 14, color: 'rgba(255,255,255,0.75)', marginTop: 4, textAlign: 'center' },
-  langGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 12, paddingHorizontal: Spacing.lg, paddingBottom: 40 },
-  langCard: { backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: BorderRadius.lg, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.3)', paddingVertical: 14, paddingHorizontal: 18, minWidth: '40%', alignItems: 'center' },
-  langCardLabel: { fontSize: 20, color: '#fff', fontWeight: '700' },
-  langCardSub: { fontSize: 12, color: 'rgba(255,255,255,0.7)', marginTop: 2 },
-  stepRow: { flexDirection: 'row', gap: 8, marginBottom: Spacing.xl },
-  stepDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.35)' },
-  stepDotActive: { backgroundColor: '#fff', width: 24 },
-  iconCircle: { width: 90, height: 90, borderRadius: 45, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center', marginBottom: Spacing.lg, borderWidth: 2, borderColor: 'rgba(255,255,255,0.3)' },
-  question: { fontSize: 24, fontWeight: '800', color: '#fff', textAlign: 'center', lineHeight: 34, marginBottom: Spacing.sm },
-  preview: { fontSize: 18, color: '#A5D6A7', fontWeight: '600', textAlign: 'center', marginBottom: Spacing.sm },
-  statusText: { fontSize: 14, color: 'rgba(255,255,255,0.7)', marginBottom: Spacing.lg, textAlign: 'center', paddingHorizontal: Spacing.md },
-  micBtn: { width: 110, height: 110, borderRadius: 55, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center', borderWidth: 3, borderColor: 'rgba(255,255,255,0.5)', ...Shadows.md },
-  micBtnActive: { backgroundColor: 'rgba(244,67,54,0.7)', borderColor: '#EF9A9A' },
-  hint: { fontSize: 13, color: 'rgba(255,255,255,0.6)', marginTop: Spacing.md },
-  doneText: { fontSize: 28, fontWeight: '900', color: '#fff', marginTop: Spacing.lg, textAlign: 'center' },
-  typeToggle: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: Spacing.xl, paddingVertical: 8, paddingHorizontal: 16, backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: BorderRadius.full },
-  typeToggleText: { fontSize: 13, color: 'rgba(255,255,255,0.7)' },
-  textRow: { flexDirection: 'row', gap: 8, marginTop: Spacing.md, width: '100%' },
-  textInput: { flex: 1, backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: BorderRadius.lg, paddingHorizontal: Spacing.md, paddingVertical: 12, fontSize: 16, color: '#fff', borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)' },
-  submitBtn: { width: 48, height: 48, borderRadius: 24, backgroundColor: '#4CAF50', alignItems: 'center', justifyContent: 'center' },
-  submitBtnOff: { backgroundColor: 'rgba(255,255,255,0.15)' },
+  header: { alignItems: 'center', paddingTop: 60, paddingBottom: Spacing.md, paddingHorizontal: Spacing.lg },
+  logoIcon: { fontSize: 52 },
+  title: { fontSize: 32, fontWeight: '900', color: '#fff', marginTop: Spacing.xs },
+  sub: { fontSize: FontSize.sm, color: 'rgba(255,255,255,0.8)', marginTop: 4, textAlign: 'center', fontWeight: '500' },
+  
+  scrollGrid: { paddingHorizontal: Spacing.lg, paddingBottom: 40, gap: Spacing.md },
+  langCard: {
+    backgroundColor: '#fff',
+    borderRadius: BorderRadius.lg,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    ...Shadows.sm,
+  },
+  activeCard: {
+    borderWidth: 2,
+    borderColor: Colors.accent,
+    backgroundColor: '#F0F9F4',
+  },
+  langInfo: { flex: 1 },
+  langLabel: { fontSize: FontSize.lg, fontWeight: '800', color: Colors.textPrimary },
+  langSubLabel: { fontSize: FontSize.xs, color: Colors.textSecondary, marginTop: 2 },
+  speakerBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#E8F5E9',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  centerWrapper: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: Spacing.lg },
+  card: {
+    backgroundColor: '#fff',
+    borderRadius: BorderRadius.xl,
+    padding: Spacing.xl,
+    width: '100%',
+    ...Shadows.lg,
+  },
+  cardTitle: { fontSize: 22, fontWeight: '900', color: Colors.textPrimary, textAlign: 'center' },
+  cardTitleWhite: { fontSize: 22, fontWeight: '900', color: '#fff', textAlign: 'center' },
+  cardSub: { fontSize: FontSize.sm, color: Colors.textSecondary, textAlign: 'center', marginTop: Spacing.xs, marginBottom: Spacing.lg, lineHeight: 20 },
+  cardSubWhite: { fontSize: FontSize.sm, color: 'rgba(255,255,255,0.8)', textAlign: 'center', marginTop: Spacing.xs, marginBottom: Spacing.md },
+  
+  textInput: {
+    borderWidth: 1.5,
+    borderColor: Colors.border,
+    borderRadius: BorderRadius.lg,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.md,
+    fontSize: FontSize.lg,
+    color: Colors.textPrimary,
+    fontWeight: '700',
+    marginBottom: Spacing.lg,
+    backgroundColor: '#FAFAF5',
+  },
+  primaryBtn: {
+    backgroundColor: Colors.accent,
+    borderRadius: BorderRadius.lg,
+    paddingVertical: Spacing.md,
+    alignItems: 'center',
+    ...Shadows.sm,
+  },
+  primaryBtnText: {
+    fontSize: FontSize.md,
+    fontWeight: '800',
+    color: '#fff',
+  },
+
+  locIconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#E8F5E9',
+    alignItems: 'center',
+    justifyContent: 'center',
+    alignSelf: 'center',
+    marginBottom: Spacing.md,
+  },
+  orText: {
+    fontSize: FontSize.xs,
+    color: Colors.textMuted,
+    fontWeight: '700',
+    textAlign: 'center',
+    marginVertical: Spacing.md,
+    letterSpacing: 1,
+  },
+  districtList: {
+    maxHeight: 140,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: BorderRadius.lg,
+  },
+  districtItem: {
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.divider,
+  },
+  districtText: {
+    fontSize: FontSize.sm,
+    color: Colors.textPrimary,
+    fontWeight: '600',
+  },
+
+  cropsGrid: {
+    paddingHorizontal: Spacing.md,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing.sm,
+    paddingBottom: 100,
+  },
+  cropCard: {
+    backgroundColor: '#fff',
+    borderRadius: BorderRadius.lg,
+    padding: Spacing.md,
+    width: (width - Spacing.md * 2 - Spacing.sm) / 2,
+    borderWidth: 1.5,
+    borderColor: Colors.border,
+    ...Shadows.sm,
+  },
+  activeCropCard: {
+    borderColor: Colors.primary,
+    backgroundColor: '#F0F9F4',
+  },
+  cropIconRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: Spacing.xs,
+  },
+  cropEmoji: { fontSize: 32 },
+  cropTitle: { fontSize: FontSize.md, fontWeight: '800', color: Colors.textPrimary },
+  cropTag: { fontSize: 10, color: Colors.textMuted, marginTop: 2 },
+  bottomBar: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: '#fff',
+    padding: Spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
+  },
+
+  completeCard: {
+    backgroundColor: '#fff',
+    borderRadius: BorderRadius.xl,
+    padding: Spacing.xl,
+    alignItems: 'center',
+    width: '100%',
+    ...Shadows.lg,
+  },
+  mascotCircle: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: '#E8F5E9',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 3,
+    borderColor: Colors.primary,
+    marginBottom: Spacing.lg,
+  },
+  mascotEmoji: { fontSize: 52 },
+  completeGreeting: { fontSize: 24, fontWeight: '900', color: Colors.primary, textAlign: 'center', marginBottom: Spacing.sm },
+  completeDescription: { fontSize: FontSize.md, color: Colors.textSecondary, textAlign: 'center', lineHeight: 22, marginBottom: Spacing.xl, paddingHorizontal: Spacing.xs },
+  completeBtn: {
+    backgroundColor: Colors.primary,
+    borderRadius: BorderRadius.lg,
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.xl,
+    width: '100%',
+    alignItems: 'center',
+    ...Shadows.md,
+  },
+  completeBtnText: {
+    fontSize: FontSize.md,
+    fontWeight: '800',
+    color: '#fff',
+  },
 });
