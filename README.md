@@ -42,7 +42,6 @@ The AI responds like a **warm village elder neighbor** — concise, grounded, an
 <img width="642" height="1389" alt="IMG_9460" src="https://github.com/user-attachments/assets/3525455b-8557-4de4-a88a-d994af3b3844" />
 <img width="642" height="1389" alt="IMG_9461" src="https://github.com/user-attachments/assets/a0293b56-c465-48b3-89b0-a062159bbb4f" />
 <img width="642" height="1389" alt="IMG_9458" src="https://github.com/user-attachments/assets/3ed3fb99-ff9c-41d1-9242-cb7fec75b3ca" />
-<img width="642" height="1389" alt="IMG_9446" src="https://github.com/user-attachments/assets/6281dbfe-a0df-4377-87e7-377789339fb6" />
 <img width="642" height="1389" alt="IMG_9464" src="https://github.com/user-attachments/assets/6adba993-cd05-4218-bfec-6aab35f5a658" />
 <img width="642" height="1389" alt="IMG_9459" src="https://github.com/user-attachments/assets/01270353-d488-4375-8791-eec868f11cef" />
 <img width="642" height="1389" alt="IMG_9466" src="https://github.com/user-attachments/assets/00b8d3fc-61c6-4951-9342-8272c8f87cc8" />
