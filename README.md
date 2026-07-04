@@ -1,3 +1,4 @@
+
 <div align="center">
 
 # KrishiMitra · ಕೃಷಿಮಿತ್ರ
@@ -31,6 +32,22 @@ KrishiMitra ("Farmer's Friend" in Kannada) is a **voice-first AI agricultural as
 The AI responds like a **warm village elder neighbor** — concise, grounded, and in the farmer's own language — not like a chatbot.
 
 ---
+
+<img width="642" height="1389" alt="IMG_9420" src="https://github.com/user-attachments/assets/8af63b18-a3d1-4f9f-a91c-98170258ab8d" />
+<img width="642" height="1389" alt="IMG_9444" src="https://github.com/user-attachments/assets/6c8d4311-effc-4db7-9ba6-a8e7824f739f" />
+<img width="642" height="1389" alt="IMG_9423" src="https://github.com/user-attachments/assets/e4b94d39-48ea-4a80-a3e2-afcec42ef7b7" />
+<img width="642" height="1389" alt="IMG_9421" src="https://github.com/user-attachments/assets/bfaa90fc-55e9-4165-92f9-14972cc57120" />
+<img width="642" height="1389" alt="IMG_9445" src="https://github.com/user-attachments/assets/63790523-8cf4-4681-8f83-a49e76210557" />
+<img width="642" height="1389" alt="IMG_9462" src="https://github.com/user-attachments/assets/981fb795-c278-4b25-b421-ab47c830f0f6" />
+<img width="642" height="1389" alt="IMG_9460" src="https://github.com/user-attachments/assets/3525455b-8557-4de4-a88a-d994af3b3844" />
+<img width="642" height="1389" alt="IMG_9461" src="https://github.com/user-attachments/assets/a0293b56-c465-48b3-89b0-a062159bbb4f" />
+<img width="642" height="1389" alt="IMG_9458" src="https://github.com/user-attachments/assets/3ed3fb99-ff9c-41d1-9242-cb7fec75b3ca" />
+<img width="642" height="1389" alt="IMG_9446" src="https://github.com/user-attachments/assets/6281dbfe-a0df-4377-87e7-377789339fb6" />
+<img width="642" height="1389" alt="IMG_9467" src="https://github.com/user-attachments/assets/5b22c2bd-737f-4a73-9553-ad1a7f0a7540" />
+<img width="642" height="1389" alt="IMG_9464" src="https://github.com/user-attachments/assets/6adba993-cd05-4218-bfec-6aab35f5a658" />
+<img width="642" height="1389" alt="IMG_9459" src="https://github.com/user-attachments/assets/01270353-d488-4375-8791-eec868f11cef" />
+<img width="642" height="1389" alt="IMG_9466" src="https://github.com/user-attachments/assets/00b8d3fc-61c6-4951-9342-8272c8f87cc8" />
+<img width="642" height="1389" alt="IMG_9463" src="https://github.com/user-attachments/assets/e86ae953-e738-4ba8-b17b-5f7e52f6eb1a" />
 
 ## Live Demo
 
