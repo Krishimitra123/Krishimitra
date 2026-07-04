@@ -11,7 +11,7 @@ import random
 import hashlib
 from typing import Optional
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from supabase import create_client, Client
 from dotenv import load_dotenv
 
@@ -62,8 +62,9 @@ def _clean_phone(phone: str) -> str:
 # ── Request/Response Models ──────────────────────────────────
 
 class SendOTPRequest(BaseModel):
-    email: Optional[str] = Field(None, description='User email address')
-    phone: Optional[str] = Field(None, description='10-digit Indian mobile number')
+    model_config = ConfigDict(extra='ignore')  # ignore unknown fields from mobile interceptors
+    email: str | None = None
+    phone: str | None = None
 
 class SendOTPResponse(BaseModel):
     success: bool
@@ -71,8 +72,9 @@ class SendOTPResponse(BaseModel):
     dev_otp: str | None = None  # Only in dev/demo fallback mode
 
 class VerifyOTPRequest(BaseModel):
-    email: Optional[str] = Field(None, description='User email address')
-    phone: Optional[str] = Field(None, description='10-digit Indian mobile number')
+    model_config = ConfigDict(extra='ignore')
+    email: str | None = None
+    phone: str | None = None
     otp: str = Field(..., description='6-digit OTP')
 
 class VerifyOTPResponse(BaseModel):

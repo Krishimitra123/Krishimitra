@@ -28,6 +28,7 @@ export default function LoginScreen() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [countdown, setCountdown] = useState(0);
+  const [loadingMsg, setLoadingMsg] = useState('');
 
   // Animation
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -57,9 +58,16 @@ export default function LoginScreen() {
 
     setLoading(true);
     setMessage('');
+    setLoadingMsg(isEn ? 'Sending...' : 'ಕಳುಹಿಸಲಾಗುತ್ತಿದೆ...');
+
+    // Show "waking up server" message after 5s (Render free plan cold start)
+    const wakeTimer = setTimeout(() => {
+      setLoadingMsg(isEn ? '⏳ Waking up server... (first start takes ~30s)' : '⏳ ಸರ್ವರ್ ಪ್ರಾರಂಭಿಸಲಾಗುತ್ತಿದೆ...');
+    }, 5000);
     
     try {
       const res = await sendOTP({ email: trimmed });
+      clearTimeout(wakeTimer);
       if (res.success) {
         setStep('OTP');
         setCountdown(60);
@@ -71,11 +79,16 @@ export default function LoginScreen() {
         Alert.alert(isEn ? 'Error' : 'ದೋಷ', res.message);
       }
     } catch (err: any) {
+      clearTimeout(wakeTimer);
+      const isTimeout = err?.code === 'ECONNABORTED' || err?.message?.includes('timeout');
       Alert.alert(
         isEn ? 'Connection Error' : 'ಸಂಪರ್ಕ ದೋಷ',
-        isEn ? 'Could not reach server. Please check your internet connection.' : 'ಸರ್ವರ್ ಸಂಪರ್ಕ ವಿಫಲವಾಗಿದೆ. ನೆಟ್‌ವರ್ಕ್ ಪರಿಶೀಲಿಸಿ.'
+        isTimeout
+          ? (isEn ? 'Server is starting up. Please try again in 30 seconds.' : 'ಸರ್ವರ್ ಪ್ರಾರಂಭವಾಗುತ್ತಿದೆ. 30 ಸೆಕೆಂಡ್ ನಂತರ ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.')
+          : (isEn ? 'Could not reach server. Please check your internet.' : 'ಸರ್ವರ್ ಸಂಪರ್ಕ ವಿಫಲ. ನೆಟ್‌ವರ್ಕ್ ಪರಿಶೀಲಿಸಿ.')
       );
     } finally {
+      setLoadingMsg('');
       setLoading(false);
     }
   };
@@ -170,6 +183,9 @@ export default function LoginScreen() {
                     <Text style={styles.primaryBtnText}>{isEn ? 'Send Login Link →' : 'ಲಾಗಿನ್ ಲಿಂಕ್ ಕಳುಹಿಸಿ →'}</Text>
                   )}
                 </TouchableOpacity>
+                {loadingMsg ? (
+                  <Text style={styles.loadingMsg}>{loadingMsg}</Text>
+                ) : null}
               </>
             ) : (
               <>
@@ -263,5 +279,6 @@ const styles = StyleSheet.create({
   changePhoneText: { fontSize: FontSize.sm, color: Colors.textSecondary, textAlign: 'center', marginTop: Spacing.sm },
   messageText: { fontSize: FontSize.sm, color: Colors.textSecondary, textAlign: 'center', marginTop: Spacing.md, fontWeight: '500' },
   successText: { color: Colors.primary },
+  loadingMsg: { fontSize: FontSize.xs, color: Colors.textMuted, textAlign: 'center', marginTop: Spacing.sm, fontStyle: 'italic' },
   footer: { fontSize: FontSize.xs, color: 'rgba(255,255,255,0.5)', textAlign: 'center', marginTop: Spacing.xl },
 });
