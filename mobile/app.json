@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "KrishiMitra",
-    "slug": "krishi-xjgne9oaxdmds9e1fvn",
+    "slug": "krishimitraapp",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -64,11 +64,11 @@
     "experiments": {
       "typedRoutes": true
     },
-    "owner": "shinan1",
+    "owner": "krishimitra123",
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "2680b4fc-9391-4a57-8ee9-05f6a742c57a"
+        "projectId": "62fa636b-6d68-411b-b790-ff62a50ea5b4"
       }
     }
   }
