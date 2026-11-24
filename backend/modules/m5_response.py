@@ -7,6 +7,7 @@ Architecture:
   NLP result + SKB record + RAG chunks → Gemini → answer in user's language → TTS
 """
 
+import asyncio
 import httpx
 import os
 import re
@@ -151,6 +152,7 @@ async def _call_sarvam_chat(system: str, user_message: str, history: list | None
                     'messages': messages,
                     'temperature': 0.3,
                     'max_tokens': 2048,
+                    'reasoning_effort': 'low',
                 }
             )
 
@@ -242,7 +244,9 @@ async def _call_gemini(system: str, user_message: str, history: list | None = No
         },
     }
     
-    for model_name in ['gemini-3.8-flash', 'gemini-2.5-flash']:
+    for attempt_idx, model_name in enumerate(['gemini-3.8-flash', 'gemini-3.8-flash-lite', 'gemini-3.8-flash']):
+        if attempt_idx == 2:
+            await asyncio.sleep(1.5)
         url = f'https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={key}'
         try:
             async with httpx.AsyncClient(timeout=20.0) as client:
@@ -339,6 +343,8 @@ async def generate(
     is_rec_query = any(kw in query_lower for kw in recommendation_keywords)
 
     rec_context = ""
+    rec_fallback_kn = ""
+    rec_fallback_en = ""
     if is_rec_query:
         # Check if another district was mentioned in the query text
         mentioned_district = None
@@ -473,6 +479,15 @@ async def generate(
         soil_reason_kn = f"ಕರ್ನಾಟಕ ಸರ್ಕಾರದ ಕೃಷಿ ಇಲಾಖೆ ಹಾಗೂ {soil_source} ಪ್ರಕಾರ ನಿಮ್ಮ ಜಿಲ್ಲೆಯ ಮಣ್ಣು ಮುಖ್ಯವಾಗಿ {soil_kn} ಆಗಿದೆ."
         soil_reason_en = f"According to the official soil mapping from the Karnataka Agriculture Department and {soil_source}, the soil in your district is primarily {soil_en}."
 
+        rec_fallback_kn = (
+            f"{district} ಜಿಲ್ಲೆಗೆ {best_crop['name_kn']} ಬೆಳೆಯುವುದು ಉತ್ತಮ (ಕಟಾವು ಅವಧಿ: {best_crop['duration_months']} ತಿಂಗಳು). "
+            f"{soil_reason_kn} {math_explanation_kn}"
+        )
+        rec_fallback_en = (
+            f"For {district} district, growing {best_crop['name_en']} is recommended (duration: {best_crop['duration_months']} months). "
+            f"{soil_reason_en} {math_explanation_en}"
+        )
+
         rec_context = f"\nRECOMMENDATION CONTEXT (USE THIS TO ANSWER):\n"
         rec_context += f"- Target Crop: {best_crop['name_en']} ({best_crop['name_kn']})\n"
         rec_context += f"- Crop Sowing Duration: {best_crop['duration_months']} months\n"
@@ -568,23 +583,37 @@ async def generate(
         print('[M5] Mistral failed/rate-limited, falling back to Sarvam-105B...')
         answer = await _call_sarvam_chat(SYSTEM_PROMPT, user_message, history=history_dicts)
 
+    if not answer.strip() and rec_fallback_kn:
+        if language_code.startswith('kn'):
+            answer = rec_fallback_kn
+        elif language_code.startswith('en'):
+            answer = rec_fallback_en
+        else:
+            answer = await _translate_via_sarvam(rec_fallback_en, language_code)
+
     if skb_record and not answer.strip():
         raw_recipe = m3_structured_kb.format_recipe_for_response(skb_record)
         answer = await _translate_via_sarvam(raw_recipe, language_code)
 
     if not answer.strip() and rag_chunks:
-        # Grounded fallback directly from verified RAG chunk
-        top_content = rag_chunks[0].content
-        if not language_code.startswith('en'):
-            translated = await _translate_via_sarvam(top_content, language_code)
-            if translated != top_content:
-                answer = translated
-            elif target_lang.startswith('Kannada') and not any('\u0c80' <= c <= '\u0cff' for c in top_content):
-                answer = f"ನಮ್ಮ ಸಾವಯವ ಕೃಷಿ ದತ್ತಾಂಶದ ಪ್ರಕಾರ: {top_content}"
+        # Pick first clean RAG chunk (skip garbled OCR/header noise like AgriMoon/repeated chars)
+        top_content = ''
+        for ch in rag_chunks:
+            txt = (ch.content or '').strip()
+            if len(txt) > 40 and 'agrimoon' not in txt.lower() and not re.search(r'(.)\1{4,}', txt):
+                top_content = txt
+                break
+        if top_content:
+            if not language_code.startswith('en'):
+                translated = await _translate_via_sarvam(top_content, language_code)
+                if translated != top_content:
+                    answer = translated
+                elif target_lang.startswith('Kannada') and not any('\u0c80' <= c <= '\u0cff' for c in top_content):
+                    answer = f"ನಮ್ಮ ಸಾವಯವ ಕೃಷಿ ದತ್ತಾಂಶದ ಪ್ರಕಾರ: {top_content}"
+                else:
+                    answer = top_content
             else:
                 answer = top_content
-        else:
-            answer = top_content
 
     if not answer.strip():
         # Fallback message in user's language
