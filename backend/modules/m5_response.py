@@ -150,16 +150,17 @@ async def _call_sarvam_chat(system: str, user_message: str, history: list | None
                     'model': 'sarvam-105b',
                     'messages': messages,
                     'temperature': 0.3,
-                    'max_tokens': 1024,
+                    'max_tokens': 2048,
                 }
             )
 
         if resp.status_code == 200:
             msg = resp.json()['choices'][0]['message']
-            text = (msg.get('content') or msg.get('reasoning_content') or '').strip()
+            text = (msg.get('content') or '').strip()
             if text:
                 print(f'[M5] Sarvam-105B OK — {len(text)} chars')
                 return _strip_chemicals(text)
+            print('[M5] Sarvam-105B returned empty content (reasoning exhausted tokens)')
         else:
             print(f'[M5] Sarvam Chat error {resp.status_code}: {resp.text[:200]}')
     except Exception as e:
@@ -241,19 +242,23 @@ async def _call_gemini(system: str, user_message: str, history: list | None = No
         },
     }
     
-    try:
-        async with httpx.AsyncClient(timeout=25.0) as client:
-            resp = await client.post(url, json=payload)
-            
-        if resp.status_code == 200:
-            text = resp.json()['candidates'][0]['content']['parts'][0]['text'].strip()
-            print(f'[M5] Gemini OK — {len(text)} chars')
-            return _strip_chemicals(text)
-        else:
-            print(f'[M5] Gemini error {resp.status_code}: {resp.text[:200]}')
-    except Exception as e:
-        print(f'[M5] Gemini failed: {e}')
-        
+    for model_name in ['gemini-3.8-flash', 'gemini-2.5-flash']:
+        url = f'https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={key}'
+        try:
+            async with httpx.AsyncClient(timeout=20.0) as client:
+                resp = await client.post(url, json=payload)
+
+            if resp.status_code == 200:
+                candidates = resp.json().get('candidates', [])
+                if candidates:
+                    text = candidates[0]['content']['parts'][0]['text'].strip()
+                    print(f'[M5] Gemini ({model_name}) OK — {len(text)} chars')
+                    return _strip_chemicals(text)
+            else:
+                print(f'[M5] Gemini ({model_name}) error {resp.status_code}: {resp.text[:200]}')
+        except Exception as e:
+            print(f'[M5] Gemini ({model_name}) failed: {e}')
+
     return ''
 
 
