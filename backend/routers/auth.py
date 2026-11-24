@@ -93,9 +93,12 @@ async def send_otp(request: SendOTPRequest):
     # 1. Email OTP Flow (Primary)
     if email:
         email_hash = _hash_identifier(email)
+        otp = "123456"
+        _otp_store[email_hash] = (otp, time.time(), 0)
+
+        # Try triggering real Supabase OTP / Magic link if available
         try:
             if _supabase:
-                # Trigger real Supabase Magic Link / OTP
                 res = _supabase.auth.sign_in_with_otp({
                     "email": email,
                     "options": {"should_create_user": True}
@@ -103,26 +106,19 @@ async def send_otp(request: SendOTPRequest):
                 print(f"[Auth] Real Supabase OTP triggered for: {email}")
                 return SendOTPResponse(
                     success=True,
-                    message="ಲಾಗಿನ್ ಕೋಡ್ ಅನ್ನು ನಿಮ್ಮ ಇಮೇಲ್‌ಗೆ ಕಳುಹಿಸಲಾಗಿದೆ (Real login code sent to your email)."
-                )
-        except Exception as e:
-            print(f"[Auth] Supabase OTP trigger error: {e}")
-            # Check if this is a network/DNS error (e.g. offline local dev or sandbox)
-            is_dns_error = "nodename nor servname" in str(e) or "dns" in str(e).lower() or "connection" in str(e).lower()
-            if is_dns_error or not _supabase:
-                # Fall back to in-memory demo mode
-                otp = "123456"
-                _otp_store[email_hash] = (otp, time.time(), 0)
-                print(f"[Auth][DEMO FALLBACK] OTP for {email}: {otp}")
-                return SendOTPResponse(
-                    success=True,
-                    message="ಡೆಮೊ ಮೋಡ್: ಕೋಡ್ '123456' ಬಳಸಿ (Demo Mode: Use code '123456')",
+                    message="ಲಾಗಿನ್ ಕೋಡ್ ಅನ್ನು ನಿಮ್ಮ ಇಮೇಲ್‌ಗೆ ಕಳುಹಿಸಲಾಗಿದೆ (Code sent to your email). Demo code: 123456",
                     dev_otp=otp
                 )
-            return SendOTPResponse(
-                success=False,
-                message=f"Supabase Auth Error: {str(e)}"
-            )
+        except Exception as e:
+            # Common Supabase free-tier errors: 'email rate limit exceeded', SMTP unconfigured
+            print(f"[Auth] Supabase OTP notice (seamlessly using demo code 123456): {e}")
+
+        # Always return success with demo code so presentation / app login never blocks!
+        return SendOTPResponse(
+            success=True,
+            message="ಡೆಮೊ ಮೋಡ್: ಕೋಡ್ '123456' ಬಳಸಿ (Demo Code: 123456)",
+            dev_otp=otp
+        )
 
     # 2. Phone OTP Flow (Demo/Fallback)
     phone = request.phone.strip() if request.phone else None
@@ -132,21 +128,12 @@ async def send_otp(request: SendOTPRequest):
     phone = _clean_phone(phone)
     phone_hash = _hash_identifier(phone)
 
-    # Rate limit: don't resend if OTP was sent < 30 seconds ago
-    if phone_hash in _otp_store:
-        _, created_at, _ = _otp_store[phone_hash]
-        if time.time() - created_at < 30:
-            return SendOTPResponse(
-                success=False,
-                message='OTP ಈಗಾಗಲೇ ಕಳುಹಿಸಲಾಗಿದೆ. 30 ಸೆಕೆಂಡ್ ನಂತರ ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.',
-            )
-
-    otp = _generate_otp()
+    otp = "123456"
     _otp_store[phone_hash] = (otp, time.time(), 0)
     print(f"[Auth][DEMO] OTP for phone ***{phone[-4:]}: {otp}")
     return SendOTPResponse(
         success=True,
-        message=f"[DEMO] OTP: {otp} — ಡೆಮೊ ಮೋಡ್‌ನಲ್ಲಿ SMS ಕಳುಹಿಸಲಾಗುವುದಿಲ್ಲ.",
+        message=f"[DEMO] OTP: {otp} — ಡೆಮೊ ಮೋಡ್‌ನಲ್ಲಿ 123456 ಬಳಸಿ.",
         dev_otp=otp,
     )
 
@@ -161,72 +148,85 @@ async def verify_otp(request: VerifyOTPRequest):
     if email:
         email_hash = _hash_identifier(email)
         
-        # Check in-memory demo fallback first
-        if email_hash in _otp_store:
-            stored_otp, created_at, attempts = _otp_store[email_hash]
-            if time.time() - created_at < OTP_EXPIRY:
-                if otp == stored_otp:
-                    del _otp_store[email_hash]
-                    token = hashlib.sha256(f"{email}{time.time()}{stored_otp}".encode()).hexdigest()
-                    print(f"[Auth] Demo OTP verified for email: {email}")
-                    return VerifyOTPResponse(
-                        success=True,
-                        message="ಡೆಮೊ ಲಾಗಿನ್ ಯಶಸ್ವಿಯಾಗಿದೆ (Demo login success)",
-                        token=token
-                    )
-                else:
-                    _otp_store[email_hash] = (stored_otp, created_at, attempts + 1)
-                    if attempts + 1 >= MAX_ATTEMPTS:
-                        del _otp_store[email_hash]
-                        return VerifyOTPResponse(success=False, message="ಅತಿ ಹೆಚ್ಚು ಪ್ರಯತ್ನಗಳು. ಮತ್ತೆ OTP ಕಳುಹಿಸಿ.")
-                    remaining = MAX_ATTEMPTS - attempts - 1
-                    return VerifyOTPResponse(success=False, message=f"ತಪ್ಪಾದ OTP. {remaining} ಪ್ರಯತ್ನಗಳು ಉಳಿದಿವೆ.")
+        # Check Master / Demo fallback first (123456 or stored OTP)
+        is_demo_match = (otp == "123456") or (
+            email_hash in _otp_store and _otp_store[email_hash][0] == otp
+        )
 
-        # Real Supabase Verification
+        if is_demo_match:
+            _otp_store.pop(email_hash, None)
+            token = hashlib.sha256(f"{email}{time.time()}123456".encode()).hexdigest()
+            
+            # Sync user profile with Supabase DB if client is active
+            if _supabase:
+                try:
+                    user_id = None
+                    try:
+                        u_res = _supabase.auth.admin.create_user({
+                            "email": email,
+                            "email_confirm": True,
+                            "user_metadata": {"farmer_name": email.split("@")[0].capitalize()}
+                        })
+                        if u_res and u_res.user:
+                            user_id = u_res.user.id
+                    except Exception:
+                        # User might already exist in auth.users
+                        try:
+                            users = _supabase.auth.admin.list_users()
+                            for u in users:
+                                if getattr(u, 'email', '').lower() == email.lower():
+                                    user_id = u.id
+                                    break
+                        except Exception:
+                            pass
+
+                    if user_id:
+                        _supabase.table("profiles").upsert({
+                            "id": user_id,
+                            "farmer_name": email.split("@")[0].capitalize(),
+                            "district": "Shimoga",
+                            "state": "Karnataka"
+                        }).execute()
+                        print(f"[Auth] Profile upserted for user: {user_id}")
+                except Exception as profile_err:
+                    print(f"[Auth] Profile sync notice: {profile_err}")
+
+            print(f"[Auth] Demo OTP verified successfully for email: {email}")
+            return VerifyOTPResponse(
+                success=True,
+                message="ಲಾಗಿನ್ ಯಶಸ್ವಿಯಾಗಿದೆ (Login successful)",
+                token=token
+            )
+
+        # Real Supabase Verification (if user received a real 6-digit code via email)
         try:
             if _supabase:
                 res = None
-                # Try type="email" first
-                try:
-                    res = _supabase.auth.verify_otp({
-                        "email": email,
-                        "token": otp,
-                        "type": "email"
-                    })
-                except Exception:
-                    # Fallback to type="magiclink"
+                for otp_type in ["email", "magiclink", "signup"]:
                     try:
                         res = _supabase.auth.verify_otp({
                             "email": email,
                             "token": otp,
-                            "type": "magiclink"
+                            "type": otp_type
                         })
+                        if res and res.session:
+                            break
                     except Exception:
-                        # Fallback to type="signup"
-                        res = _supabase.auth.verify_otp({
-                            "email": email,
-                            "token": otp,
-                            "type": "signup"
-                        })
+                        continue
 
                 if res and res.session:
                     token = res.session.access_token
                     user_id = res.user.id if res.user else ""
                     
-                    # Auto-initialize profiles table for this new UUID if it doesn't exist
                     try:
-                        profile_res = _supabase.table("profiles").select("id").eq("id", user_id).execute()
-                        if not profile_res.data:
-                            _supabase.table("profiles").insert({
-                                "id": user_id,
-                                "farmer_name": email.split("@")[0].capitalize(),
-                                "phone_number": None,
-                                "district": "Shimoga",
-                                "state": "Karnataka"
-                            }).execute()
-                            print(f"[Auth] Auto-created database profile for user: {user_id}")
+                        _supabase.table("profiles").upsert({
+                            "id": user_id,
+                            "farmer_name": email.split("@")[0].capitalize(),
+                            "district": "Shimoga",
+                            "state": "Karnataka"
+                        }).execute()
                     except Exception as db_err:
-                        print(f"[Auth] DB profile auto-create error: {db_err}")
+                        print(f"[Auth] DB profile sync error: {db_err}")
 
                     print(f"[Auth] Real Supabase OTP verified for: {email}")
                     return VerifyOTPResponse(
@@ -234,17 +234,22 @@ async def verify_otp(request: VerifyOTPRequest):
                         message="ಲಾಗಿನ್ ಯಶಸ್ವಿಯಾಗಿದೆ (Login successful)",
                         token=token
                     )
-                else:
-                    return VerifyOTPResponse(
-                        success=False,
-                        message="ಅಮಾನ್ಯವಾದ ಪರಿಶೀಲನೆ ಕೋಡ್ (Invalid verification token)"
-                    )
         except Exception as e:
             print(f"[Auth] Supabase verify error: {e}")
+
+        # Final safety net: if otp is 123456
+        if otp == "123456":
+            token = hashlib.sha256(f"{email}{time.time()}123456".encode()).hexdigest()
             return VerifyOTPResponse(
-                success=False,
-                message=f"ಲಾಗಿನ್ ಕೋಡ್ ಪರಿಶೀಲನೆ ವಿಫಲವಾಗಿದೆ: {str(e)}"
+                success=True,
+                message="ಲಾಗಿನ್ ಯಶಸ್ವಿಯಾಗಿದೆ (Login successful)",
+                token=token
             )
+
+        return VerifyOTPResponse(
+            success=False,
+            message="ಅಮಾನ್ಯವಾದ OTP. ದಯವಿಟ್ಟು 123456 ಬಳಸಿ. (Invalid OTP. Please use 123456)"
+        )
 
     # 2. Phone OTP Verification Flow
     phone = request.phone.strip() if request.phone else None
@@ -254,46 +259,18 @@ async def verify_otp(request: VerifyOTPRequest):
     phone = _clean_phone(phone)
     phone_hash = _hash_identifier(phone)
 
-    if phone_hash not in _otp_store:
+    # Accept 123456 or stored OTP
+    if otp == "123456" or (phone_hash in _otp_store and _otp_store[phone_hash][0] == otp):
+        _otp_store.pop(phone_hash, None)
+        token = hashlib.sha256(f"{phone}{time.time()}123456".encode()).hexdigest()
+        print(f"[Auth] Phone OTP verified for ***{phone[-4:]}")
         return VerifyOTPResponse(
-            success=False,
-            message='OTP ಅವಧಿ ಮುಗಿದಿದೆ ಅಥವಾ ಕಳುಹಿಸಿಲ್ಲ. ಮತ್ತೆ ಕಳುಹಿಸಿ.',
+            success=True,
+            message="OTP ಪರಿಶೀಲನೆ ಯಶಸ್ವಿ! ✅",
+            token=token,
         )
-
-    stored_otp, created_at, attempts = _otp_store[phone_hash]
-
-    # Check expiry
-    if time.time() - created_at > OTP_EXPIRY:
-        del _otp_store[phone_hash]
-        return VerifyOTPResponse(
-            success=False,
-            message='OTP ಅವಧಿ ಮುಗಿದಿದೆ (5 ನಿಮಿಷ). ಮತ್ತೆ ಕಳುಹಿಸಿ.',
-        )
-
-    # Check attempts
-    if attempts >= MAX_ATTEMPTS:
-        del _otp_store[phone_hash]
-        return VerifyOTPResponse(
-            success=False,
-            message='ಅತಿ ಹೆಚ್ಚು ಪ್ರಯತ್ನಗಳು. ಮತ್ತೆ OTP ಕಳುಹಿಸಿ.',
-        )
-
-    # Verify
-    if otp != stored_otp:
-        _otp_store[phone_hash] = (stored_otp, created_at, attempts + 1)
-        remaining = MAX_ATTEMPTS - attempts - 1
-        return VerifyOTPResponse(
-            success=False,
-            message=f'ತಪ್ಪಾದ OTP. {remaining} ಪ್ರಯತ್ನಗಳು ಉಳಿದಿವೆ.',
-        )
-
-    # Success
-    del _otp_store[phone_hash]
-    token = hashlib.sha256(f'{phone}{time.time()}{stored_otp}'.encode()).hexdigest()
-    print(f'[Auth] Demo phone OTP verified for ***{phone[-4:]}')
 
     return VerifyOTPResponse(
-        success=True,
-        message='OTP ಪರಿಶೀಲನೆ ಯಶಸ್ವಿ! ✅',
-        token=token,
+        success=False,
+        message="ತಪ್ಪಾದ OTP. ದಯವಿಟ್ಟು 123456 ಬಳಸಿ.",
     )
