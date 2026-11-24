@@ -124,6 +124,94 @@ async def _call_mistral(system: str, user_message: str, history: list | None = N
     
     return ''
 
+
+async def _call_sarvam_chat(system: str, user_message: str, history: list | None = None) -> str:
+    """Call Sarvam AI Chat Completion API (sarvam-105b) — native Indian language LLM."""
+    api_key = os.environ.get('SARVAM_API_KEY', '').strip()
+    if not api_key:
+        print('[M5] SARVAM_API_KEY not set!')
+        return ''
+
+    messages = [{'role': 'system', 'content': system}]
+    if history:
+        for h in history[-6:]:
+            messages.append({'role': h['role'], 'content': h['content']})
+    messages.append({'role': 'user', 'content': user_message})
+
+    try:
+        async with httpx.AsyncClient(timeout=25.0) as client:
+            resp = await client.post(
+                'https://api.sarvam.ai/v1/chat/completions',
+                headers={
+                    'api-subscription-key': api_key,
+                    'Content-Type': 'application/json',
+                },
+                json={
+                    'model': 'sarvam-105b',
+                    'messages': messages,
+                    'temperature': 0.3,
+                    'max_tokens': 500,
+                }
+            )
+
+        if resp.status_code == 200:
+            text = resp.json()['choices'][0]['message']['content'].strip()
+            print(f'[M5] Sarvam-105B OK — {len(text)} chars')
+            return _strip_chemicals(text)
+        else:
+            print(f'[M5] Sarvam Chat error {resp.status_code}: {resp.text[:200]}')
+    except Exception as e:
+        print(f'[M5] Sarvam Chat failed: {e}')
+
+    return ''
+
+
+async def _translate_via_sarvam(text: str, target_lang_code: str) -> str:
+    """Translate English fallback text into user's target Indian language via Sarvam Mayura."""
+    if not text or not target_lang_code or target_lang_code.startswith('en'):
+        return text
+    api_key = os.environ.get('SARVAM_API_KEY', '').strip()
+    if not api_key:
+        return text
+
+    # Normalize language code to xx-IN format expected by Sarvam
+    lang_map = {
+        'kn': 'kn-IN', 'hi': 'hi-IN', 'ta': 'ta-IN', 'te': 'te-IN',
+        'ml': 'ml-IN', 'mr': 'mr-IN', 'bn': 'bn-IN', 'gu': 'gu-IN',
+        'pa': 'pa-IN', 'or': 'od-IN', 'od': 'od-IN',
+    }
+    target = lang_map.get(target_lang_code, target_lang_code)
+    if '-' not in target:
+        target = f'{target}-IN'
+
+    # Strip heavy markdown symbols before translation
+    clean = re.sub(r'[#*`_]', '', text).strip()[:950]
+
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            resp = await client.post(
+                'https://api.sarvam.ai/translate',
+                headers={
+                    'api-subscription-key': api_key,
+                    'Content-Type': 'application/json',
+                },
+                json={
+                    'input': clean,
+                    'source_language_code': 'en-IN',
+                    'target_language_code': target,
+                    'model': 'mayura:v1',
+                }
+            )
+        if resp.status_code == 200:
+            translated = resp.json().get('translated_text', '').strip()
+            if translated:
+                print(f'[M5] Sarvam Translate ({target}) OK — {len(translated)} chars')
+                return translated
+    except Exception as e:
+        print(f'[M5] Sarvam Translate failed: {e}')
+
+    return text
+
 async def _call_gemini(system: str, user_message: str, history: list | None = None) -> str:
     """PRIMARY LLM — Gemini 2.0 Flash. Better quality for Indian languages."""
     key = os.environ.get('GEMINI_API_KEY', '').strip()
@@ -469,15 +557,25 @@ async def generate(
         print('[M5] Gemini failed, falling back to Mistral...')
         answer = await _call_mistral(SYSTEM_PROMPT, user_message, history=history_dicts)
 
+    if not answer.strip():
+        print('[M5] Mistral failed/rate-limited, falling back to Sarvam-105B...')
+        answer = await _call_sarvam_chat(SYSTEM_PROMPT, user_message, history=history_dicts)
+
     if skb_record and not answer.strip():
-        answer = m3_structured_kb.format_recipe_for_response(skb_record)
+        raw_recipe = m3_structured_kb.format_recipe_for_response(skb_record)
+        answer = await _translate_via_sarvam(raw_recipe, language_code)
 
     if not answer.strip() and rag_chunks:
         # Grounded fallback directly from verified RAG chunk
         top_content = rag_chunks[0].content
-        if target_lang.startswith('Kannada') and not any('\u0c80' <= c <= '\u0cff' for c in top_content):
-            # If query is in Kannada and chunk is in English, provide friendly Kannada note with knowledge
-            answer = f"ನಮ್ಮ ಸಾವಯವ ಕೃಷಿ ದತ್ತಾಂಶದ ಪ್ರಕಾರ: {top_content}"
+        if not language_code.startswith('en'):
+            translated = await _translate_via_sarvam(top_content, language_code)
+            if translated != top_content:
+                answer = translated
+            elif target_lang.startswith('Kannada') and not any('\u0c80' <= c <= '\u0cff' for c in top_content):
+                answer = f"ನಮ್ಮ ಸಾವಯವ ಕೃಷಿ ದತ್ತಾಂಶದ ಪ್ರಕಾರ: {top_content}"
+            else:
+                answer = top_content
         else:
             answer = top_content
 
@@ -486,6 +584,8 @@ async def generate(
         fallbacks = {
             'kn-IN': 'ಕ್ಷಮಿಸಿ, ಸರ್ವರ್ ಸ್ವಲ್ಪ ನಿಧಾನವಾಗಿದೆ. ದಯವಿಟ್ಟು ಮತ್ತೊಮ್ಮೆ ಕೇಳಿ.',
             'hi-IN': 'क्षमा करें, सर्वर धीमा है। कृपया दोबारा पूछें।',
+            'ta-IN': 'மன்னிக்கவும், சர்வர் சற்று மெதுவாக உள்ளது. தயவுசெய்து மீண்டும் கேளுங்கள்.',
+            'te-IN': 'క్షమించండి, సర్వర్ కొంచెం నెమ్మదిగా ఉంది. దయచేసి మళ్లీ అడగండి.',
             'en-IN': 'Sorry, the server is slow right now. Please try again.',
         }
         answer = fallbacks.get(language_code, fallbacks['kn-IN'])
