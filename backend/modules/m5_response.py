@@ -150,14 +150,16 @@ async def _call_sarvam_chat(system: str, user_message: str, history: list | None
                     'model': 'sarvam-105b',
                     'messages': messages,
                     'temperature': 0.3,
-                    'max_tokens': 500,
+                    'max_tokens': 1024,
                 }
             )
 
         if resp.status_code == 200:
-            text = resp.json()['choices'][0]['message']['content'].strip()
-            print(f'[M5] Sarvam-105B OK — {len(text)} chars')
-            return _strip_chemicals(text)
+            msg = resp.json()['choices'][0]['message']
+            text = (msg.get('content') or msg.get('reasoning_content') or '').strip()
+            if text:
+                print(f'[M5] Sarvam-105B OK — {len(text)} chars')
+                return _strip_chemicals(text)
         else:
             print(f'[M5] Sarvam Chat error {resp.status_code}: {resp.text[:200]}')
     except Exception as e:
@@ -213,13 +215,13 @@ async def _translate_via_sarvam(text: str, target_lang_code: str) -> str:
     return text
 
 async def _call_gemini(system: str, user_message: str, history: list | None = None) -> str:
-    """PRIMARY LLM — Gemini 2.0 Flash. Better quality for Indian languages."""
+    """PRIMARY LLM — Gemini 3.8 Flash. Better quality for Indian languages."""
     key = os.environ.get('GEMINI_API_KEY', '').strip()
     if not key:
         print('[M5] ERROR: GEMINI_API_KEY not set!')
         return ''
         
-    url = f'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={key}'
+    url = f'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key={key}'
     
     parts = []
     parts.append({'text': f"SYSTEM PROMPT (Follow strictly):\n{system}\n\n"})

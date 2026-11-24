@@ -175,7 +175,7 @@ async def audio_to_transcript(audio_base64: str, api_key: str, mime_type: str = 
     }
     lang_name = LANG_NAMES.get(sarvam_lang, 'Kannada')
 
-    gemini_url = f'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={gemini_key}'
+    gemini_url = f'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key={gemini_key}'
     payload = {
         'contents': [{
             'parts': [

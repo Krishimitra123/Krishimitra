@@ -81,17 +81,18 @@ async def _run_query(request: QueryRequest) -> QueryResponse:
 
     skb_record = None
     if nlp.intent == Intent.SF_PREP:
+        q_lower = (query_text + ' ' + (nlp.normalised_query or '')).lower()
         prep_candidates = [
-            'jeevamrutha', 'jivamrita', 'ಜೀವಾಮೃತ', 'ಜೀವ ಅಮೃತ',
-            'panchagavya', 'ಪಂಚಗವ್ಯ', 'beejamrutha', 'ಬೀಜಾಮೃತ',
-            'vermicompost', 'ಎರೆಹುಳು ಗೊಬ್ಬರ',
+            ('jeevamrutha', ['jeevamrutha', 'jivamrita', 'ಜೀವಾಮೃತ', 'ಜೀವ ಅಮೃತ']),
+            ('panchagavya', ['panchagavya', 'ಪಂಚಗವ್ಯ']),
+            ('beejamrutha', ['beejamrutha', 'ಬೀಜಾಮೃತ']),
+            ('vermicompost', ['vermicompost', 'ಎರೆಹುಳು ಗೊಬ್ಬರ', 'ಕಂಪೋಸ್ಟ್']),
         ]
-        for candidate in prep_candidates:
-            skb_record = m3_structured_kb.get_organic_input(candidate)
-            if skb_record:
-                break
-        if not skb_record:
-            skb_record = m3_structured_kb.get_organic_input(nlp.normalised_query or query_text)
+        for db_key, keywords in prep_candidates:
+            if any(kw in q_lower for kw in keywords):
+                skb_record = m3_structured_kb.get_organic_input(db_key)
+                if skb_record:
+                    break
     elif nlp.intent == Intent.SF_MULCH:
         mulch_candidates = ['gliricidia', 'ನುಗ್ಗೆ', 'agase', 'ಅಗಸೆ']
         for candidate in mulch_candidates:
