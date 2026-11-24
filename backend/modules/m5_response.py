@@ -472,6 +472,15 @@ async def generate(
     if skb_record and not answer.strip():
         answer = m3_structured_kb.format_recipe_for_response(skb_record)
 
+    if not answer.strip() and rag_chunks:
+        # Grounded fallback directly from verified RAG chunk
+        top_content = rag_chunks[0].content
+        if target_lang.startswith('Kannada') and not any('\u0c80' <= c <= '\u0cff' for c in top_content):
+            # If query is in Kannada and chunk is in English, provide friendly Kannada note with knowledge
+            answer = f"ನಮ್ಮ ಸಾವಯವ ಕೃಷಿ ದತ್ತಾಂಶದ ಪ್ರಕಾರ: {top_content}"
+        else:
+            answer = top_content
+
     if not answer.strip():
         # Fallback message in user's language
         fallbacks = {

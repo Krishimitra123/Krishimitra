@@ -71,12 +71,12 @@ def _set_cache(key: str, data: dict):
 
 def _resolve_coords(district: Optional[str], lat: Optional[float], lon: Optional[float]) -> tuple[float, float, str]:
     """Resolve coordinates from district name or direct lat/lon."""
-    if lat is not None and lon is not None:
-        district_name = district or 'Custom Location'
-        return lat, lon, district_name
+    if isinstance(lat, (int, float)) and isinstance(lon, (int, float)):
+        district_name = str(district) if district and not hasattr(district, 'default') else 'Custom Location'
+        return float(lat), float(lon), district_name
 
-    if district:
-        key = district.lower().strip()
+    if district and not hasattr(district, 'default'):
+        key = str(district).lower().strip()
         if key in DISTRICT_COORDS:
             coords = DISTRICT_COORDS[key]
             return coords[0], coords[1], district

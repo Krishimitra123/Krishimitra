@@ -114,13 +114,16 @@ async def get_prices(
     Get mandi prices for Karnataka crops.
     Tries Data.gov.in first (if API key set), falls back to curated data.
     """
-    cache_key = f'market_{district or "all"}_{commodity or "all"}'
+    dist_str = str(district).strip() if district and not hasattr(district, 'default') else ''
+    comm_str = str(commodity).strip() if commodity and not hasattr(commodity, 'default') else ''
+
+    cache_key = f'market_{dist_str or "all"}_{comm_str or "all"}'
     cached = _get_cache(cache_key)
     if cached:
         return cached
 
     # Try live Data.gov.in API first
-    live_data = await _fetch_from_data_gov('Karnataka', district or '', commodity or '')
+    live_data = await _fetch_from_data_gov('Karnataka', dist_str, comm_str)
     if live_data and live_data.get('count', 0) > 0:
         _set_cache(cache_key, live_data)
         return live_data
@@ -129,13 +132,13 @@ async def get_prices(
     prices = _prices_data.get('prices', [])
 
     # Filter by district
-    if district:
-        d_lower = district.lower().strip()
+    if dist_str:
+        d_lower = dist_str.lower()
         prices = [p for p in prices if d_lower in p.get('district', '').lower()]
 
     # Filter by commodity
-    if commodity:
-        c_lower = commodity.lower().strip()
+    if comm_str:
+        c_lower = comm_str.lower()
         prices = [
             p for p in prices
             if c_lower in p.get('commodity', '').lower()

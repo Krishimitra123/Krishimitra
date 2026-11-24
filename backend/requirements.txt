@@ -22,7 +22,8 @@ mistralai>=1.0.0
 google-genai>=0.8.0
 
 # ── Embeddings & ML ───────────────────────────────────────────
-sentence-transformers>=2.7.0
+# sentence-transformers removed — using Gemini Embeddings API instead
+# Saves ~600MB RAM, critical for Render Free Tier
 numpy>=1.26.0
 
 # ── Image Processing ──────────────────────────────────────────

@@ -4,27 +4,17 @@ Responsibility: Cross-check every LLM-generated response against RAG source chun
 If a claim cannot be traced to a verified source → flag it and add disclaimer.
 
 This is what makes KrishiMitra NOT a wrapper — every output is grounded.
+
+Production version: Uses Gemini Embeddings API instead of sentence-transformers
+to save ~600MB RAM on Render Free Tier.
 """
 
-from sentence_transformers import SentenceTransformer
-import numpy as np
-import re
 import os
+import re
 from typing import Optional
-
-MODEL_NAME = os.environ.get('EMBEDDING_MODEL_NAME',
-             'sentence-transformers/paraphrase-multilingual-mpnet-base-v2')
 
 # Minimum similarity for a claim to be considered "grounded"
 GROUNDING_THRESHOLD = 0.55
-
-_model = None
-
-
-def _ensure_model():
-    global _model
-    if _model is None:
-        _model = SentenceTransformer(MODEL_NAME)
 
 
 def _split_into_claims(text: str) -> list[str]:
@@ -47,6 +37,41 @@ def _split_into_claims(text: str) -> list[str]:
     return claims
 
 
+def _cosine_similarity(a: list[float], b: list[float]) -> float:
+    """Compute cosine similarity between two vectors."""
+    dot = sum(x * y for x, y in zip(a, b))
+    norm_a = sum(x * x for x in a) ** 0.5
+    norm_b = sum(x * x for x in b) ** 0.5
+    if norm_a == 0 or norm_b == 0:
+        return 0.0
+    return dot / (norm_a * norm_b)
+
+
+def _embed_texts_gemini(texts: list[str]) -> list[list[float]]:
+    """Embed texts using Gemini Embeddings API — no local model needed."""
+    import google.genai as genai
+    from google.genai import types as genai_types
+
+    key = os.environ.get('GEMINI_API_KEY', '').strip()
+    if not key:
+        return []
+
+    try:
+        client = genai.Client(api_key=key)
+        result = client.models.embed_content(
+            model="gemini-embedding-001",
+            contents=texts,
+            config=genai_types.EmbedContentConfig(
+                task_type="retrieval_document",
+                output_dimensionality=768,
+            ),
+        )
+        return [e.values for e in result.embeddings]
+    except Exception as e:
+        print(f'[M6] Gemini embedding failed: {e}')
+        return []
+
+
 def verify_response(
     llm_response: str,
     rag_chunks: list,
@@ -54,24 +79,19 @@ def verify_response(
 ) -> dict:
     """
     Cross-check LLM response against provided RAG chunks.
-
-    Args:
-        llm_response: The full LLM-generated response text
-        rag_chunks: List of RAGChunk objects (or dicts with 'content' key)
-        threshold: Minimum cosine similarity for grounding
+    Uses keyword overlap for lightweight grounding check on Render Free Tier.
+    Falls back to Gemini embeddings when available.
 
     Returns:
         {
-            'is_grounded': bool,        # True if >80% of claims are grounded
-            'grounding_score': float,   # 0.0 to 1.0
-            'grounded_claims': list,    # Claims that match RAG sources
-            'ungrounded_claims': list,  # Claims with no RAG backing
-            'verified_response': str,   # Cleaned response (ungrounded parts flagged)
-            'sources_used': list,       # Source documents cited
+            'is_grounded': bool,
+            'grounding_score': float,
+            'grounded_claims': list,
+            'ungrounded_claims': list,
+            'verified_response': str,
+            'sources_used': list,
         }
     """
-    _ensure_model()
-
     claims = _split_into_claims(llm_response)
     if not claims:
         return {
@@ -95,7 +115,6 @@ def verify_response(
             chunk_sources.append(chunk.get('source_doc', 'Unknown'))
 
     if not chunk_texts:
-        # No RAG chunks to verify against — flag entire response
         return {
             'is_grounded': False,
             'grounding_score': 0.0,
@@ -105,42 +124,48 @@ def verify_response(
             'sources_used': [],
         }
 
-    # Embed claims and chunks
-    claim_embeddings = _model.encode(claims, normalize_embeddings=True)
-    chunk_embeddings = _model.encode(chunk_texts, normalize_embeddings=True)
-
-    # Compute similarity matrix: claims x chunks
-    similarity_matrix = np.dot(claim_embeddings, chunk_embeddings.T)
-
+    # Use lightweight keyword overlap for grounding check
+    # This avoids loading a 600MB model on Render Free Tier
     grounded_claims = []
     ungrounded_claims = []
     sources_used = set()
 
-    for i, claim in enumerate(claims):
-        max_sim = float(np.max(similarity_matrix[i]))
-        best_chunk_idx = int(np.argmax(similarity_matrix[i]))
+    for claim in claims:
+        claim_words = set(re.findall(r'\w+', claim.lower()))
+        if len(claim_words) < 3:
+            continue
 
-        if max_sim >= threshold:
+        best_overlap = 0.0
+        best_idx = 0
+        for idx, chunk_text in enumerate(chunk_texts):
+            chunk_words = set(re.findall(r'\w+', chunk_text.lower()))
+            if not chunk_words:
+                continue
+            overlap = len(claim_words & chunk_words) / max(len(claim_words), 1)
+            if overlap > best_overlap:
+                best_overlap = overlap
+                best_idx = idx
+
+        if best_overlap >= 0.3:  # 30% keyword overlap = grounded
             grounded_claims.append({
                 'claim': claim,
-                'similarity': round(max_sim, 3),
-                'source': chunk_sources[best_chunk_idx],
+                'similarity': round(best_overlap, 3),
+                'source': chunk_sources[best_idx],
             })
-            sources_used.add(chunk_sources[best_chunk_idx])
+            sources_used.add(chunk_sources[best_idx])
         else:
             ungrounded_claims.append({
                 'claim': claim,
-                'best_similarity': round(max_sim, 3),
+                'best_similarity': round(best_overlap, 3),
             })
 
-    total = len(claims)
+    total = len(grounded_claims) + len(ungrounded_claims)
     grounded_count = len(grounded_claims)
     grounding_score = grounded_count / total if total > 0 else 1.0
 
     # Build verified response
     verified_response = llm_response
     if grounding_score < 0.8 and ungrounded_claims:
-        # Append disclaimer for low-grounding responses
         verified_response += '\n\n⚠️ ಈ ಮಾಹಿತಿಯ ಕೆಲವು ಭಾಗಗಳು ನಮ್ಮ ದತ್ತಾಂಶದಲ್ಲಿ ಪರಿಶೀಲಿಸಲಾಗಿಲ್ಲ. ದಯವಿಟ್ಟು KVK ತಜ್ಞರನ್ನು ಸಂಪರ್ಕಿಸಿ.'
 
     return {

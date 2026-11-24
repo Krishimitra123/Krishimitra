@@ -106,10 +106,10 @@ def _find_zone(district: str) -> Optional[dict]:
 
 
 def _resolve_coords(district: Optional[str], lat: Optional[float], lon: Optional[float]) -> tuple[float, float, str]:
-    if lat is not None and lon is not None:
-        return lat, lon, district or 'Custom'
-    if district:
-        key = district.lower().strip()
+    if isinstance(lat, (int, float)) and isinstance(lon, (int, float)):
+        return float(lat), float(lon), str(district) if district and not hasattr(district, 'default') else 'Custom'
+    if district and not hasattr(district, 'default'):
+        key = str(district).lower().strip()
         if key in DISTRICT_COORDS:
             c = DISTRICT_COORDS[key]
             return c[0], c[1], district

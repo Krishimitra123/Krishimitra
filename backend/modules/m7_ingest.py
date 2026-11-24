@@ -10,23 +10,14 @@ import json
 import os
 import re
 from typing import Optional
-from sentence_transformers import SentenceTransformer
 from supabase import create_client
 
-MODEL_NAME = os.environ.get('EMBEDDING_MODEL_NAME',
-             'sentence-transformers/paraphrase-multilingual-mpnet-base-v2')
-
-_model = None
 _client = None
 
 
 def _ensure_loaded():
-    """Lazy-load embedding model and Supabase client."""
-    global _model, _client
-    if _model is None:
-        print('[M7] Loading embedding model...')
-        _model = SentenceTransformer(MODEL_NAME)
-        print(f'[M7] Model loaded: {MODEL_NAME}')
+    """Lazy-load Supabase client."""
+    global _client
     if _client is None:
         url = os.environ.get('SUPABASE_URL', '')
         key = os.environ.get('SUPABASE_SERVICE_KEY', '')
@@ -65,10 +56,31 @@ def _chunk_text(text: str, max_tokens: int = 512, overlap: int = 50) -> list[str
 
 
 def embed_texts(texts: list[str]) -> list[list[float]]:
-    """Embed a list of texts using the multilingual model."""
-    _ensure_loaded()
-    embeddings = _model.encode(texts, normalize_embeddings=True, show_progress_bar=True)
-    return [e.tolist() for e in embeddings]
+    """Embed a list of texts using Gemini Embeddings API — no local model needed."""
+    import google.genai as genai
+    from google.genai import types as genai_types
+
+    key = os.environ.get('GEMINI_API_KEY', '').strip()
+    if not key:
+        raise RuntimeError('[M7] GEMINI_API_KEY not set for embeddings')
+
+    client = genai.Client(api_key=key)
+    all_embeddings = []
+    # Process in batches of 50 (Gemini API limit)
+    batch_size = 50
+    for i in range(0, len(texts), batch_size):
+        batch = texts[i:i+batch_size]
+        result = client.models.embed_content(
+            model="gemini-embedding-001",
+            contents=batch,
+            config=genai_types.EmbedContentConfig(
+                task_type="retrieval_document",
+                output_dimensionality=768,
+            ),
+        )
+        all_embeddings.extend([e.values for e in result.embeddings])
+        print(f'[M7] Embedded batch {i//batch_size + 1} ({len(batch)} texts)')
+    return all_embeddings
 
 
 async def ingest_seed_chunks(json_path: str) -> dict:
@@ -100,7 +112,7 @@ async def ingest_seed_chunks(json_path: str) -> dict:
     inserted = 0
     for chunk, embedding in zip(chunks, embeddings):
         try:
-            _client.table('chunks').insert({
+            _client.table('document_chunks').insert({
                 'content': chunk['content'],
                 'embedding': embedding,
                 'source_doc': chunk['source_doc'],
@@ -194,7 +206,7 @@ async def ingest_pdf(
     inserted = 0
     for chunk, embedding in zip(all_chunks, embeddings):
         try:
-            _client.table('chunks').insert({
+            _client.table('document_chunks').insert({
                 'content': chunk['content'],
                 'embedding': embedding,
                 'source_doc': source_doc,
@@ -282,7 +294,7 @@ async def ingest_youtube_transcript(
         if len(chunk_text.split()) < 15:
             continue
         try:
-            _client.table('chunks').insert({
+            _client.table('document_chunks').insert({
                 'content': chunk_text,
                 'embedding': embedding,
                 'source_doc': source_doc,
@@ -317,7 +329,7 @@ async def ingest_manual_chunks(chunks_data: list[dict]) -> dict:
     inserted = 0
     for chunk, embedding in zip(chunks_data, embeddings):
         try:
-            _client.table('chunks').insert({
+            _client.table('document_chunks').insert({
                 'content': chunk['content'],
                 'embedding': embedding,
                 'source_doc': chunk['source_doc'],
@@ -344,7 +356,7 @@ async def get_corpus_stats() -> dict:
         return {'total_chunks': 0, 'categories': {}, 'status': 'not_configured'}
 
     try:
-        result = _client.table('chunks').select('category, sub_category, verified').execute()
+        result = _client.table('document_chunks').select('category, sub_category, verified').execute()
         rows = result.data or []
 
         categories = {}
