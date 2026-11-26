@@ -16,7 +16,7 @@ Follow `docs/09_Deployment_Runbook.md` to set up:
 
 ### 1.2 Understand the Architecture
 Read these docs in order:
-1. `CONTEXT.md` — Quick 8-module overview (10 min)
+1. `README.md` — architecture and module overview (10 min)
 2. `docs/02_HLD.md` — System architecture with diagrams (20 min)
 3. `docs/06_ADR.md` — Why we made each technology choice (15 min)
 

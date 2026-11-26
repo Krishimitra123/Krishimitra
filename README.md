@@ -55,7 +55,7 @@ The AI responds like a **warm village elder neighbor** — concise, grounded, an
 **KrishiMitra replies:** *"ಶಕೀಬ್ ಅಣ್ಣಾ, ನಿಮ್ಮ ಹಾಸನದ ಕೆಂಪು ಮರಳು ಮಿಶ್ರಿತ ಮಣ್ಣಿಗೆ ಆಲೂಗಡ್ಡೆ ತುಂಬಾ ಚೆನ್ನಾಗಿ ಹೊಂದುತ್ತದೆ. ನಿಮ್ಮ 4 ಎಕರೆಯಲ್ಲಿ 80 ಕ್ವಿಂಟಾಲ್/ಎಕರೆ ನಂತೆ ಒಟ್ಟು 320 ಕ್ವಿಂಟಾಲ್ ಇಳುವರಿ ಬರಬಹುದು. ₹2,000/ಕ್ವಿಂಟಾಲ್ ದರದಲ್ಲಿ ₹6,40,000 ಆದಾಯ, ₹1,60,000 ಖರ್ಚು ಕಳೆದು ನಿಮಗೆ ₹4,80,000 ನಿವ್ವಳ ಲಾಭ ಸಿಗಬಹುದು."*
 
 ✅ Correct district → soil type mapping (ICAR Zone 5)  
-✅ Math pre-computed in Python — zero LLM hallucinations  
+✅ Prices and yields computed in Python, not by the LLM, to avoid made-up numbers  
 ✅ Spoken in Sarvam's natural Kannada voice at 1.22x speed
 
 ---

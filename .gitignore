@@ -39,3 +39,6 @@ Thumbs.db
 *.log
 npm-debug.log*
 .venv/
+
+# Generated test report
+TEST_REPORT.txt
