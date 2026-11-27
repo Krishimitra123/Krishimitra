@@ -66,26 +66,10 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="dashboard"
-        options={{
-          tabBarIcon: ({ focused }) => (
-            <TabIcon name="store" focused={focused} />
-          ),
-        }}
-      />
-      <Tabs.Screen
         name="settings"
         options={{
           tabBarIcon: ({ focused }) => (
             <TabIcon name="account" focused={focused} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="analytics"
-        options={{
-          tabBarIcon: ({ focused }) => (
-            <TabIcon name="chart-areaspline" focused={focused} />
           ),
         }}
       />

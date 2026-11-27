@@ -13,7 +13,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { Colors, FontSize, Spacing, BorderRadius, Shadows } from '@/constants/theme';
-import { getCurrentSeason, SEASON_INFO, DASHBOARD_CROPS } from '@/constants/agricultureData';
+import { getCurrentSeason, SEASON_INFO } from '@/constants/season';
 import { useUserStore } from '@/stores/useUserStore';
 import { t } from '@/constants/i18n';
 import { useSessionStore } from '@/stores/useSessionStore';
@@ -93,17 +93,7 @@ export default function HomeScreen() {
         : "🌧 ಶೀಘ್ರದಲ್ಲೇ ಮಳೆ ಬರುವ ಸಾಧ್ಯತೆಯಿದೆ ಅಣ್ಣಾ! ಇಂದು ಯಾವುದೇ ಗೊಬ್ಬರ ಅಥವಾ ಕೀಟನಾಶಕ ಸಿಂಪಡಿಸಬೇಡಿ.";
     }
 
-    if (primary_crop?.toLowerCase() === 'onion') {
-      return isEn
-        ? "💰 Market trends show onion prices are rising in nearby mandis. If possible, wait 2 days to sell!"
-        : "💰 ಮಾರುಕಟ್ಟೆ ಮುನ್ಸೂಚನೆ ಪ್ರಕಾರ ಈರುಳ್ಳಿ ಬೆಲೆ ಏರುತ್ತಿದೆ. ಸಾಧ್ಯವಾದರೆ ಮಾರಾಟ ಮಾಡಲು 2 ದಿನ ಕಾಯಿರಿ ಅಣ್ಣಾ!";
-    }
 
-    if (primary_crop?.toLowerCase() === 'ginger') {
-      return isEn
-        ? "🌱 Based on soil moisture and weather, your ginger crop looks healthy! Current crop health: 82%."
-        : "🌱 ನಿಮ್ಮ ಶುಂಠಿ ಬೆಳೆ ಉತ್ತಮವಾಗಿದೆ! ಪ್ರಸ್ತುತ ಬೆಳೆ ಆರೋಗ್ಯ ಸೂಚ್ಯಂಕ: 82%.";
-    }
 
     const season = getCurrentSeason();
     if (season === 'kharif') {
@@ -548,20 +538,6 @@ export default function HomeScreen() {
 
         {/* Navigation to Tabs */}
         <View style={styles.navSection}>
-          <TouchableOpacity
-            style={styles.navBtn}
-            onPress={() => router.push('/(tabs)/dashboard')}
-            activeOpacity={0.85}
-          >
-            <LinearGradient colors={['#168A45', '#2E7D32']} style={styles.navBtnGrad}>
-              <MaterialCommunityIcons name="store" size={24} color="#fff" />
-              <View style={{ flex: 1 }}>
-                <Text style={styles.navBtnTitle}>{isEn ? 'Market' : 'ಮಾರುಕಟ್ಟೆ'}</Text>
-                <Text style={styles.navBtnSub}>{isEn ? 'Live Prices & Predictions' : 'ಲೈವ್ ಬೆಲೆಗಳು ಮತ್ತು ಮುನ್ಸೂಚನೆ'}</Text>
-              </View>
-              <MaterialCommunityIcons name="chevron-right" size={20} color="rgba(255,255,255,0.6)" />
-            </LinearGradient>
-          </TouchableOpacity>
           <TouchableOpacity
             style={styles.navBtn}
             onPress={() => router.push('/(tabs)/diagnose')}

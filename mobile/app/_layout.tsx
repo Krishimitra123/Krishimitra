@@ -147,24 +147,6 @@ function RootLayoutNav() {
             animation: 'fade',
           }}
         />
-        <Stack.Screen
-          name="journey"
-          options={{
-            animation: 'slide_from_right',
-          }}
-        />
-        <Stack.Screen
-          name="future"
-          options={{
-            animation: 'slide_from_right',
-          }}
-        />
-        <Stack.Screen
-          name="about"
-          options={{
-            animation: 'slide_from_right',
-          }}
-        />
       </Stack>
     </>
   );

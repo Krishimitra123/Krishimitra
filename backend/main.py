@@ -15,8 +15,8 @@ from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parent
 load_dotenv(BASE_DIR / '.env')
 
-from routers import query, diagnose, admin
-from routers import weather, soil, market
+from routers import query, diagnose
+from routers import weather, market
 from routers import auth
 from routers import transcribe
 from routers import tts
@@ -48,9 +48,7 @@ async def root():
 # Register routers
 app.include_router(query.router)
 app.include_router(diagnose.router)
-app.include_router(admin.router)
 app.include_router(weather.router)
-app.include_router(soil.router)
 app.include_router(market.router)
 app.include_router(auth.router)
 app.include_router(transcribe.router)
@@ -67,7 +65,6 @@ async def health_check():
             'query': '/api/query',
             'diagnose': '/api/diagnose',
             'weather': '/api/weather',
-            'soil': '/api/soil',
             'market': '/api/market',
         }
     }

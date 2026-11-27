@@ -35,19 +35,9 @@ def test_imports():
         from modules.m5_response import generate
         print("✓ m5_response: generate")
 
-        # M6 — Guard (chemical filter, hallucination check)
-        from modules.m6_guard import verify_response, filter_chemical_inputs
-        print("✓ m6_guard: verify_response, filter_chemical_inputs")
-
-        # M7 — Ingest
-        from modules.m7_ingest import ingest_seed_chunks, ingest_pdf, get_corpus_stats
-        print("✓ m7_ingest: ingest_seed_chunks, ingest_pdf, get_corpus_stats")
-
         # Test routers — all use 'router' as the variable name
         from routers.query import router as query_router
         from routers.diagnose import router as diagnose_router
-        from routers.ingest import router as ingest_router
-        from routers.admin import router as admin_router
         print("✓ All routers imported successfully")
 
         return True
